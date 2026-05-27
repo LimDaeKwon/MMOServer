@@ -1,0 +1,137 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Config">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Contents">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Main">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Monitoring">
+      <UniqueIdentifier>{465cc1fb-e0e0-48d7-a4de-0b24b0b688c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Memory">
+      <UniqueIdentifier>{04f92eea-4cb0-4a47-acd1-de44c2874e3a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NetworkLibrary">
+      <UniqueIdentifier>{de4214c1-3af1-40c5-b635-da1de2a23f23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Packet">
+      <UniqueIdentifier>{ab6f7fb0-05b8-4341-862c-1b2ba789b8c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{9cdc027d-fbe2-4193-bafb-63203df83f8c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="LoginThreadSetting.config">
+      <Filter>Config</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CommonProtocol.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="LoginServer.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="CPUUsage.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessMonitoring.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemMonitoring.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+    <ClInclude Include="LoginMonitoringClient.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFreeObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="TLSObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="LanClient.h">
+      <Filter>NetworkLibrary</Filter>
+    </ClInclude>
+    <ClInclude Include="NetLibrary.h">
+      <Filter>NetworkLibrary</Filter>
+    </ClInclude>
+    <ClInclude Include="CrashDump.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Profiler.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="ContentsCPacket.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="CPacket.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="CpacketQueue.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFreeQueue.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFreeQueueCas2.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="MyRingBuffer.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LoginServer.cpp">
+      <Filter>Contents</Filter>
+    </ClCompile>
+    <ClCompile Include="LoginMain.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="CPUUsage.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessMonitoring.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemMonitoring.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+    <ClCompile Include="LoginMonitoringClient.cpp">
+      <Filter>Contents</Filter>
+    </ClCompile>
+    <ClCompile Include="LanClient.cpp">
+      <Filter>NetworkLibrary</Filter>
+    </ClCompile>
+    <ClCompile Include="NetLibrary.cpp">
+      <Filter>NetworkLibrary</Filter>
+    </ClCompile>
+    <ClCompile Include="Profiler.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="ContentsCPacket.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="CPacket.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="CpacketQueue.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="MyRingBuffer.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

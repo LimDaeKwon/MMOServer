@@ -3,7 +3,10 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/libs/">
+  <Folder Name="/Libs/">
     <Project Path="libs/DKServerCore/DKServerCore.vcxproj" Id="f6b92a42-45df-4424-ba0e-80e35ee220c2" />
+  </Folder>
+  <Folder Name="/Servers/">
+    <Project Path="servers/LoginServer/LoginServer.vcxproj" Id="359906e2-91fd-4c0c-a926-faba619f1747" />
   </Folder>
 </Solution>
