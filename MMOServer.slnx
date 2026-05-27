@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/libs/">
+    <Project Path="libs/DKServerCore/DKServerCore.vcxproj" Id="f6b92a42-45df-4424-ba0e-80e35ee220c2" />
+  </Folder>
+</Solution>
