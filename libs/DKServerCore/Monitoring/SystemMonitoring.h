@@ -3,7 +3,7 @@
 #include <Pdh.h>
 #include "CPUUsage.h"
 
-
+#define NETWORK_INTERFACE_COUNT 3
 class SystemMonitoring
 {
 public:
@@ -20,24 +20,24 @@ public:
 	double GetServerNonPagedBytes();
 
 	int GetServerNonPagedMBytes();
-
+	
 	PDH_HQUERY ServerAMQuery;
 	PDH_HCOUNTER ServerAMTotal;
 	PDH_FMT_COUNTERVALUE ServerAMCounterVal;
 	double GetServerAvailableMBytes();
 
-	////네트워크 송신
-	//PDH_HQUERY ServerNetSendQuery;
-	//PDH_HCOUNTER ServerNetSendTotal;
-	//PDH_FMT_COUNTERVALUE ServerNetSendCounterVal;
-	//double GetServerNetSend();
+	//네트워크 송신
+	PDH_HQUERY ServerNetSendQuery[NETWORK_INTERFACE_COUNT];
+	PDH_HCOUNTER ServerNetSendTotal[NETWORK_INTERFACE_COUNT];
+	PDH_FMT_COUNTERVALUE ServerNetSendCounterVal[NETWORK_INTERFACE_COUNT];
 
-	////네트워크 수신
-	//PDH_HQUERY ServerNetRecvQuery;
-	//PDH_HCOUNTER ServerNetRecvTotal;
-	//PDH_FMT_COUNTERVALUE ServerNetRecvCounterVal;
-	//double GetServerNetRecv();
+	//네트워크 수신
+	PDH_HQUERY ServerNetRecvQuery[NETWORK_INTERFACE_COUNT];
+	PDH_HCOUNTER ServerNetRecvTotal[NETWORK_INTERFACE_COUNT];
+	PDH_FMT_COUNTERVALUE ServerNetRecvCounterVal[NETWORK_INTERFACE_COUNT];
 
+	double GetServerNetSendKBytes();
+	double GetServerNetRecvKBytes();
 
 	HANDLE UpdateThreadHandle;
 	static unsigned int WINAPI UpdateThread(LPVOID this_ptr);
