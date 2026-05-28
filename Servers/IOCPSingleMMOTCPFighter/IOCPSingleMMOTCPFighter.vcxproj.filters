@@ -1,0 +1,129 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Config">
+      <UniqueIdentifier>{f153a5aa-33cc-4179-a455-4040f28f07fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Packet">
+      <UniqueIdentifier>{da1150a8-900f-421d-9623-929e19cf6b05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main">
+      <UniqueIdentifier>{de8ed9fd-51f6-40af-8806-e476261936ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NetworkLibrary">
+      <UniqueIdentifier>{600b9448-cd1c-4021-b9a7-8c5669b43d8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Contents">
+      <UniqueIdentifier>{0c06eca7-674b-43b9-8109-91f9ac367ad3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Memory">
+      <UniqueIdentifier>{67f3c125-82ee-4d17-aaa4-5f5015ebf0ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Contents\TCPFighter">
+      <UniqueIdentifier>{442c0ebb-edaf-4eeb-8023-9ab805ecff9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Monitoring">
+      <UniqueIdentifier>{e5f50997-7ec2-436d-b5f5-81c94ea12228}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Profiler.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="ContentsCPacket.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="CPacketQueue.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="CPacket.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="MyRingBuffer.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="LanNetworkLibraryServer.cpp">
+      <Filter>NetworkLibrary</Filter>
+    </ClCompile>
+    <ClCompile Include="MMOTCPServer_Single.cpp">
+      <Filter>Contents\TCPFighter</Filter>
+    </ClCompile>
+    <ClCompile Include="CPUUsage.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessMonitoring.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemMonitoring.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="TLSObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFreeObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="ContentsCPacket.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="CPacketQueue.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="CPacket.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="LanNetworkLibraryServer.h">
+      <Filter>NetworkLibrary</Filter>
+    </ClInclude>
+    <ClInclude Include="MyRingBuffer.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="Profiler.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="CrashDump.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFreeQueueCas2.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="MMOTCPServer_Single.h">
+      <Filter>Contents\TCPFighter</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketDefine.h">
+      <Filter>Contents\TCPFighter</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFreeQueue.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="CPUUsage.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessMonitoring.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemMonitoring.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="MMOTCPFighterThreadSetting.config">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="GameSetting.config">
+      <Filter>Config</Filter>
+    </None>
+  </ItemGroup>
+</Project>
