@@ -114,6 +114,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)Libs\DKServerCore;$(SolutionDir)Libs\DKServerCore\Memory;$(SolutionDir)Libs\DKServerCore\Packet;$(SolutionDir)Libs\DKServerCore\Utils;$(SolutionDir)Libs\DKServerCore\NetworkLibrary;$(SolutionDir)Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,6 +136,7 @@
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(SolutionDir)Libs\DKServerCore;$(SolutionDir)Libs\DKServerCore\Memory;$(SolutionDir)Libs\DKServerCore\Packet;$(SolutionDir)Libs\DKServerCore\Utils;$(SolutionDir)Libs\DKServerCore\NetworkLibrary;$(SolutionDir)Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,39 +151,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonProtocol.h" />
-    <ClInclude Include="ContentsCPacket.h" />
-    <ClInclude Include="CPacket.h" />
-    <ClInclude Include="CpacketQueue.h" />
-    <ClInclude Include="CPUUsage.h" />
-    <ClInclude Include="CrashDump.h" />
-    <ClInclude Include="LanClient.h" />
-    <ClInclude Include="LockFreeObjectFreeList.h" />
-    <ClInclude Include="LockFreeQueue.h" />
-    <ClInclude Include="LockFreeQueueCas2.h" />
     <ClInclude Include="LoginMonitoringClient.h" />
     <ClInclude Include="LoginServer.h" />
-    <ClInclude Include="MyRingBuffer.h" />
-    <ClInclude Include="NetLibrary.h" />
-    <ClInclude Include="ObjectFreeList.h" />
-    <ClInclude Include="ProcessMonitoring.h" />
-    <ClInclude Include="Profiler.h" />
-    <ClInclude Include="SystemMonitoring.h" />
-    <ClInclude Include="TLSObjectFreeList.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ContentsCPacket.cpp" />
-    <ClCompile Include="CPacket.cpp" />
-    <ClCompile Include="CpacketQueue.cpp" />
-    <ClCompile Include="CPUUsage.cpp" />
-    <ClCompile Include="LanClient.cpp" />
     <ClCompile Include="LoginMain.cpp" />
     <ClCompile Include="LoginMonitoringClient.cpp" />
     <ClCompile Include="LoginServer.cpp" />
-    <ClCompile Include="MyRingBuffer.cpp" />
-    <ClCompile Include="NetLibrary.cpp" />
-    <ClCompile Include="ProcessMonitoring.cpp" />
-    <ClCompile Include="Profiler.cpp" />
-    <ClCompile Include="SystemMonitoring.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Libs\DKServerCore\DKServerCore.vcxproj">
+      <Project>{f6b92a42-45df-4424-ba0e-80e35ee220c2}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
