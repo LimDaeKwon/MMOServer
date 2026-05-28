@@ -8,5 +8,6 @@
   </Folder>
   <Folder Name="/Servers/">
     <Project Path="servers/LoginServer/LoginServer.vcxproj" Id="359906e2-91fd-4c0c-a926-faba619f1747" />
+    <Project Path="Servers/MultiChatServer/MultiChatServer.vcxproj" Id="79c6c9e3-ed21-48de-ac9a-7ca3e970b0e9" />
   </Folder>
 </Solution>
