@@ -9,9 +9,20 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="리소스 파일">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{4cb66a56-2432-4c4f-96c8-39dce987ea4d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Packet">
+      <UniqueIdentifier>{043c47c6-70c2-4ae0-90c1-67725411a759}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NetworkLibaray">
+      <UniqueIdentifier>{e90b7045-1524-4580-9c82-23df472a5306}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Memory">
+      <UniqueIdentifier>{48f308a9-4959-488e-9215-9e065e161791}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Monitoring">
+      <UniqueIdentifier>{677c2647-d2d5-4162-b69e-3fa62ad6f993}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -21,6 +32,69 @@
     <ClInclude Include="pch.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Packet\ContentsCPacket.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet\CPacket.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet\CpacketQueue.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet\LockFreeQueue.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet\LockFreeQueueCas2.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet\MessageDataQueue.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet\MyRingBuffer.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkLibrary\ContentGroupBase.h">
+      <Filter>NetworkLibaray</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkLibrary\ContentsNetLibrary.h">
+      <Filter>NetworkLibaray</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkLibrary\GroupManager.h">
+      <Filter>NetworkLibaray</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkLibrary\LanClient.h">
+      <Filter>NetworkLibaray</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkLibrary\NetLibrary.h">
+      <Filter>NetworkLibaray</Filter>
+    </ClInclude>
+    <ClInclude Include="Memory\LockFreeObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Memory\ObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Memory\TLSObjectFreeList.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Monitoring\CPUUsage.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+    <ClInclude Include="Monitoring\ProcessMonitoring.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+    <ClInclude Include="Monitoring\SystemMonitoring.h">
+      <Filter>Monitoring</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\CrashDump.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Profiler.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\SpinLock.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DKServerCore.cpp">
@@ -28,6 +102,51 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Packet\ContentsCPacket.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="Packet\CPacket.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="Packet\CpacketQueue.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="Packet\MessageDataQueue.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="Packet\MyRingBuffer.cpp">
+      <Filter>Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkLibrary\ContentGroupBase.cpp">
+      <Filter>NetworkLibaray</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkLibrary\ContentsNetLibrary.cpp">
+      <Filter>NetworkLibaray</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkLibrary\GroupManager.cpp">
+      <Filter>NetworkLibaray</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkLibrary\LanClient.cpp">
+      <Filter>NetworkLibaray</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkLibrary\NetLibrary.cpp">
+      <Filter>NetworkLibaray</Filter>
+    </ClCompile>
+    <ClCompile Include="Monitoring\CPUUsage.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+    <ClCompile Include="Monitoring\ProcessMonitoring.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+    <ClCompile Include="Monitoring\SystemMonitoring.cpp">
+      <Filter>Monitoring</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Profiler.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\SpinLock.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

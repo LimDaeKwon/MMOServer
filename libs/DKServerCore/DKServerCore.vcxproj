@@ -77,7 +77,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
@@ -98,7 +98,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
@@ -117,8 +117,9 @@
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir)Memory;$(ProjectDir)Packet;$(ProjectDir)Utils;$(ProjectDir)NetworkLibrary;$(ProjectDir)Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -138,10 +139,11 @@
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>$(ProjectDir)Memory;$(ProjectDir)Packet;$(ProjectDir)Utils;$(ProjectDir)NetworkLibrary;$(ProjectDir)Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -154,16 +156,52 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="Memory\LockFreeObjectFreeList.h" />
+    <ClInclude Include="Memory\ObjectFreeList.h" />
+    <ClInclude Include="Memory\TLSObjectFreeList.h" />
+    <ClInclude Include="Monitoring\CPUUsage.h" />
+    <ClInclude Include="Monitoring\ProcessMonitoring.h" />
+    <ClInclude Include="Monitoring\SystemMonitoring.h" />
+    <ClInclude Include="NetworkLibrary\ContentGroupBase.h" />
+    <ClInclude Include="NetworkLibrary\ContentsNetLibrary.h" />
+    <ClInclude Include="NetworkLibrary\GroupManager.h" />
+    <ClInclude Include="NetworkLibrary\LanClient.h" />
+    <ClInclude Include="NetworkLibrary\NetLibrary.h" />
+    <ClInclude Include="Packet\ContentsCPacket.h" />
+    <ClInclude Include="Packet\CPacket.h" />
+    <ClInclude Include="Packet\CpacketQueue.h" />
+    <ClInclude Include="Packet\LockFreeQueue.h" />
+    <ClInclude Include="Packet\LockFreeQueueCas2.h" />
+    <ClInclude Include="Packet\MessageDataQueue.h" />
+    <ClInclude Include="Packet\MyRingBuffer.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Utils\CrashDump.h" />
+    <ClInclude Include="Utils\Profiler.h" />
+    <ClInclude Include="Utils\SpinLock.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DKServerCore.cpp" />
+    <ClCompile Include="Monitoring\CPUUsage.cpp" />
+    <ClCompile Include="Monitoring\ProcessMonitoring.cpp" />
+    <ClCompile Include="Monitoring\SystemMonitoring.cpp" />
+    <ClCompile Include="NetworkLibrary\ContentGroupBase.cpp" />
+    <ClCompile Include="NetworkLibrary\ContentsNetLibrary.cpp" />
+    <ClCompile Include="NetworkLibrary\GroupManager.cpp" />
+    <ClCompile Include="NetworkLibrary\LanClient.cpp" />
+    <ClCompile Include="NetworkLibrary\NetLibrary.cpp" />
+    <ClCompile Include="Packet\ContentsCPacket.cpp" />
+    <ClCompile Include="Packet\CPacket.cpp" />
+    <ClCompile Include="Packet\CpacketQueue.cpp" />
+    <ClCompile Include="Packet\MessageDataQueue.cpp" />
+    <ClCompile Include="Packet\MyRingBuffer.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Utils\Profiler.cpp" />
+    <ClCompile Include="Utils\SpinLock.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
