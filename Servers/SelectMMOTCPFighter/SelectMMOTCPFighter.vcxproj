@@ -122,7 +122,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <LanguageStandard>stdcpp14</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Memory;$(ProjectDir)Packet;$(ProjectDir)Utils;$(ProjectDir)NetworkLibrary;$(ProjectDir)Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Libs\DKServerCore;$(SolutionDir)Libs\DKServerCore\Memory;$(SolutionDir)Libs\DKServerCore\Packet;$(SolutionDir)Libs\DKServerCore\Utils;$(SolutionDir)Libs\DKServerCore\NetworkLibrary;$(SolutionDir)Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,22 +133,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Contents.cpp" />
-    <ClCompile Include="CPacket.cpp" />
     <ClCompile Include="MMOTCPFighterServer.cpp" />
-    <ClCompile Include="MyRingBuffer.cpp" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="NetworkProxy.cpp" />
     <ClCompile Include="NetworkStub.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Contents.h" />
-    <ClInclude Include="CPacket.h" />
-    <ClInclude Include="CrashDump.h" />
-    <ClInclude Include="MyRingBuffer.h" />
     <ClInclude Include="Network.h" />
     <ClInclude Include="NetworkProxy.h" />
     <ClInclude Include="NetworkStub.h" />
-    <ClInclude Include="ObjectFreeList.h" />
     <ClInclude Include="PacketDefine.h" />
   </ItemGroup>
   <ItemGroup>
