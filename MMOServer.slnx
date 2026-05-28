@@ -13,5 +13,6 @@
     <Project Path="Servers/MonitoringServer/MonitoringServer.vcxproj" />
     <Project Path="Servers/MultiChatServer/MultiChatServer.vcxproj" Id="79c6c9e3-ed21-48de-ac9a-7ca3e970b0e9" />
     <Project Path="Servers/SelectMMOTCPFighter/SelectMMOTCPFighter.vcxproj" Id="8af5dd11-c744-4045-adf3-d46d1909809b" />
+    <Project Path="Servers/SingleChatServer/SingleChattServer.vcxproj" />
   </Folder>
 </Solution>
