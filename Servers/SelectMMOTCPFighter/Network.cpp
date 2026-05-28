@@ -384,7 +384,7 @@ void SendPacketAround(SESSION* Session, CPacket* Packet, bool SendMe)
 
 
 }
-CPacket cPacketBuffer;
+CPacket* cPacketBuffer = CPacket::Alloc();
 
 void Receive(SESSION* Target)
 {
@@ -463,9 +463,9 @@ void Receive(SESSION* Target)
 
 			//wprintf(L"## ID : %d  DequeueHeaderSize : %d  ", Target->SessionID, ReceiveQDequeueHeaderSize);
 
-			cPacketBuffer.Clear();
+			cPacketBuffer->Clear();
 
-			unsigned int ReceiveQDequeuePacketSize = Target->ReceiveQ.Dequeue(cPacketBuffer.GetBufferPtr(), Header.BySize);
+			unsigned int ReceiveQDequeuePacketSize = Target->ReceiveQ.Dequeue(cPacketBuffer->GetBufferPtr(), Header.BySize);
 
 			if (ReceiveQDequeuePacketSize != Header.BySize)
 			{
@@ -475,13 +475,13 @@ void Receive(SESSION* Target)
 
 				break;
 			}
-			cPacketBuffer.MoveWritePosition(ReceiveQDequeuePacketSize);
+			cPacketBuffer->MoveWritePosition(ReceiveQDequeuePacketSize);
 
 			//wprintf(L"## DequeuePacketSize : %d \n", ReceiveQDequeuePacketSize);
 
 			Target->LastRecvTime = timeGetTime();
 
-			PacketProc(Target, Header.ByType, &cPacketBuffer);
+			PacketProc(Target, Header.ByType, cPacketBuffer);
 
 		}
 	}

@@ -71,7 +71,7 @@ ObjectFreeList<CHARACTER> CharacterFreeList(10000);
 
 
 
-CPacket GlobalCPacket;
+CPacket* GlobalCPacket = CPacket::Alloc();
 
 void CreateCharater(SESSION* NewSession)
 {
@@ -104,13 +104,13 @@ void CreateCharater(SESSION* NewSession)
 
 
 
-	GlobalCPacket.Clear();
+	GlobalCPacket->Clear();
 
-	MakePacketCreateMyCharacter(NewPlayer->CharacterSession, &GlobalCPacket, NewPlayer->SessionID, NewPlayer->Direction, NewPlayer->X, NewPlayer->Y, NewPlayer->HP);
+	MakePacketCreateMyCharacter(NewPlayer->CharacterSession, GlobalCPacket, NewPlayer->SessionID, NewPlayer->Direction, NewPlayer->X, NewPlayer->Y, NewPlayer->HP);
 
 
-	GlobalCPacket.Clear();
-	MakePacketCreateOtherCharacter(NewPlayer->CharacterSession, &GlobalCPacket, NewPlayer->SessionID, NewPlayer->Direction, NewPlayer->X, NewPlayer->Y, NewPlayer->HP);
+	GlobalCPacket->Clear();
+	MakePacketCreateOtherCharacter(NewPlayer->CharacterSession, GlobalCPacket, NewPlayer->SessionID, NewPlayer->Direction, NewPlayer->X, NewPlayer->Y, NewPlayer->HP);
 	//나를 남에게.
 
 	SectorAround CreateForMe;
@@ -130,14 +130,14 @@ void CreateCharater(SESSION* NewSession)
 			}
 
 			//CPacket OtherCharacter;
-			GlobalCPacket.Clear();
-			MakePacketCreateOtherCharacterForMe(NewPlayer->CharacterSession, &GlobalCPacket, Target->SessionID, Target->Direction, Target->X, Target->Y, Target->HP);
+			GlobalCPacket->Clear();
+			MakePacketCreateOtherCharacterForMe(NewPlayer->CharacterSession, GlobalCPacket, Target->SessionID, Target->Direction, Target->X, Target->Y, Target->HP);
 
 			if (Target->IsMove == true)
 			{
 				///CPacket Packet_SC_MOVE_START;
-				GlobalCPacket.Clear();
-				MakePacketMoveStartForMe(NewPlayer->CharacterSession, &GlobalCPacket, Target->SessionID, Target->Action, Target->X, Target->Y);
+				GlobalCPacket->Clear();
+				MakePacketMoveStartForMe(NewPlayer->CharacterSession, GlobalCPacket, Target->SessionID, Target->Action, Target->X, Target->Y);
 			}
 
 		}
@@ -405,9 +405,9 @@ void HitCheck(CHARACTER* AttackCharacter, int AttackNumber)
 						Target->HP -= Damage;
 					}
 
-					GlobalCPacket.Clear();
+					GlobalCPacket->Clear();
 
-					MakePacketDamage(Target->CharacterSession, &GlobalCPacket, AttackCharacter->SessionID, Target->SessionID, Target->HP);
+					MakePacketDamage(Target->CharacterSession, GlobalCPacket, AttackCharacter->SessionID, Target->SessionID, Target->HP);
 
 					if (Target->HP == 0)
 					{
@@ -453,11 +453,11 @@ void HitCheck(CHARACTER* AttackCharacter, int AttackNumber)
 						Target->HP -= Damage;
 					}
 
-					GlobalCPacket.Clear();
+					GlobalCPacket->Clear();
 
 					//wprintf(L"## SendDamage Packet : AttackID : %d TargetID %d  \n", AttackCharacter->SessionID, Target->SessionID);
 
-					MakePacketDamage(Target->CharacterSession, &GlobalCPacket, AttackCharacter->SessionID, Target->SessionID, Target->HP);
+					MakePacketDamage(Target->CharacterSession, GlobalCPacket, AttackCharacter->SessionID, Target->SessionID, Target->HP);
 					//SendPacketBroadcast(NULL, &Pakcet_SC_DAMAGE);
 
 					if (Target->HP == 0)
@@ -506,9 +506,9 @@ bool NetPacketProc_MoveStart(SESSION* TargetSession, unsigned char Direction, un
 		//Disconnect(Target->CharacterSession);
 
 
-		GlobalCPacket.Clear();
+		GlobalCPacket->Clear();
 
-		MakePacketSync(Target->CharacterSession, &GlobalCPacket, Target->SessionID, Target->X, Target->Y);
+		MakePacketSync(Target->CharacterSession, GlobalCPacket, Target->SessionID, Target->X, Target->Y);
 
 
 		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
@@ -549,8 +549,8 @@ bool NetPacketProc_MoveStart(SESSION* TargetSession, unsigned char Direction, un
 	}
 
 
-	GlobalCPacket.Clear();
-	MakePacketMoveStart(Target->CharacterSession, &GlobalCPacket, Target->SessionID, Direction, Target->X, Target->Y);
+	GlobalCPacket->Clear();
+	MakePacketMoveStart(Target->CharacterSession, GlobalCPacket, Target->SessionID, Direction, Target->X, Target->Y);
 
 	return true;
 }
@@ -569,8 +569,8 @@ bool NetPacketProc_MoveStop(SESSION* TargetSession, unsigned char Direction, uns
 	{
 		//Disconnect(Target->CharacterSession);
 		//wprintf(L"MoveStop OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
-		GlobalCPacket.Clear();
-		MakePacketSync(Target->CharacterSession, &GlobalCPacket, Target->SessionID, Target->X, Target->Y);
+		GlobalCPacket->Clear();
+		MakePacketSync(Target->CharacterSession, GlobalCPacket, Target->SessionID, Target->X, Target->Y);
 
 	}
 	else
@@ -612,9 +612,9 @@ bool NetPacketProc_MoveStop(SESSION* TargetSession, unsigned char Direction, uns
 	}
 
 
-	GlobalCPacket.Clear();
+	GlobalCPacket->Clear();
 
-	MakePacketMoveStop(Target->CharacterSession, &GlobalCPacket, Target->SessionID, Target->Direction, Target->X, Target->Y);
+	MakePacketMoveStop(Target->CharacterSession, GlobalCPacket, Target->SessionID, Target->Direction, Target->X, Target->Y);
 
 	return true;
 }
@@ -629,9 +629,9 @@ bool NetPacketProc_Attack1(SESSION* TargetSession, unsigned char Direction, unsi
 		//Disconnect(Target->CharacterSession);
 
 
-		GlobalCPacket.Clear();
+		GlobalCPacket->Clear();
 
-		MakePacketSync(Target->CharacterSession, &GlobalCPacket, Target->SessionID, Target->X, Target->Y);
+		MakePacketSync(Target->CharacterSession, GlobalCPacket, Target->SessionID, Target->X, Target->Y);
 
 
 		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
@@ -655,10 +655,10 @@ bool NetPacketProc_Attack1(SESSION* TargetSession, unsigned char Direction, unsi
 	ID = Target->SessionID;
 	Target->Direction = Direction;
 
-	GlobalCPacket.Clear();
+	GlobalCPacket->Clear();
 
 	//wprintf(L"## SendAttack1 Packet : ID :  %d , TargetDir  : %d  \n", ID, Direction);
-	MakePacketAttack1(Target->CharacterSession, &GlobalCPacket, ID, Direction, Target->X, Target->Y);
+	MakePacketAttack1(Target->CharacterSession, GlobalCPacket, ID, Direction, Target->X, Target->Y);
 	HitCheck(Target, 1);
 
 	return true;
@@ -674,9 +674,9 @@ bool NetPacketProc_Attack2(SESSION* TargetSession, unsigned char Direction, unsi
 		//Disconnect(Target->CharacterSession);
 
 
-		GlobalCPacket.Clear();
+		GlobalCPacket->Clear();
 
-		MakePacketSync(Target->CharacterSession, &GlobalCPacket, Target->SessionID, Target->X, Target->Y);
+		MakePacketSync(Target->CharacterSession, GlobalCPacket, Target->SessionID, Target->X, Target->Y);
 
 
 		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
@@ -699,10 +699,10 @@ bool NetPacketProc_Attack2(SESSION* TargetSession, unsigned char Direction, unsi
 	ID = Target->SessionID;
 	Target->Direction = Direction;
 
-	GlobalCPacket.Clear();
+	GlobalCPacket->Clear();
 
 	//wprintf(L"## SendAttack2 Packet : ID :  %d , TargetDir  : %d  \n", ID, Direction);
-	MakePacketAttack2(Target->CharacterSession, &GlobalCPacket, ID, Direction, Target->X, Target->Y);
+	MakePacketAttack2(Target->CharacterSession, GlobalCPacket, ID, Direction, Target->X, Target->Y);
 	HitCheck(Target, 2);
 
 	return true;
@@ -718,9 +718,9 @@ bool NetPacketProc_Attack3(SESSION* TargetSession, unsigned char Direction, unsi
 		//Disconnect(Target->CharacterSession);
 
 
-		GlobalCPacket.Clear();
+		GlobalCPacket->Clear();
 
-		MakePacketSync(Target->CharacterSession, &GlobalCPacket, Target->SessionID, Target->X, Target->Y);
+		MakePacketSync(Target->CharacterSession, GlobalCPacket, Target->SessionID, Target->X, Target->Y);
 
 
 		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
@@ -745,10 +745,10 @@ bool NetPacketProc_Attack3(SESSION* TargetSession, unsigned char Direction, unsi
 
 	Target->Direction = Direction;
 
-	GlobalCPacket.Clear();
+	GlobalCPacket->Clear();
 
 	//wprintf(L"## SendAttack3 Packet : ID :  %d , TargetDir  : %d  \n", ID, Direction);
-	MakePacketAttack3(Target->CharacterSession, &GlobalCPacket, ID, Direction, Target->X, Target->Y);
+	MakePacketAttack3(Target->CharacterSession, GlobalCPacket, ID, Direction, Target->X, Target->Y);
 	HitCheck(Target, 3);
 	return true;
 }
@@ -758,9 +758,9 @@ bool NetPacketProc_Echo(SESSION* Target, unsigned int Time)
 {
 
 	//CPacket Packet_SC_Echo;
-	GlobalCPacket.Clear();
+	GlobalCPacket->Clear();
 
-	MakePacketEcho(Target, &GlobalCPacket, Time);
+	MakePacketEcho(Target, GlobalCPacket, Time);
 
 	return true;
 }
@@ -779,8 +779,8 @@ void Disconnect(SESSION* TargetSession)
 
 	Sector[Target->CharacterSectorPos.Y][Target->CharacterSectorPos.X].remove(Target);
 
-	GlobalCPacket.Clear();
-	MakePacketDeleteCharacter(TargetSession, &GlobalCPacket, TargetSession->SessionID);
+	GlobalCPacket->Clear();
+	MakePacketDeleteCharacter(TargetSession, GlobalCPacket, TargetSession->SessionID);
 	//wprintf(L"## Disconnect ID : %d \n", TargetSession->SessionID);
 
 }
@@ -1472,9 +1472,9 @@ void SectorUpdate(CHARACTER* Target)
 
 
 
-	GlobalCPacket.Clear();
+	GlobalCPacket->Clear();
 
-	MakePacketDeleteCharacterRemoveSector(Target->CharacterSession, &GlobalCPacket, &Remove, Target->SessionID); //패킷 만들어서 Remove 시켜줘야하는데.. 
+	MakePacketDeleteCharacterRemoveSector(Target->CharacterSession, GlobalCPacket, &Remove, Target->SessionID); //패킷 만들어서 Remove 시켜줘야하는데.. 
 
 
 
@@ -1484,8 +1484,8 @@ void SectorUpdate(CHARACTER* Target)
 		std::list<CHARACTER*>::iterator Iter;
 		for (Iter = Sector[Remove.Around[i].Y][Remove.Around[i].X].begin(); Iter != Sector[Remove.Around[i].Y][Remove.Around[i].X].end(); ++Iter)
 		{
-			GlobalCPacket.Clear();
-			MakePacketDeleteCharacterForMe(Target->CharacterSession, &GlobalCPacket, (*Iter)->SessionID);
+			GlobalCPacket->Clear();
+			MakePacketDeleteCharacterForMe(Target->CharacterSession, GlobalCPacket, (*Iter)->SessionID);
 
 
 			//printf("Remove에 있는 애들의 삭제를 나에게 보냄. 지움 당하는 아이디 %d  : 받는 아이디 %d \n\n", Target->CharacterSession->SessionID, (*Iter)->SessionID);
@@ -1495,13 +1495,13 @@ void SectorUpdate(CHARACTER* Target)
 
 
 	//add에 있는 애들에게 나의 생성을 보냄. 
-	GlobalCPacket.Clear();
-	MakePacketCreateCharacterAddSector(Target->CharacterSession, &GlobalCPacket, &Add, Target->SessionID, Target->Direction, Target->X, Target->Y, Target->HP);
+	GlobalCPacket->Clear();
+	MakePacketCreateCharacterAddSector(Target->CharacterSession, GlobalCPacket, &Add, Target->SessionID, Target->Direction, Target->X, Target->Y, Target->HP);
 	//이동 정보도 보내줘야함. 
 	// 
 	// 
-	GlobalCPacket.Clear();
-	MakePacketMoveStartAddSector(Target->CharacterSession, &GlobalCPacket, &Add, Target->SessionID, Target->Action, Target->X, Target->Y);
+	GlobalCPacket->Clear();
+	MakePacketMoveStartAddSector(Target->CharacterSession, GlobalCPacket, &Add, Target->SessionID, Target->Action, Target->X, Target->Y);
 
 
 
@@ -1517,15 +1517,15 @@ void SectorUpdate(CHARACTER* Target)
 				continue;
 			}
 
-			GlobalCPacket.Clear();
+			GlobalCPacket->Clear();
 
-			MakePacketCreateOtherCharacterForMe(Target->CharacterSession, &GlobalCPacket, CreateCharacter->SessionID, CreateCharacter->Direction, CreateCharacter->X, CreateCharacter->Y, CreateCharacter->HP);
+			MakePacketCreateOtherCharacterForMe(Target->CharacterSession, GlobalCPacket, CreateCharacter->SessionID, CreateCharacter->Direction, CreateCharacter->X, CreateCharacter->Y, CreateCharacter->HP);
 
 			if (CreateCharacter->IsMove == true)
 			{
 
-				GlobalCPacket.Clear();
-				MakePacketMoveStartForMe(Target->CharacterSession, &GlobalCPacket, CreateCharacter->SessionID, CreateCharacter->Action, CreateCharacter->X, CreateCharacter->Y);
+				GlobalCPacket->Clear();
+				MakePacketMoveStartForMe(Target->CharacterSession, GlobalCPacket, CreateCharacter->SessionID, CreateCharacter->Action, CreateCharacter->X, CreateCharacter->Y);
 			}
 
 		}
