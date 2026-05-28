@@ -124,6 +124,7 @@
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)Memory;$(ProjectDir)Packet;$(ProjectDir)Utils;$(ProjectDir)NetworkLibrary;$(ProjectDir)Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -180,6 +181,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="GameEchoServer.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Libs\DKServerCore\DKServerCore.vcxproj">
+      <Project>{f6b92a42-45df-4424-ba0e-80e35ee220c2}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

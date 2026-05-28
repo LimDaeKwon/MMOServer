@@ -122,6 +122,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <LanguageStandard>stdcpp14</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)Memory;$(ProjectDir)Packet;$(ProjectDir)Utils;$(ProjectDir)NetworkLibrary;$(ProjectDir)Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,6 +150,11 @@
     <ClInclude Include="NetworkStub.h" />
     <ClInclude Include="ObjectFreeList.h" />
     <ClInclude Include="PacketDefine.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Libs\DKServerCore\DKServerCore.vcxproj">
+      <Project>{f6b92a42-45df-4424-ba0e-80e35ee220c2}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
