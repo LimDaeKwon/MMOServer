@@ -124,7 +124,7 @@
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Memory;$(ProjectDir)Packet;$(ProjectDir)Utils;$(ProjectDir)NetworkLibrary;$(ProjectDir)Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Libs\DKServerCore;$(SolutionDir)Libs\DKServerCore\Memory;$(SolutionDir)Libs\DKServerCore\Packet;$(SolutionDir)Libs\DKServerCore\Utils;$(SolutionDir)Libs\DKServerCore\NetworkLibrary;$(SolutionDir)Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -136,48 +136,14 @@
   <ItemGroup>
     <ClCompile Include="GameEchoServer.cpp" />
     <ClCompile Include="GameEchoServerGroup.cpp" />
-    <ClCompile Include="GroupManager.cpp" />
-    <ClCompile Include="ContentGroupBase.cpp" />
-    <ClCompile Include="LanClient.cpp" />
     <ClCompile Include="GameMonitoringClient.cpp" />
     <ClCompile Include="GameEchoMain.cpp" />
-    <ClCompile Include="CPUUsage.cpp" />
-    <ClCompile Include="ContentsNetLibrary.cpp" />
-    <ClCompile Include="ContentsCPacket.cpp" />
-    <ClCompile Include="CPacket.cpp" />
-    <ClCompile Include="CPacketQueue.cpp" />
-    <ClCompile Include="MessageDataQueue.cpp" />
-    <ClCompile Include="MyRingBuffer.cpp" />
-    <ClCompile Include="ProcessMonitoring.cpp" />
-    <ClCompile Include="Profiler.cpp" />
-    <ClCompile Include="SpinLock.cpp" />
-    <ClCompile Include="SystemMonitoring.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameEchoServer.h" />
     <ClInclude Include="CommonProtocol.h" />
-    <ClInclude Include="CPUUsage.h" />
     <ClInclude Include="GameEchoServerGroup.h" />
-    <ClInclude Include="GroupManager.h" />
-    <ClInclude Include="ContentGroupBase.h" />
-    <ClInclude Include="LanClient.h" />
     <ClInclude Include="GameMonitoringClient.h" />
-    <ClInclude Include="ContentsNetLibrary.h" />
-    <ClInclude Include="ContentsCPacket.h" />
-    <ClInclude Include="CPacket.h" />
-    <ClInclude Include="CPacketQueue.h" />
-    <ClInclude Include="CrashDump.h" />
-    <ClInclude Include="LockFreeQueue.h" />
-    <ClInclude Include="LockFreeQueueCas2.h" />
-    <ClInclude Include="MessageDataQueue.h" />
-    <ClInclude Include="MyRingBuffer.h" />
-    <ClInclude Include="LockFreeObjectFreeList.h" />
-    <ClInclude Include="ObjectFreeList.h" />
-    <ClInclude Include="ProcessMonitoring.h" />
-    <ClInclude Include="Profiler.h" />
-    <ClInclude Include="SpinLock.h" />
-    <ClInclude Include="SystemMonitoring.h" />
-    <ClInclude Include="TLSObjectFreeList.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameEchoServer.config" />
