@@ -17,7 +17,7 @@ CrashDump zz;
 
 enum thread_setting_enum // 여기에 SendBuffer 사이즈 설정 옵션도 넣기. 
 {
-	IP, PORT, THREADS, CONCURRENT, NAGLE, SESSIONS, HEADERSIZE
+	IP, PORT, THREADS, CONCURRENT, NAGLE, SESSIONS, HEADERSIZE, PACKETCODE
 };
 unsigned int GlobalChecksum;
 
@@ -25,7 +25,7 @@ unsigned int GlobalChecksum;
 
 bool ParseThreadDataFile(const char* file_name);
 
-char ThreadData[7][200];
+char ThreadData[8][200];
 
 
 int main()
@@ -43,7 +43,7 @@ int main()
 
 
 	ChattingServerSingle* ChatInstance = new ChattingServerSingle;
-	ChatInstance->Start(ThreadData[IP], atoi(ThreadData[PORT]), atoi(ThreadData[THREADS]), atoi(ThreadData[CONCURRENT]), atoi(ThreadData[NAGLE]), atoi(ThreadData[SESSIONS]), atoi(ThreadData[HEADERSIZE]));
+	ChatInstance->Start(ThreadData[IP], atoi(ThreadData[PORT]), atoi(ThreadData[THREADS]), atoi(ThreadData[CONCURRENT]), atoi(ThreadData[NAGLE]), atoi(ThreadData[SESSIONS]), atoi(ThreadData[HEADERSIZE]), atoi(ThreadData[PACKETCODE]));
 
 
 

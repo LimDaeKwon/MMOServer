@@ -7,12 +7,12 @@
     <Project Path="libs/DKServerCore/DKServerCore.vcxproj" Id="f6b92a42-45df-4424-ba0e-80e35ee220c2" />
   </Folder>
   <Folder Name="/Servers/">
-    <Project Path="Servers/ContentsGameEchoServer/ContentsGameEcho.vcxproj" />
-    <Project Path="Servers/IOCPSingleMMOTCPFighter/IOCPSingleMMOTCPFighter.vcxproj" />
+    <Project Path="Servers/ContentsGameEchoServer/ContentsGameEcho.vcxproj" Id="6ac009d0-56a2-4dd0-b711-c6e51290d1f5" />
+    <Project Path="Servers/IOCPSingleMMOTCPFighter/IOCPSingleMMOTCPFighter.vcxproj" Id="52ae60e0-fde0-4451-8580-5b55f4ea0523" />
     <Project Path="servers/LoginServer/LoginServer.vcxproj" Id="359906e2-91fd-4c0c-a926-faba619f1747" />
-    <Project Path="Servers/MonitoringServer/MonitoringServer.vcxproj" />
+    <Project Path="Servers/MonitoringServer/MonitoringServer.vcxproj" Id="fbcebbf9-d60b-40ba-800a-4b8caf59e9d3" />
     <Project Path="Servers/MultiChatServer/MultiChatServer.vcxproj" Id="79c6c9e3-ed21-48de-ac9a-7ca3e970b0e9" />
     <Project Path="Servers/SelectMMOTCPFighter/SelectMMOTCPFighter.vcxproj" Id="8af5dd11-c744-4045-adf3-d46d1909809b" />
-    <Project Path="Servers/SingleChatServer/SingleChattServer.vcxproj" />
+    <Project Path="Servers/SingleChatServer/SingleChatServer.vcxproj" Id="264bb1bf-df60-45d7-9936-97b935a1c7b8" />
   </Folder>
 </Solution>

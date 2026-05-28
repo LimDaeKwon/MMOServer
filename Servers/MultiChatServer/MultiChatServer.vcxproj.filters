@@ -4,27 +4,11 @@
     <Filter Include="Config">
       <UniqueIdentifier>{f153a5aa-33cc-4179-a455-4040f28f07fa}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Packet">
-      <UniqueIdentifier>{da1150a8-900f-421d-9623-929e19cf6b05}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Main">
       <UniqueIdentifier>{de8ed9fd-51f6-40af-8806-e476261936ca}</UniqueIdentifier>
     </Filter>
-    <Filter Include="NetworkLibrary">
-      <UniqueIdentifier>{600b9448-cd1c-4021-b9a7-8c5669b43d8b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Utils">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
     <Filter Include="Contents">
       <UniqueIdentifier>{0c06eca7-674b-43b9-8109-91f9ac367ad3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Memory">
-      <UniqueIdentifier>{67f3c125-82ee-4d17-aaa4-5f5015ebf0ab}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Monitoring">
-      <UniqueIdentifier>{e5f50997-7ec2-436d-b5f5-81c94ea12228}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
