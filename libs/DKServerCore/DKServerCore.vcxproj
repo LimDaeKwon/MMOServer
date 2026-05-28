@@ -167,6 +167,7 @@
     <ClInclude Include="NetworkLibrary\ContentsNetLibrary.h" />
     <ClInclude Include="NetworkLibrary\GroupManager.h" />
     <ClInclude Include="NetworkLibrary\LanClient.h" />
+    <ClInclude Include="NetworkLibrary\LanLibrary.h" />
     <ClInclude Include="NetworkLibrary\LanNetworkLibraryServer.h" />
     <ClInclude Include="NetworkLibrary\NetLibrary.h" />
     <ClInclude Include="Packet\ContentsCPacket.h" />
@@ -190,6 +191,7 @@
     <ClCompile Include="NetworkLibrary\ContentsNetLibrary.cpp" />
     <ClCompile Include="NetworkLibrary\GroupManager.cpp" />
     <ClCompile Include="NetworkLibrary\LanClient.cpp" />
+    <ClCompile Include="NetworkLibrary\LanLibrary.cpp" />
     <ClCompile Include="NetworkLibrary\LanNetworkLibraryServer.cpp" />
     <ClCompile Include="NetworkLibrary\NetLibrary.cpp" />
     <ClCompile Include="Packet\ContentsCPacket.cpp" />
