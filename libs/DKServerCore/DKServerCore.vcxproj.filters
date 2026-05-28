@@ -95,6 +95,9 @@
     <ClInclude Include="Utils\SpinLock.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="NetworkLibrary\LanNetworkLibraryServer.h">
+      <Filter>NetworkLibaray</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DKServerCore.cpp">
@@ -147,6 +150,9 @@
     </ClCompile>
     <ClCompile Include="Utils\SpinLock.cpp">
       <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkLibrary\LanNetworkLibraryServer.cpp">
+      <Filter>NetworkLibaray</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

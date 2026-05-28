@@ -121,7 +121,7 @@
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Memory;$(ProjectDir)Packet;$(ProjectDir)Utils;$(ProjectDir)NetworkLibrary;$(ProjectDir)Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Libs\DKServerCore;$(SolutionDir)Libs\DKServerCore\Memory;$(SolutionDir)Libs\DKServerCore\Packet;$(SolutionDir)Libs\DKServerCore\Utils;$(SolutionDir)Libs\DKServerCore\NetworkLibrary;$(SolutionDir)Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,36 +131,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CPUUsage.cpp" />
-    <ClCompile Include="ContentsCPacket.cpp" />
-    <ClCompile Include="CPacket.cpp" />
-    <ClCompile Include="CPacketQueue.cpp" />
     <ClCompile Include="MMOTCPServer_Single.cpp" />
-    <ClCompile Include="LanNetworkLibraryServer.cpp" />
-    <ClCompile Include="MyRingBuffer.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="ProcessMonitoring.cpp" />
-    <ClCompile Include="Profiler.cpp" />
-    <ClCompile Include="SystemMonitoring.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CPUUsage.h" />
-    <ClInclude Include="ContentsCPacket.h" />
-    <ClInclude Include="CPacket.h" />
-    <ClInclude Include="CPacketQueue.h" />
-    <ClInclude Include="CrashDump.h" />
-    <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="MMOTCPServer_Single.h" />
-    <ClInclude Include="LanNetworkLibraryServer.h" />
-    <ClInclude Include="LockFreeQueueCas2.h" />
-    <ClInclude Include="MyRingBuffer.h" />
-    <ClInclude Include="LockFreeObjectFreeList.h" />
-    <ClInclude Include="ObjectFreeList.h" />
     <ClInclude Include="PacketDefine.h" />
-    <ClInclude Include="ProcessMonitoring.h" />
-    <ClInclude Include="Profiler.h" />
-    <ClInclude Include="SystemMonitoring.h" />
-    <ClInclude Include="TLSObjectFreeList.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameSetting.config" />
