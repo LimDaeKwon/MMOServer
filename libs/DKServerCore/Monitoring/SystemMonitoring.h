@@ -1,55 +1,56 @@
 #pragma once
 
+#include <Windows.h>
 #include <Pdh.h>
-#include "CPUUsage.h"
 
-#define NETWORK_INTERFACE_COUNT 3
+#include "CpuUsage.h"
+
+constexpr int NetworkInterfaceCount = 3;
+
 class SystemMonitoring
 {
 public:
+    SystemMonitoring();
+    virtual ~SystemMonitoring();
 
-	SystemMonitoring();
-	virtual ~SystemMonitoring();
+    double GetServerNonPagedBytes() const;
+    int GetServerNonPagedMBytes() const;
+    double GetServerAvailableMBytes() const;
 
-	//서버 NPPool
-	PDH_HQUERY ServerNPQuery;
-	PDH_HCOUNTER ServerNPTotal;
-	PDH_FMT_COUNTERVALUE ServerNPCounterVal;
+    double GetServerNetSendKBytes() const;
+    double GetServerNetRecvKBytes() const;
 
-	// 사용가능 메모리 L"\\Memory\\Available MBytes"
-	double GetServerNonPagedBytes();
+    void UpdateCpuTime();
 
-	int GetServerNonPagedMBytes();
-	
-	PDH_HQUERY ServerAMQuery;
-	PDH_HCOUNTER ServerAMTotal;
-	PDH_FMT_COUNTERVALUE ServerAMCounterVal;
-	double GetServerAvailableMBytes();
+    float ProcessorTotal() const;
+    float ProcessorUser() const;
+    float ProcessorKernel() const;
 
-	//네트워크 송신
-	PDH_HQUERY ServerNetSendQuery[NETWORK_INTERFACE_COUNT];
-	PDH_HCOUNTER ServerNetSendTotal[NETWORK_INTERFACE_COUNT];
-	PDH_FMT_COUNTERVALUE ServerNetSendCounterVal[NETWORK_INTERFACE_COUNT];
+    float ProcessTotal() const;
+    float ProcessUser() const;
+    float ProcessKernel() const;
 
-	//네트워크 수신
-	PDH_HQUERY ServerNetRecvQuery[NETWORK_INTERFACE_COUNT];
-	PDH_HCOUNTER ServerNetRecvTotal[NETWORK_INTERFACE_COUNT];
-	PDH_FMT_COUNTERVALUE ServerNetRecvCounterVal[NETWORK_INTERFACE_COUNT];
+private:
+    static unsigned int WINAPI UpdateThread(void* thisPointer);
 
-	double GetServerNetSendKBytes();
-	double GetServerNetRecvKBytes();
+private:
+    PDH_HQUERY serverNonPagedQuery_;
+    PDH_HCOUNTER serverNonPagedTotal_;
+    PDH_FMT_COUNTERVALUE serverNonPagedCounterValue_;
 
-	HANDLE UpdateThreadHandle;
-	static unsigned int WINAPI UpdateThread(LPVOID this_ptr);
+    PDH_HQUERY serverAvailableMemoryQuery_;
+    PDH_HCOUNTER serverAvailableMemoryTotal_;
+    PDH_FMT_COUNTERVALUE serverAvailableMemoryCounterValue_;
 
-	CpuUsage c;
+    PDH_HQUERY serverNetSendQuery_[NetworkInterfaceCount];
+    PDH_HCOUNTER serverNetSendTotal_[NetworkInterfaceCount];
+    PDH_FMT_COUNTERVALUE serverNetSendCounterValue_[NetworkInterfaceCount];
 
-	void UpdateCpuTime(void);
-	float ProcessorTotal(void);
-	float ProcessorUser(void);
-	float ProcessorKernel(void);
-	float ProcessTotal(void);
-	float ProcessUser(void);
-	float ProcessKernel(void);
+    PDH_HQUERY serverNetRecvQuery_[NetworkInterfaceCount];
+    PDH_HCOUNTER serverNetRecvTotal_[NetworkInterfaceCount];
+    PDH_FMT_COUNTERVALUE serverNetRecvCounterValue_[NetworkInterfaceCount];
 
+    HANDLE updateThreadHandle_;
+
+    CpuUsage cpuUsage_;
 };
