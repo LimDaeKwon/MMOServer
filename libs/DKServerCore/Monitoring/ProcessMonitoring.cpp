@@ -1,104 +1,143 @@
 #include "ProcessMonitoring.h"
+
 #include <process.h>
+#include <cwchar>
 
-
-
-ProcessMonitoring::ProcessMonitoring() 
+ProcessMonitoring::ProcessMonitoring()
+    : processUserMemoryQueryString_(),
+    processUserMemoryQuery_(nullptr),
+    processUserMemoryTotal_(nullptr),
+    processUserMemoryCounterValue_(),
+    processNonPagedMemoryQueryString_(),
+    processNonPagedMemoryQuery_(nullptr),
+    processNonPagedMemoryTotal_(nullptr),
+    processNonPagedMemoryCounterValue_(),
+    updateThreadHandle_(nullptr),
+    cpuUsage_()
 {
-	UpdateThreadHandle = (HANDLE)_beginthreadex(nullptr, 0, UpdateThread, this, 0, nullptr);
+    updateThreadHandle_ = reinterpret_cast<HANDLE>(
+        _beginthreadex(nullptr, 0, UpdateThread, this, 0, nullptr));
 
+    wchar_t path[MAX_PATH] = { 0 };
+    GetModuleFileNameW(nullptr, path, MAX_PATH);
 
+    wchar_t* exeName = wcsrchr(path, L'\\');
 
-	wchar_t path[MAX_PATH] = { 0 };
-	GetModuleFileNameW(NULL, path, MAX_PATH);
+    if (exeName == nullptr)
+    {
+        exeName = path;
+    }
+    else
+    {
+        ++exeName;
+    }
 
-	// 파일명만 뽑기
-	wchar_t* exeName = wcsrchr(path, L'\\');
-	exeName++;
+    wchar_t* movePointer = exeName;
 
-	wchar_t* movePtr = exeName;
-	while (1)
-	{
-		if (*movePtr == L'.')
-		{
-			*movePtr = L'\0';
-			break;
-		}
-		movePtr++;
-	}
-	//exeName
-	//"\Process(ChatDummy_20221114)\Private Bytes"
-	wsprintf(ProcessUserMemoryQueryStr, L"\\Process(%s)\\Private Bytes", exeName);
-	
-	PdhOpenQuery(NULL, NULL, &ProcessUserMemoryQuery);
-	PdhAddCounter(ProcessUserMemoryQuery, ProcessUserMemoryQueryStr, NULL, &ProcessUserMemoryTotal);
-	PdhCollectQueryData(ProcessUserMemoryQuery);
-	
-	wsprintf(ProcessNPMemoryQueryStr, L"\\Process(%s)\\Pool Nonpaged Bytes", exeName);
-	PdhOpenQuery(NULL, NULL, &ProcessNPMemoryQuery);
-	PdhAddCounter(ProcessNPMemoryQuery, ProcessNPMemoryQueryStr, NULL, &ProcessNPMemoryTotal);
-	PdhCollectQueryData(ProcessNPMemoryQuery);
+    while (*movePointer != L'\0')
+    {
+        if (*movePointer == L'.')
+        {
+            *movePointer = L'\0';
+            break;
+        }
 
+        ++movePointer;
+    }
+
+    wsprintf(
+        processUserMemoryQueryString_,
+        L"\\Process(%s)\\Private Bytes",
+        exeName);
+
+    PdhOpenQuery(nullptr, 0, &processUserMemoryQuery_);
+    PdhAddCounter(
+        processUserMemoryQuery_,
+        processUserMemoryQueryString_,
+        0,
+        &processUserMemoryTotal_);
+    PdhCollectQueryData(processUserMemoryQuery_);
+
+    wsprintf(
+        processNonPagedMemoryQueryString_,
+        L"\\Process(%s)\\Pool Nonpaged Bytes",
+        exeName);
+
+    PdhOpenQuery(nullptr, 0, &processNonPagedMemoryQuery_);
+    PdhAddCounter(
+        processNonPagedMemoryQuery_,
+        processNonPagedMemoryQueryString_,
+        0,
+        &processNonPagedMemoryTotal_);
+    PdhCollectQueryData(processNonPagedMemoryQuery_);
 }
 
 ProcessMonitoring::~ProcessMonitoring()
 {
 }
 
-double ProcessMonitoring::GetProcessUserMemory()
+double ProcessMonitoring::GetProcessUserMemory() const
 {
-	return ProcessUserMemoryCounterVal.doubleValue;
+    return processUserMemoryCounterValue_.doubleValue;
 }
 
-int ProcessMonitoring::GetProcessUserMemoryMBytes()
+int ProcessMonitoring::GetProcessUserMemoryMBytes() const
 {
-	LONGLONG UserBytes = static_cast<LONGLONG>(ProcessUserMemoryCounterVal.doubleValue);
-	int UserMBytes = static_cast<int>(UserBytes / (1024LL * 1024LL));
-	return UserMBytes;
+    LONGLONG userBytes = static_cast<LONGLONG>(processUserMemoryCounterValue_.doubleValue);
+    int userMBytes = static_cast<int>(userBytes / (1024LL * 1024LL));
+
+    return userMBytes;
 }
 
-double ProcessMonitoring::GetProcessNPMemory()
+double ProcessMonitoring::GetProcessNonPagedMemory() const
 {
-	return ProcessNPMemoryCounterVal.doubleValue;
+    return processNonPagedMemoryCounterValue_.doubleValue;
 }
 
-unsigned int WINAPI ProcessMonitoring::UpdateThread(LPVOID this_ptr)
+unsigned int WINAPI ProcessMonitoring::UpdateThread(void* thisPointer)
 {
-	ProcessMonitoring* Monitor = static_cast<ProcessMonitoring*>(this_ptr);
+    ProcessMonitoring* monitor = static_cast<ProcessMonitoring*>(thisPointer);
 
-	while (true)
-	{
-		Sleep(100);
-		Monitor->UpdateCpuTime();
-		// 1초마다 갱신
-		PdhCollectQueryData(Monitor->ProcessUserMemoryQuery);
-		PdhGetFormattedCounterValue(Monitor->ProcessUserMemoryTotal, PDH_FMT_DOUBLE, NULL, &Monitor->ProcessUserMemoryCounterVal);
+    while (true)
+    {
+        Sleep(100);
 
-		PdhCollectQueryData(Monitor->ProcessNPMemoryQuery);
-		PdhGetFormattedCounterValue(Monitor->ProcessNPMemoryTotal, PDH_FMT_DOUBLE, NULL, &Monitor->ProcessNPMemoryCounterVal);
+        monitor->UpdateCpuTime();
 
-	}
+        PdhCollectQueryData(monitor->processUserMemoryQuery_);
+        PdhGetFormattedCounterValue(
+            monitor->processUserMemoryTotal_,
+            PDH_FMT_DOUBLE,
+            nullptr,
+            &monitor->processUserMemoryCounterValue_);
 
-	return 0;
+        PdhCollectQueryData(monitor->processNonPagedMemoryQuery_);
+        PdhGetFormattedCounterValue(
+            monitor->processNonPagedMemoryTotal_,
+            PDH_FMT_DOUBLE,
+            nullptr,
+            &monitor->processNonPagedMemoryCounterValue_);
+    }
+
+    return 0;
 }
 
-
-void ProcessMonitoring::UpdateCpuTime(void)
+void ProcessMonitoring::UpdateCpuTime()
 {
-	c.UpdateCpuTime();
+    cpuUsage_.UpdateCpuTime();
 }
 
-float ProcessMonitoring::ProcessTotal(void)
+float ProcessMonitoring::ProcessTotal() const
 {
-	return c.ProcessTotal();
-}
-float ProcessMonitoring::ProcessUser(void)
-{
-	return c.ProcessUser();
-}
-float ProcessMonitoring::ProcessKernel(void)
-{
-	return c.ProcessKernel();
+    return cpuUsage_.ProcessTotal();
 }
 
+float ProcessMonitoring::ProcessUser() const
+{
+    return cpuUsage_.ProcessUser();
+}
 
+float ProcessMonitoring::ProcessKernel() const
+{
+    return cpuUsage_.ProcessKernel();
+}

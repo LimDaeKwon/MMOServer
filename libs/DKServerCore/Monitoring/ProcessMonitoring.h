@@ -1,48 +1,44 @@
 #pragma once
 
+#include <Windows.h>
 #include <Pdh.h>
-#include "CPUUsage.h"
-#pragma comment(lib,"Pdh.lib")
 
+#include "CpuUsage.h"
+
+#pragma comment(lib, "Pdh.lib")
 
 class ProcessMonitoring
 {
 public:
+    ProcessMonitoring();
+    virtual ~ProcessMonitoring();
 
-	ProcessMonitoring();
-	virtual ~ProcessMonitoring();
+    double GetProcessUserMemory() const;
+    int GetProcessUserMemoryMBytes() const;
 
-	//프로세스 유저 메모리
-	WCHAR ProcessUserMemoryQueryStr[200];
-	PDH_HQUERY ProcessUserMemoryQuery;
-	PDH_HCOUNTER ProcessUserMemoryTotal;
-	PDH_FMT_COUNTERVALUE ProcessUserMemoryCounterVal;
+    double GetProcessNonPagedMemory() const;
 
-	double GetProcessUserMemory();
-	
-	int GetProcessUserMemoryMBytes();
-	////* cpu process 사용률 // 그걸로
-	////* 프로세스 유저할당 메모리 "\Process(ChatDummy_20221114)\Private Bytes"
-	////* 프로세스 논페이지 메모리 \Process(ChatDummy_20221114)\Pool Nonpaged Bytes
-	
+    void UpdateCpuTime();
 
-	//np사용률
-	WCHAR ProcessNPMemoryQueryStr[200];
-	PDH_HQUERY ProcessNPMemoryQuery;
-	PDH_HCOUNTER ProcessNPMemoryTotal;
-	PDH_FMT_COUNTERVALUE ProcessNPMemoryCounterVal;
-	double GetProcessNPMemory();
+    float ProcessTotal() const;
+    float ProcessUser() const;
+    float ProcessKernel() const;
 
+private:
+    static unsigned int WINAPI UpdateThread(void* thisPointer);
 
-	HANDLE UpdateThreadHandle;
-	static unsigned int WINAPI UpdateThread(LPVOID this_ptr);
+private:
+    WCHAR processUserMemoryQueryString_[200];
+    PDH_HQUERY processUserMemoryQuery_;
+    PDH_HCOUNTER processUserMemoryTotal_;
+    PDH_FMT_COUNTERVALUE processUserMemoryCounterValue_;
 
-	CpuUsage c;
+    WCHAR processNonPagedMemoryQueryString_[200];
+    PDH_HQUERY processNonPagedMemoryQuery_;
+    PDH_HCOUNTER processNonPagedMemoryTotal_;
+    PDH_FMT_COUNTERVALUE processNonPagedMemoryCounterValue_;
 
-	void UpdateCpuTime(void);
+    HANDLE updateThreadHandle_;
 
-	float ProcessTotal(void);
-	float ProcessUser(void);
-	float ProcessKernel(void);
-
+    CpuUsage cpuUsage_;
 };
