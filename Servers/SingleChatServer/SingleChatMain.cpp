@@ -77,7 +77,7 @@ int main()
 
 		wprintf(L"\n------------------------------------------------------------ \n");
 		wprintf(L"Monitoring \n\n");
-		wprintf(L"ProcessNonPagedPool  : %f%%   ServerNonPagedPool  :  %f%% \n", b.GetProcessNPMemory(), a.GetServerNonPagedBytes());
+		wprintf(L"ProcessNonPagedPool  : %f%%   ServerNonPagedPool  :  %f%% \n", b.GetProcessNonPagedMemory(), a.GetServerNonPagedBytes());
 		wprintf(L"ProcessUseMemory: %f%%  ServerAvailableMemory: %f%%  \n", b.GetProcessUserMemory(), a.GetServerAvailableMBytes());
 		wprintf(L"ProcessCPUUsage: %f%%   ServerCPUUsage: %f%%\n", b.ProcessTotal(), a.ProcessorTotal());
 
