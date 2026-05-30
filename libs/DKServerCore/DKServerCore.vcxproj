@@ -178,6 +178,7 @@
     <ClInclude Include="Packet\MessageDataQueue.h" />
     <ClInclude Include="Packet\MyRingBuffer.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Utils\CoreDefines.h" />
     <ClInclude Include="Utils\CrashDump.h" />
     <ClInclude Include="Utils\Profiler.h" />
     <ClInclude Include="Utils\SpinLock.h" />

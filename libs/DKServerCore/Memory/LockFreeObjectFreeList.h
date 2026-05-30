@@ -1,415 +1,390 @@
 #pragma once
 
-#include "Windows.h"
+#include <Windows.h>
+#include <new>
 
+#include "CoreDefines.h"
 
 extern unsigned int GlobalChecksum;
-#define ADRMASK 0x00007fffffffffff
-#define TAGMASK 0xffff800000000000
-#define TAGOFFSET 47
+#define DK_ENABLE_MEMORY_CHECK
 
+#ifdef DK_ENABLE_MEMORY_CHECK
 
-#define DEBUG
-#ifdef DEBUG
-
-
-
-template <class DATA>
+template <class DataType>
 class LFObjectFreeList
 {
+public:
+    struct BlockNode
+    {
+        unsigned int underflowChecksum_;
+        DataType data_;
+        unsigned int overflowChecksum_;
+        BlockNode* next_;
+    };
 
 public:
+    LFObjectFreeList(int blockNum, bool placementNew = false)
+        : topNode_(nullptr),
+        checksumPosition_(0),
+        isPlacementNew_(placementNew),
+        capacity_(0),
+        useCount_(0),
+        tagIndex_(0),
+        checksum_(GlobalChecksum++)
+    {
+        BlockNode* findOffset = static_cast<BlockNode*>(malloc(sizeof(BlockNode)));
 
-	struct BLOCK_NODE
-	{
-		unsigned int UnderflowCheckSum;
-		DATA Data;
-		unsigned int OverflowCheckSum;
-		BLOCK_NODE* Next;
-	};
+        checksumPosition_ =
+            reinterpret_cast<__int64>(&findOffset->data_) -
+            reinterpret_cast<__int64>(&findOffset->underflowChecksum_);
 
-	// IsPlacementNew == true : Alloc / Free 시점에 생성자 , 소멸자 호출
-	LFObjectFreeList(int BlockNum, bool PlacementNew = false) : IsPlacementNew(PlacementNew), Checksum(GlobalChecksum++), TopNode(NULL), UseCount(0), TagIndex(0), Capacity(0)
-	{
+        free(findOffset);
 
-		// Data에서 BLOCK_NODE의 시작까지 오프셋 계산
-		BLOCK_NODE* FirstAlloc = (BLOCK_NODE*)malloc(sizeof(BLOCK_NODE));
-		ChecksumPosition = (__int64)&FirstAlloc->Data - (__int64)&FirstAlloc->UnderflowCheckSum;
-		free(FirstAlloc);
+        for (int i = 0; i < blockNum; ++i)
+        {
+            BlockNode* tempNode = static_cast<BlockNode*>(malloc(sizeof(BlockNode)));
 
+            tempNode->overflowChecksum_ = checksum_;
+            tempNode->underflowChecksum_ = checksum_;
 
-		//초기 블록 할당
-		for (int i = 0; i < BlockNum; ++i)
-		{
-			BLOCK_NODE* Temp = (BLOCK_NODE*)malloc(sizeof(BLOCK_NODE));
+            Push(tempNode);
+            ++capacity_;
+        }
+    }
 
-			if (IsPlacementNew)
-			{
-				new (&Temp->Data) DATA;
-			}
+    virtual ~LFObjectFreeList()
+    {
+        __int64 taggedTop = reinterpret_cast<__int64>(topNode_);
 
-			Temp->OverflowCheckSum = Checksum;
-			Temp->UnderflowCheckSum = Checksum;
-			Push(Temp);
-			++Capacity;
-		}
+        for (int i = 0; i < capacity_; ++i)
+        {
+            BlockNode* deleteNode = UnmaskTag(taggedTop);
+            __int64 nextTagged = reinterpret_cast<__int64>(deleteNode->next_);
 
-	}
+            free(deleteNode);
+            taggedTop = nextTagged;
+        }
+    }
 
-	virtual	~LFObjectFreeList()
-	{
-		__int64 TaggedTop = (__int64)TopNode;
-		for (int i = 0; i < Capacity; ++i)
-		{
+    void Push(BlockNode* newTop)
+    {
+        BlockNode* localTop = nullptr;
+        __int64 maskedNewTop = 0;
 
-			BLOCK_NODE* DeleteNode = UnMaskTag(TaggedTop);
-			__int64     NextTagged = (__int64)DeleteNode->Next;
+        while (true)
+        {
+            localTop = topNode_;
+            maskedNewTop = MaskNewTag(
+                reinterpret_cast<__int64>(localTop),
+                reinterpret_cast<__int64>(newTop));
 
-			if (!IsPlacementNew)
-			{
-				DeleteNode->Data.~DATA();
-			}
+            newTop->next_ = localTop;
 
-			free(DeleteNode);
-			TaggedTop = NextTagged;
-		}
-	}
+            if (reinterpret_cast<__int64>(localTop) ==
+                InterlockedCompareExchange64(
+                    reinterpret_cast<volatile __int64*>(&topNode_),
+                    maskedNewTop,
+                    reinterpret_cast<__int64>(localTop)))
+            {
+                break;
+            }
+        }
+    }
 
+    DataType* Alloc()
+    {
+        BlockNode* localTop = nullptr;
+        BlockNode* unmaskedTop = nullptr;
+        BlockNode* newTop = nullptr;
 
-	void Push(BLOCK_NODE* NewTop)
-	{
-		BLOCK_NODE* LocalTop;
-		__int64 MaskNewTop;
-		while (1)
-		{
-			LocalTop = TopNode;
-			MaskNewTop = MaskNewTag((__int64)LocalTop, (__int64)NewTop);
-			NewTop->Next = LocalTop;
+        while (true)
+        {
+            localTop = topNode_;
 
-			if ((__int64)LocalTop == InterlockedCompareExchange64((__int64*)&TopNode, (__int64)MaskNewTop, (__int64)LocalTop))
-			{
-				break;
-			}
-		}
-	}
+            if (localTop == nullptr)
+            {
+                BlockNode* newNode = AllocNewNode();
 
-	BLOCK_NODE* AllocNewNode()
-	{
-		BLOCK_NODE* temp = new BLOCK_NODE;
+                InterlockedIncrement(&useCount_);
+                InterlockedIncrement(&capacity_);
 
-		temp->OverflowCheckSum = Checksum;
-		temp->UnderflowCheckSum = Checksum;
+                return &newNode->data_;
+            }
 
-		return temp;
-	}
+            unmaskedTop = UnmaskTag(reinterpret_cast<__int64>(localTop));
+            newTop = unmaskedTop->next_;
 
-	DATA* Alloc(void)
-	{
+            if (reinterpret_cast<__int64>(localTop) ==
+                InterlockedCompareExchange64(
+                    reinterpret_cast<volatile __int64*>(&topNode_),
+                    reinterpret_cast<__int64>(newTop),
+                    reinterpret_cast<__int64>(localTop)))
+            {
+                break;
+            }
+        }
 
-		BLOCK_NODE* LocalTop;
-		BLOCK_NODE* UnMaskTop;
-		BLOCK_NODE* NewTop;
+        if (isPlacementNew_)
+        {
+            new (&unmaskedTop->data_) DataType;
+        }
 
+        InterlockedIncrement(&useCount_);
 
-		while (1)
-		{
-			LocalTop = TopNode;
-			if (LocalTop == nullptr)
-			{
+        return &unmaskedTop->data_;
+    }
 
-				BLOCK_NODE* NewNode = AllocNewNode();
+    bool Free(DataType* data)
+    {
+        BlockNode* returnNode = GetNodePosition(data);
 
-				InterlockedIncrement(&UseCount);
-				InterlockedIncrement(&Capacity);
+        CheckUnderOver(returnNode);
 
-				return &NewNode->Data;
+        if (isPlacementNew_)
+        {
+            returnNode->data_.~DataType();
+        }
 
-			}
+        Push(returnNode);
 
-			UnMaskTop = UnMaskTag((__int64)LocalTop);
-			NewTop = UnMaskTop->Next;
+        InterlockedDecrement(&useCount_);
 
-			if ((__int64)LocalTop == InterlockedCompareExchange64((__int64*)&TopNode, (__int64)NewTop, (__int64)LocalTop))
-			{
-				break;
-			}
-		}
+        return true;
+    }
 
-		if (IsPlacementNew)
-		{
-			new (&UnMaskTop->Data) DATA;
-		}
+    int GetCapacityCount() const
+    {
+        return capacity_;
+    }
 
-		InterlockedIncrement(&UseCount);
-
-		return &UnMaskTop->Data;
-
-	}
-
-
-	bool	Free(DATA* Data)
-	{
-
-		BLOCK_NODE* ReturnNode = GetNodePosition(Data);
-		CheckUnderOver(ReturnNode);
-
-
-		if (IsPlacementNew)
-		{
-			ReturnNode->Data.~DATA();
-		}
-
-		Push(ReturnNode);
-
-		InterlockedDecrement(&UseCount);
-		return true;
-	}
-
-	BLOCK_NODE* GetNodePosition(DATA* Data)
-	{
-		char* MovePointer = (char*)Data;
-
-		MovePointer -= ChecksumPosition;
-		return (BLOCK_NODE*)MovePointer;
-	}
-
-	void CheckUnderOver(BLOCK_NODE* ReturnNode)
-	{
-		if (ReturnNode->OverflowCheckSum != Checksum)
-		{
-			//wprintf(L"Overflow \n");
-			DebugBreak();
-		}
-		if (ReturnNode->UnderflowCheckSum != Checksum)
-		{
-			//wprintf(L"Underflow \n");
-			DebugBreak();
-		}
-	}
-
-
-	int		GetCapacityCount(void) { return Capacity; }
-
-	int		GetUseCount(void) { return UseCount; }
-
-	unsigned int Checksum;
+    int GetUseCount() const
+    {
+        return useCount_;
+    }
 
 private:
-	__int64 MaskNewTag(__int64 LocalTop, __int64 MaskNewNode)
-	{
-		__int64 Tag = InterlockedIncrement(&TagIndex);
-		MaskNewNode |= (Tag << TAGOFFSET);
+    BlockNode* AllocNewNode()
+    {
+        BlockNode* newNode = new BlockNode;
 
-		return MaskNewNode;
-	}
+        newNode->overflowChecksum_ = checksum_;
+        newNode->underflowChecksum_ = checksum_;
 
+        return newNode;
+    }
 
-	BLOCK_NODE* UnMaskTag(__int64 TaggedNode)
-	{
-		TaggedNode &= ADRMASK;
-		return (BLOCK_NODE*)TaggedNode;
-	}
+    BlockNode* GetNodePosition(DataType* data) const
+    {
+        char* movePointer = reinterpret_cast<char*>(data);
+        movePointer -= checksumPosition_;
 
+        return reinterpret_cast<BlockNode*>(movePointer);
+    }
 
+    void CheckUnderOver(BlockNode* returnNode) const
+    {
+        if (returnNode->overflowChecksum_ != checksum_)
+        {
+            DebugBreak();
+        }
+
+        if (returnNode->underflowChecksum_ != checksum_)
+        {
+            DebugBreak();
+        }
+    }
+
+    __int64 MaskNewTag(__int64 localTop, __int64 newNode)
+    {
+        __int64 tag = InterlockedIncrement64(&tagIndex_);
+        newNode |= tag << DKServerCore::TagOffset;
+
+        return newNode;
+    }
+
+    BlockNode* UnmaskTag(__int64 taggedNode) const
+    {
+        taggedNode &= DKServerCore::AddressMask;
+
+        return reinterpret_cast<BlockNode*>(taggedNode);
+    }
 
 private:
-	BLOCK_NODE* TopNode;
-	__int64 ChecksumPosition;
-	bool IsPlacementNew;
-	long Capacity;
-	long UseCount;
-
-	unsigned long long TagIndex;
-
+    BlockNode* topNode_;
+    __int64 checksumPosition_;
+    bool isPlacementNew_;
+    long capacity_;
+    long useCount_;
+    volatile __int64 tagIndex_;
+    unsigned int checksum_;
 };
-
-
 
 #else
 
-template <class DATA>
-class TObjectFreeList
+template <class DataType>
+class LFObjectFreeList
 {
+public:
+    struct BlockNode
+    {
+        DataType data_;
+        BlockNode* next_;
+    };
 
 public:
+    LFObjectFreeList(int blockNum, bool placementNew = false)
+        : topNode_(nullptr),
+        isPlacementNew_(placementNew),
+        capacity_(0),
+        useCount_(0),
+        tagIndex_(0)
+    {
+        for (int i = 0; i < blockNum; ++i)
+        {
+            BlockNode* tempNode = static_cast<BlockNode*>(malloc(sizeof(BlockNode)));
 
-	struct BLOCK_NODE
-	{
-		DATA Data;
-		BLOCK_NODE* Next;
-	};
+            Push(tempNode);
+            ++capacity_;
+        }
+    }
 
-	//////////////////////////////////////////////////////////////////////////
-	// 생성자, 파괴자.
-	//
-	// Parameters:	(int) 초기 블럭 개수.
-	//				(bool) Alloc 시 생성자 / Free 시 파괴자 호출 여부
-	// Return:
-	//////////////////////////////////////////////////////////////////////////
-	TObjectFreeList(int BlockNum, bool PlacementNew = false) : IsPlacementNew(PlacementNew), TopNode(NULL), UseCount(0)
-	{
+    virtual ~LFObjectFreeList()
+    {
+        __int64 taggedTop = reinterpret_cast<__int64>(topNode_);
 
-		if (BlockNum == 0)
-		{
-			Capacity = BlockNum;
-			return;
-		}
+        for (int i = 0; i < capacity_; ++i)
+        {
+            BlockNode* deleteNode = UnmaskTag(taggedTop);
+            __int64 nextTagged = reinterpret_cast<__int64>(deleteNode->next_);
 
-		for (int i = 0; i < BlockNum; ++i)
-		{
-			BLOCK_NODE* Temp = (BLOCK_NODE*)malloc(sizeof(BLOCK_NODE));;
+            delete deleteNode;
+            taggedTop = nextTagged;
+        }
+    }
 
-			if (!IsPlacementNew)
-			{
-				new (&Temp->Data) DATA;
-			}
-			Push(Temp);
-		}
+    void Push(BlockNode* newTop)
+    {
+        BlockNode* localTop = nullptr;
+        __int64 maskedNewTop = 0;
 
-		Capacity = BlockNum;
-	}
+        while (true)
+        {
+            localTop = topNode_;
+            maskedNewTop = MaskNewTag(
+                reinterpret_cast<__int64>(localTop),
+                reinterpret_cast<__int64>(newTop));
 
-	virtual	~TObjectFreeList()
-	{
-		BLOCK_NODE* DeleteNode;
+            newTop->next_ = localTop;
 
-		for (int i = 0; i < Capacity; ++i)
-		{
-			DeleteNode = TopNode;
-			TopNode = TopNode->Next;
-			delete DeleteNode;
-		}
-	}
+            if (reinterpret_cast<__int64>(localTop) ==
+                InterlockedCompareExchange64(
+                    reinterpret_cast<volatile __int64*>(&topNode_),
+                    maskedNewTop,
+                    reinterpret_cast<__int64>(localTop)))
+            {
+                break;
+            }
+        }
+    }
 
-	__int64 MaskNewTag(__int64 LocalTop, __int64 MaskNewNode)
-	{
-		__int64 Tag = InterlockedIncrement(&TagIndex);
-		MaskNewNode |= (Tag << 47);
-		return MaskNewNode;
-	}
+    DataType* Alloc()
+    {
+        BlockNode* localTop = nullptr;
+        BlockNode* unmaskedTop = nullptr;
+        BlockNode* newTop = nullptr;
 
+        while (true)
+        {
+            localTop = topNode_;
 
-	BLOCK_NODE* UnMaskTag(__int64 HeadNode)
-	{
-		HeadNode &= ADRMASK;
-		return (BLOCK_NODE*)HeadNode;
-	}
+            if (localTop == nullptr)
+            {
+                BlockNode* newNode = AllocNewNode();
 
-	void Push(BLOCK_NODE* NewTop)
-	{
-		BLOCK_NODE* LocalTop;
-		__int64 MaskNewTop;
+                InterlockedIncrement(&useCount_);
+                InterlockedIncrement(&capacity_);
 
-		while (1)
-		{
-			LocalTop = TopNode;
-			MaskNewTop = MaskNewTag((__int64)LocalTop, (__int64)NewTop);
-			NewTop->Next = LocalTop;
+                return &newNode->data_;
+            }
 
-			if ((__int64)LocalTop == InterlockedCompareExchange64((__int64*)&TopNode, (__int64)MaskNewTop, (__int64)LocalTop))
-			{
-				break;
-			}
-		}
+            unmaskedTop = UnmaskTag(reinterpret_cast<__int64>(localTop));
+            newTop = unmaskedTop->next_;
 
-	}
+            if (reinterpret_cast<__int64>(localTop) ==
+                InterlockedCompareExchange64(
+                    reinterpret_cast<volatile __int64*>(&topNode_),
+                    reinterpret_cast<__int64>(newTop),
+                    reinterpret_cast<__int64>(localTop)))
+            {
+                break;
+            }
+        }
 
+        if (isPlacementNew_)
+        {
+            new (&unmaskedTop->data_) DataType;
+        }
 
-	BLOCK_NODE* Pop()
-	{
-		BLOCK_NODE* LocalTop;
-		BLOCK_NODE* UnMaskTop;
-		BLOCK_NODE* NewTop;
+        InterlockedIncrement(&useCount_);
 
-		while (1)
-		{
+        return &unmaskedTop->data_;
+    }
 
-			LocalTop = TopNode;
-			UnMaskTop = UnMaskTag((__int64)LocalTop);
-			NewTop = UnMaskTop->Next;
+    bool Free(DataType* data)
+    {
+        BlockNode* returnNode = reinterpret_cast<BlockNode*>(data);
 
-			if ((__int64)LocalTop == InterlockedCompareExchange64((__int64*)&TopNode, (__int64)NewTop, (__int64)LocalTop))
-			{
-				break;
-			}
-		}
+        if (isPlacementNew_)
+        {
+            returnNode->data_.~DataType();
+        }
 
-		return UnMaskTop;
-	}
+        Push(returnNode);
 
-	DATA* Alloc(void)
-	{
+        InterlockedDecrement(&useCount_);
 
-		BLOCK_NODE* LocalTop;
-		BLOCK_NODE* UnMaskTop;
-		BLOCK_NODE* NewTop;
+        return true;
+    }
 
-		while (1)
-		{
-			LocalTop = TopNode;
-			if (LocalTop == nullptr)
-			{
-				BLOCK_NODE* NewNode = new BLOCK_NODE;
+    int GetCapacityCount() const
+    {
+        return capacity_;
+    }
 
-				InterlockedIncrement(&UseCount);
-				InterlockedIncrement(&Capacity);
-
-				return &NewNode->Data;
-			}
-
-			UnMaskTop = UnMaskTag((__int64)LocalTop);
-			NewTop = UnMaskTop->Next;
-
-			if ((__int64)LocalTop == InterlockedCompareExchange64((__int64*)&TopNode, (__int64)NewTop, (__int64)LocalTop))
-			{
-				break;
-			}
-		}
-
-		if (IsPlacementNew)
-		{
-			new (&UnMaskTop->Data) DATA;
-		}
-		InterlockedIncrement(&UseCount);
-
-		return &UnMaskTop->Data;
-
-	}
-
-
-	bool	Free(DATA* Data)
-	{
-		BLOCK_NODE* Temp = (BLOCK_NODE*)Data;
-
-		if (IsPlacementNew)
-		{
-			Temp->Data.~DATA();
-		}
-
-		Push(Temp);
-
-		InterlockedDecrement(&UseCount);
-		return true;
-	}
-
-
-	int		GetCapacityCount(void) { return Capacity; }
-
-	int		GetUseCount(void) { return UseCount; }
-
-	unsigned int Checksum;
+    int GetUseCount() const
+    {
+        return useCount_;
+    }
 
 private:
-	BLOCK_NODE* TopNode;
-	__int64 ChecksumPosition;
-	bool IsPlacementNew;
-	long Capacity;
-	long UseCount;
+    BlockNode* AllocNewNode()
+    {
+        BlockNode* newNode = new BlockNode;
 
-	unsigned long long TagIndex;
+        return newNode;
+    }
 
+    __int64 MaskNewTag(__int64 localTop, __int64 newNode)
+    {
+        __int64 tag = InterlockedIncrement64(&tagIndex_);
+        newNode |= tag << DKServerCore::TagOffset;
+
+        return newNode;
+    }
+
+    BlockNode* UnmaskTag(__int64 taggedNode) const
+    {
+        taggedNode &= DKServerCore::AddressMask;
+
+        return reinterpret_cast<BlockNode*>(taggedNode);
+    }
+
+private:
+    BlockNode* topNode_;
+    bool isPlacementNew_;
+    long capacity_;
+    long useCount_;
+    volatile __int64 tagIndex_;
 };
 
-
 #endif
-
