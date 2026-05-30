@@ -11,7 +11,7 @@
 
 static unsigned int GlobalChecksum1 = 0;
 
-inline constexpr int MaxNodeCount = 1000;
+constexpr int MaxNodeCount = 1000;
 
 #ifdef DK_ENABLE_MEMORY_CHECK
 
