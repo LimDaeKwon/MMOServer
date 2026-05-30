@@ -1,51 +1,41 @@
-//CPU 사용률을 체크하는 클래스
-#include <windows.h>
+#pragma once
 
-#ifndef __CPU_USAGE_H__
-#define __CPU_USAGE_H__
-/////////////////////////////////////////////////////////////////////////////
-// CCpuUsage CPUTime(); // CPUTime(hProcess)
-//
-// while ( 1 )
-// {
-// CPUTIme.UpdateCpuTime();
-// wprintf(L"Processor:%f / Process:%f \n", CPUTime.ProcessorTotal(), CPUTime.ProcessTotal());
-// wprintf(L"ProcessorKernel:%f / ProcessKernel:%f \n", CPUTime.ProcessorKernel(), CPUTime.ProcessKernel());
-// wprintf(L"ProcessorUser:%f / ProcessUser:%f \n", CPUTime.ProcessorUser(), CPUTime.ProcessUser());
-// Sleep(1000);
-// }
-/////////////////////////////////////////////////////////////////////////////
-class CCpuUsage
+#include <Windows.h>
+
+class CpuUsage
 {
 public:
-	//----------------------------------------------------------------------
-	// 생성자, 확인대상 프로세스 핸들. 미입력시 자기 자신.
-	//----------------------------------------------------------------------
-	CCpuUsage(HANDLE hProcess = INVALID_HANDLE_VALUE);
+    CpuUsage(HANDLE processHandle = INVALID_HANDLE_VALUE);
 
-	static HANDLE GetProcessHandle(const wchar_t* processName);
-		
-	void UpdateCpuTime(void);
-	float ProcessorTotal(void) { return _fProcessorTotal; }
-	float ProcessorUser(void) { return _fProcessorUser; }
-	float ProcessorKernel(void) { return _fProcessorKernel; }
-	float ProcessTotal(void) { return _fProcessTotal; }
-	float ProcessUser(void) { return _fProcessUser; }
-	float ProcessKernel(void) { return _fProcessKernel; }
+    static HANDLE GetProcessHandle(const wchar_t* processName);
+
+    void UpdateCpuTime();
+
+    float ProcessorTotal() const;
+    float ProcessorUser() const;
+    float ProcessorKernel() const;
+
+    float ProcessTotal() const;
+    float ProcessUser() const;
+    float ProcessKernel() const;
+
 private:
-	HANDLE _hProcess;
-	int _iNumberOfProcessors;
-	float _fProcessorTotal;
-	float _fProcessorUser;
-	float _fProcessorKernel;
-	float _fProcessTotal;
-	float _fProcessUser;
-	float _fProcessKernel;
-	ULARGE_INTEGER _ftProcessor_LastKernel;
-	ULARGE_INTEGER _ftProcessor_LastUser;
-	ULARGE_INTEGER _ftProcessor_LastIdle;
-	ULARGE_INTEGER _ftProcess_LastKernel;
-	ULARGE_INTEGER _ftProcess_LastUser;
-	ULARGE_INTEGER _ftProcess_LastTime;
+    HANDLE processHandle_;
+    int numberOfProcessors_;
+
+    float processorTotal_;
+    float processorUser_;
+    float processorKernel_;
+
+    float processTotal_;
+    float processUser_;
+    float processKernel_;
+
+    ULARGE_INTEGER processorLastKernel_;
+    ULARGE_INTEGER processorLastUser_;
+    ULARGE_INTEGER processorLastIdle_;
+
+    ULARGE_INTEGER processLastKernel_;
+    ULARGE_INTEGER processLastUser_;
+    ULARGE_INTEGER processLastTime_;
 };
-#endif

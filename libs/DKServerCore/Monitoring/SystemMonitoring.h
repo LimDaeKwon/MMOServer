@@ -42,7 +42,7 @@ public:
 	HANDLE UpdateThreadHandle;
 	static unsigned int WINAPI UpdateThread(LPVOID this_ptr);
 
-	CCpuUsage c;
+	CpuUsage c;
 
 	void UpdateCpuTime(void);
 	float ProcessorTotal(void);

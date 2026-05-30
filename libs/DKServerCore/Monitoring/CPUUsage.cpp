@@ -1,180 +1,204 @@
-#include <windows.h>
 #include "CpuUsage.h"
-#include <tlhelp32.h>
 
-//----------------------------------------------------------------------
-// 생성자, 확인대상 프로세스 핸들. 미입력시 자기 자신.
-//----------------------------------------------------------------------
-CCpuUsage::CCpuUsage(HANDLE hProcess)
+#include <TlHelp32.h>
+#include <cwchar>
+
+CpuUsage::CpuUsage(HANDLE processHandle)
+    : processHandle_(processHandle),
+    numberOfProcessors_(0),
+    processorTotal_(0.0f),
+    processorUser_(0.0f),
+    processorKernel_(0.0f),
+    processTotal_(0.0f),
+    processUser_(0.0f),
+    processKernel_(0.0f)
 {
-	//------------------------------------------------------------------
-	// 프로세스 핸들 입력이 없다면 자기 자신을 대상으로...
-	//------------------------------------------------------------------
-	if (hProcess == INVALID_HANDLE_VALUE)
-	{
-		_hProcess = GetCurrentProcess();
-	}
-	//------------------------------------------------------------------
-	// 프로세서 개수를 확인한다.
-	//
-	// 프로세스 (exe) 실행률 계산시 cpu 개수로 나누기를 하여 실제 사용률을 구함.
-	//------------------------------------------------------------------
-	SYSTEM_INFO SystemInfo;
-	GetSystemInfo(&SystemInfo);
-	_iNumberOfProcessors = SystemInfo.dwNumberOfProcessors;
+    if (processHandle_ == INVALID_HANDLE_VALUE)
+    {
+        processHandle_ = GetCurrentProcess();
+    }
 
-	_fProcessorTotal = 0;
-	_fProcessorUser = 0;
-	_fProcessorKernel = 0;
-	_fProcessTotal = 0;
-	_fProcessUser = 0;
-	_fProcessKernel = 0;
-	_ftProcessor_LastKernel.QuadPart = 0;
-	_ftProcessor_LastUser.QuadPart = 0;
-	_ftProcessor_LastIdle.QuadPart = 0;
-	_ftProcess_LastUser.QuadPart = 0;
-	_ftProcess_LastKernel.QuadPart = 0;
-	_ftProcess_LastTime.QuadPart = 0;
-	UpdateCpuTime();
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo(&systemInfo);
+
+    numberOfProcessors_ = static_cast<int>(systemInfo.dwNumberOfProcessors);
+
+    processorLastKernel_.QuadPart = 0;
+    processorLastUser_.QuadPart = 0;
+    processorLastIdle_.QuadPart = 0;
+
+    processLastKernel_.QuadPart = 0;
+    processLastUser_.QuadPart = 0;
+    processLastTime_.QuadPart = 0;
+
+    UpdateCpuTime();
 }
 
-////////////////////////////////////////////////////////////////////////
-// CPU 사용률을 갱신한다. 500ms ~ 1000ms 단위의 호출이 적절한듯.
-//
-//
-////////////////////////////////////////////////////////////////////////
-void CCpuUsage::UpdateCpuTime()
+HANDLE CpuUsage::GetProcessHandle(const wchar_t* processName)
 {
-	//---------------------------------------------------------
-	// 프로세서 사용률을 갱신한다.
-	//
-	// 본래의 사용 구조체는 FILETIME 이지만, ULARGE_INTEGER 와 구조가 같으므로 이를 사용함.
-	// FILETIME 구조체는 100 나노세컨드 단위의 시간 단위를 표현하는 구조체임.
-	//---------------------------------------------------------
-	ULARGE_INTEGER Idle;
-	ULARGE_INTEGER Kernel;
-	ULARGE_INTEGER User;
-	//---------------------------------------------------------
-	// 시스템 사용 시간을 구한다.
-	//
-	// 아이들 타임 / 커널 사용 타임 (아이들포함) / 유저 사용 타임
-	//---------------------------------------------------------
-	if (GetSystemTimes((PFILETIME)&Idle, (PFILETIME)&Kernel, (PFILETIME)&User) == false)
-	{
-		return;
-	}
-	// 커널 타임에는 아이들 타임이 포함됨.
-	ULONGLONG KernelDiff = Kernel.QuadPart - _ftProcessor_LastKernel.QuadPart;
-	ULONGLONG UserDiff = User.QuadPart - _ftProcessor_LastUser.QuadPart;
-	ULONGLONG IdleDiff = Idle.QuadPart - _ftProcessor_LastIdle.QuadPart;
-	ULONGLONG Total = KernelDiff + UserDiff;
-	ULONGLONG TimeDiff;
+    PROCESSENTRY32 processEntry;
+    processEntry.dwSize = sizeof(PROCESSENTRY32);
 
-	if (Total == 0)
-	{
-		_fProcessorUser = 0.0f;
-		_fProcessorKernel = 0.0f;
-		_fProcessorTotal = 0.0f;
-	}
-	else
-	{
-		// 커널 타임에 아이들 타임이 있으므로 빼서 계산.
-		_fProcessorTotal = (float)((double)(Total - IdleDiff) / Total * 100.0f);
-		_fProcessorUser = (float)((double)UserDiff / Total * 100.0f);
-		_fProcessorKernel = (float)((double)(KernelDiff - IdleDiff) / Total * 100.0f);
-	}
-	_ftProcessor_LastKernel = Kernel;
-	_ftProcessor_LastUser = User;
-	_ftProcessor_LastIdle = Idle;
+    DWORD processId = 0;
 
-	//---------------------------------------------------------
-	// 지정된 프로세스 사용률을 갱신한다.
-	//---------------------------------------------------------
-	ULARGE_INTEGER None;
-	ULARGE_INTEGER NowTime;
-	//---------------------------------------------------------
-	// 현재의 100 나노세컨드 단위 시간을 구한다. UTC 시간.
-	//
-	// 프로세스 사용률 판단의 공식
-	//
-	// a = 샘플간격의 시스템 시간을 구함. (그냥 실제로 지나간 시간)
-	// b = 프로세스의 CPU 사용 시간을 구함.
-	//
-	// a : 100 = b : 사용률 공식으로 사용률을 구함.
-	//---------------------------------------------------------
-	//---------------------------------------------------------
-	// 얼마의 시간이 지났는지 100 나노세컨드 시간을 구함,
-	//---------------------------------------------------------
-	GetSystemTimeAsFileTime((LPFILETIME)&NowTime);
-	//---------------------------------------------------------
-	// 해당 프로세스가 사용한 시간을 구함.
-	//
-	// 두번째, 세번째는 실행,종료 시간으로 미사용.
-	//---------------------------------------------------------
-	GetProcessTimes(_hProcess, (LPFILETIME)&None, (LPFILETIME)&None, (LPFILETIME)&Kernel, (LPFILETIME)&User);
-	//---------------------------------------------------------
-	// 이전에 저장된 프로세스 시간과의 차를 구해서 실제로 얼마의 시간이 지났는지 확인.
-	//
-	// 그리고 실제 지나온 시간으로 나누면 사용률이 나옴.
-	//---------------------------------------------------------
-	TimeDiff = NowTime.QuadPart - _ftProcess_LastTime.QuadPart;
-	UserDiff = User.QuadPart - _ftProcess_LastUser.QuadPart;
-	KernelDiff = Kernel.QuadPart - _ftProcess_LastKernel.QuadPart;
-	Total = KernelDiff + UserDiff;
+    HANDLE snapshotHandle = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
-	_fProcessTotal = (float)(Total / (double)_iNumberOfProcessors / (double)TimeDiff * 100.0f);
-	_fProcessKernel = (float)(KernelDiff / (double)_iNumberOfProcessors / (double)TimeDiff * 100.0f);
-	_fProcessUser = (float)(UserDiff / (double)_iNumberOfProcessors / (double)TimeDiff * 100.0f);
-	_ftProcess_LastTime = NowTime;
-	_ftProcess_LastKernel = Kernel;
-	_ftProcess_LastUser = User;
+    if (snapshotHandle == INVALID_HANDLE_VALUE)
+    {
+        return nullptr;
+    }
+
+    if (Process32First(snapshotHandle, &processEntry))
+    {
+        do
+        {
+            if (wcscmp(processEntry.szExeFile, processName) == 0)
+            {
+                processId = processEntry.th32ProcessID;
+                break;
+            }
+        } while (Process32Next(snapshotHandle, &processEntry));
+    }
+
+    CloseHandle(snapshotHandle);
+
+    if (processId == 0)
+    {
+        return nullptr;
+    }
+
+    HANDLE processHandle = OpenProcess(
+        PROCESS_ALL_ACCESS,
+        FALSE,
+        processId);
+
+    if (processHandle == nullptr)
+    {
+        return nullptr;
+    }
+
+    return processHandle;
 }
 
-
-HANDLE CCpuUsage::GetProcessHandle(const wchar_t* processName)
+void CpuUsage::UpdateCpuTime()
 {
-	PROCESSENTRY32 pe;
-	pe.dwSize = sizeof(PROCESSENTRY32);
+    ULARGE_INTEGER idle;
+    ULARGE_INTEGER kernel;
+    ULARGE_INTEGER user;
 
-	DWORD PID = 0;
+    if (GetSystemTimes(
+        reinterpret_cast<PFILETIME>(&idle),
+        reinterpret_cast<PFILETIME>(&kernel),
+        reinterpret_cast<PFILETIME>(&user)) == false)
+    {
+        return;
+    }
 
-	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (hSnap == INVALID_HANDLE_VALUE)
-	{
-		return 0;
-	}
-		
-	if (Process32First(hSnap, &pe))
-	{
-		do
-		{
-			if (wcscmp(pe.szExeFile, processName) == 0)
-			{
-				PID = pe.th32ProcessID;
-				break;
+    ULONGLONG kernelDiff = kernel.QuadPart - processorLastKernel_.QuadPart;
+    ULONGLONG userDiff = user.QuadPart - processorLastUser_.QuadPart;
+    ULONGLONG idleDiff = idle.QuadPart - processorLastIdle_.QuadPart;
+    ULONGLONG total = kernelDiff + userDiff;
 
-			}
-		} while (Process32Next(hSnap, &pe));
-	}
+    if (total == 0)
+    {
+        processorUser_ = 0.0f;
+        processorKernel_ = 0.0f;
+        processorTotal_ = 0.0f;
+    }
+    else
+    {
+        processorTotal_ = static_cast<float>(
+            static_cast<double>(total - idleDiff) / static_cast<double>(total) * 100.0);
 
-	CloseHandle(hSnap);
-	if (PID == 0)
-	{
-		return 0;
-	}
+        processorUser_ = static_cast<float>(
+            static_cast<double>(userDiff) / static_cast<double>(total) * 100.0);
 
+        processorKernel_ = static_cast<float>(
+            static_cast<double>(kernelDiff - idleDiff) / static_cast<double>(total) * 100.0);
+    }
 
-	HANDLE hProcess = OpenProcess(
-		PROCESS_ALL_ACCESS,  // 접근 권한
-		FALSE,               // 자식 프로세스 상속 여부
-		PID          // 프로세스 ID
-	);
+    processorLastKernel_ = kernel;
+    processorLastUser_ = user;
+    processorLastIdle_ = idle;
 
-	if (hProcess == NULL)
-	{
-		return 0;
-	}
+    ULARGE_INTEGER none;
+    ULARGE_INTEGER nowTime;
 
-	CloseHandle(hProcess);
-	return hProcess;
+    GetSystemTimeAsFileTime(reinterpret_cast<LPFILETIME>(&nowTime));
+
+    if (GetProcessTimes(
+        processHandle_,
+        reinterpret_cast<LPFILETIME>(&none),
+        reinterpret_cast<LPFILETIME>(&none),
+        reinterpret_cast<LPFILETIME>(&kernel),
+        reinterpret_cast<LPFILETIME>(&user)) == false)
+    {
+        return;
+    }
+
+    ULONGLONG timeDiff = nowTime.QuadPart - processLastTime_.QuadPart;
+    userDiff = user.QuadPart - processLastUser_.QuadPart;
+    kernelDiff = kernel.QuadPart - processLastKernel_.QuadPart;
+    total = kernelDiff + userDiff;
+
+    if (timeDiff == 0 || numberOfProcessors_ == 0)
+    {
+        processTotal_ = 0.0f;
+        processKernel_ = 0.0f;
+        processUser_ = 0.0f;
+    }
+    else
+    {
+        processTotal_ = static_cast<float>(
+            static_cast<double>(total) /
+            static_cast<double>(numberOfProcessors_) /
+            static_cast<double>(timeDiff) *
+            100.0);
+
+        processKernel_ = static_cast<float>(
+            static_cast<double>(kernelDiff) /
+            static_cast<double>(numberOfProcessors_) /
+            static_cast<double>(timeDiff) *
+            100.0);
+
+        processUser_ = static_cast<float>(
+            static_cast<double>(userDiff) /
+            static_cast<double>(numberOfProcessors_) /
+            static_cast<double>(timeDiff) *
+            100.0);
+    }
+
+    processLastTime_ = nowTime;
+    processLastKernel_ = kernel;
+    processLastUser_ = user;
+}
+
+float CpuUsage::ProcessorTotal() const
+{
+    return processorTotal_;
+}
+
+float CpuUsage::ProcessorUser() const
+{
+    return processorUser_;
+}
+
+float CpuUsage::ProcessorKernel() const
+{
+    return processorKernel_;
+}
+
+float CpuUsage::ProcessTotal() const
+{
+    return processTotal_;
+}
+
+float CpuUsage::ProcessUser() const
+{
+    return processUser_;
+}
+
+float CpuUsage::ProcessKernel() const
+{
+    return processKernel_;
 }
