@@ -1,215 +1,188 @@
 #pragma once
-#include "LockFreeObjectFreeList.h"
+
+#include <Windows.h>
+
+#include "CoreDefines.h"
 #include "TLSObjectFreeList.h"
 
-#define LFQTAGMASK 0x00007FFFFFFFFFFF
-#define LFQUNMASK  0xFFFF800000000000
-#define LFQADDTAG  0x0000800000000000
-
-
-
-
-template<typename T>
-class LFQ
+template <typename DataType>
+class LockFreeQueue
 {
 private:
-	long _size;
-
-	struct Node
-	{
-		T data;
-		Node* next;
-	};
-
-	//struct LogData
-	//{
-	//	DWORD _thread;
-	//	DWORD _size;
-	//	__int64 _work;
-	//	Node* _current;
-	//	__int64 _blank2 = 0;
-	//	Node* _old;
-	//	__int64 _blank3 = 0;
-	//	Node* _new;
-	//};
-	long long _index = 0;
-
-	static TLSObjectFreeList<Node> _nodepool;
-	//LogData logdata[65536];
-
-
-	Node* _head;
-	Node* _tail;
-	short _logindex;
+    struct Node
+    {
+        DataType data_;
+        Node* next_;
+    };
 
 public:
-	LFQ()
-	{
-		_size = 0;
-		Node* dummy = _nodepool.Alloc();
-		dummy->next = nullptr;
-		_head = dummy;
-		_tail = dummy;
+    LockFreeQueue()
+        : size_(0),
+        index_(0),
+        head_(nullptr),
+        tail_(nullptr)
+    {
+        Node* dummy = nodePool_.Alloc();
 
-	}
+        dummy->next_ = nullptr;
 
-	virtual ~LFQ()
-	{
+        head_ = dummy;
+        tail_ = dummy;
+    }
 
-	}
+    virtual ~LockFreeQueue()
+    {
+    }
 
+    bool Enqueue(DataType data)
+    {
+        int localSize = InterlockedAdd(&size_, 0);
 
-	bool Enqueue(T t)
-	{
+        if (localSize > 50000)
+        {
+            return false;
+        }
 
-		int localsize = InterlockedAdd(&_size, 0);
-		if (localsize > 50000)
-		{
-			return false;//리턴 false;
-		}
+        Node* newNode = nodePool_.Alloc();
 
+        newNode->data_ = data;
+        newNode->next_ = nullptr;
 
+        __int64 newTag = InterlockedAdd64(
+            &index_,
+            static_cast<__int64>(1) << DKServerCore::TagOffset);
 
-		Node* newnode = _nodepool.Alloc();
-		newnode->data = t;
-		newnode->next = nullptr;
+        newNode = reinterpret_cast<Node*>(
+            reinterpret_cast<__int64>(newNode) | newTag);
 
+        Node* oldTail = nullptr;
+        Node* unmaskedTail = nullptr;
 
-		//unsigned short li1 = InterlockedIncrement16(&_logindex);
-		//MakeScenario(GetCurrentThreadId(), 0xAAAAAAAAAAAAAAAA, localsize, (Node*)newnode, newnode, newnode, li1);
+        while (true)
+        {
+            oldTail = tail_;
+            unmaskedTail = UnmaskNode(oldTail);
 
+            if (unmaskedTail->next_ == nullptr)
+            {
+                if (InterlockedCompareExchange64(
+                    reinterpret_cast<volatile __int64*>(&unmaskedTail->next_),
+                    reinterpret_cast<__int64>(newNode),
+                    reinterpret_cast<__int64>(nullptr)) == reinterpret_cast<__int64>(nullptr))
+                {
+                    break;
+                }
+            }
+            else
+            {
+                AdvanceTailToNullptr();
+            }
+        }
 
-		Node* oldtail;
-		Node* unmasktail;
+        InterlockedCompareExchange64(
+            reinterpret_cast<volatile __int64*>(&tail_),
+            reinterpret_cast<__int64>(newNode),
+            reinterpret_cast<__int64>(oldTail));
 
-		__int64 new_tag = InterlockedAdd64(&_index, LFQADDTAG);
-		newnode = (Node*)((__int64)newnode | new_tag);
+        InterlockedIncrement(&size_);
 
+        return true;
+    }
 
-		while (1)
-		{
-			oldtail = _tail;
-			unmasktail = (Node*)((__int64)oldtail & LFQTAGMASK); // 태그 제거
-			//tag = (__int64)oldtail & LFQUNMASK; // 태그 추출
-			//tag += LFQADDTAG; // 태그 갱신 
+    bool Dequeue(DataType* data)
+    {
+        int localSize = InterlockedDecrement(&size_);
 
-			//newnode = (Node*)((__int64)newnode & LFQTAGMASK); // newnode에 태그 밀어주기.
-			//newnode = (Node*)((__int64)newnode | tag); //newnode에 태그 심기. 
+        if (localSize < 0)
+        {
+            InterlockedIncrement(&size_);
+            return false;
+        }
 
-			// 현재 테일의 넥스트 (지금 노드가 들어갈 곳)
-			if (unmasktail->next == nullptr)
-			{
-				if (InterlockedCompareExchange64((__int64*)&unmasktail->next, (__int64)newnode, (__int64)nullptr) == (__int64)nullptr)
-				{
-					break;
-				}
-			}
-			else
-			{
-				AdvencedTailToNullptr();
-			}
-		}
+        Node* oldHead = nullptr;
+        Node* unmaskedHead = nullptr;
+        Node* next = nullptr;
 
-		InterlockedCompareExchange64((__int64*)&_tail, (__int64)newnode, (__int64)oldtail);
-		// << 실패의 경우 그 이유 추적
+        while (true)
+        {
+            AdvanceTailToNullptr();
 
-		//InterlockedIncrement(&_size);
-		int ls = InterlockedIncrement(&_size);
-		/*unsigned short li = InterlockedIncrement16(&_logindex);
-		MakeScenario(GetCurrentThreadId(), 0xEEEEEEEE22222222, ls, (Node*)current, oldtail, newnode, li);*/
+            oldHead = head_;
+            unmaskedHead = UnmaskNode(oldHead);
+            next = unmaskedHead->next_;
 
-		return true;
+            if (next == nullptr)
+            {
+                continue;
+            }
 
-	}
+            if (InterlockedCompareExchange64(
+                reinterpret_cast<volatile __int64*>(&head_),
+                reinterpret_cast<__int64>(next),
+                reinterpret_cast<__int64>(oldHead)) == reinterpret_cast<__int64>(oldHead))
+            {
+                break;
+            }
+        }
 
-	void AdvencedTailToNullptr()
-	{
+        Node* unmaskedNext = UnmaskNode(next);
 
-		Node* oldtail;
-		Node* unmasktail;
+        *data = unmaskedNext->data_;
 
-		while (1)
-		{
-			oldtail = _tail;
-			unmasktail = (Node*)((__int64)oldtail & LFQTAGMASK); // 태그 제거
-			if (unmasktail->next == nullptr)
-			{
-				if ((__int64)oldtail == InterlockedOr64((__int64*)&_tail, 0))
-				{
-					break;
-				}
-				continue;
-			}
-			InterlockedCompareExchange64((__int64*)&_tail, (__int64)unmasktail->next, (__int64)oldtail);
-		}
+        nodePool_.Free(unmaskedHead);
 
-	}
+        return true;
+    }
 
-	bool Dequeue(T* t)
-	{
-		int localsize = InterlockedDecrement(&_size);
+    int GetSize()
+    {
+        return InterlockedAdd(&size_, 0);
+    }
 
-		if (localsize < 0)
-		{
-			InterlockedIncrement(&_size);
-			return false;
-		}
+private:
+    void AdvanceTailToNullptr()
+    {
+        Node* oldTail = nullptr;
+        Node* unmaskedTail = nullptr;
 
+        while (true)
+        {
+            oldTail = tail_;
+            unmaskedTail = UnmaskNode(oldTail);
 
-		Node* oldhead;
-		Node* unmaskhead;
-		Node* next;
-		while (true)
-		{
-			AdvencedTailToNullptr();
+            if (unmaskedTail->next_ == nullptr)
+            {
+                if (reinterpret_cast<__int64>(oldTail) ==
+                    InterlockedOr64(reinterpret_cast<volatile __int64*>(&tail_), 0))
+                {
+                    break;
+                }
 
-			oldhead = _head; // 헤드 저장
-			unmaskhead = (Node*)((__int64)oldhead & LFQTAGMASK); // 헤드 언마스크 (넥스트 접근을 위해)
-			next = unmaskhead->next;
+                continue;
+            }
 
-			if (next == nullptr)
-			{
-				continue;
-			}
-			if (InterlockedCompareExchange64((__int64*)&_head, (__int64)next, (__int64)oldhead) == (__int64)oldhead)
-			{
-				break;
-			}
-		}
+            InterlockedCompareExchange64(
+                reinterpret_cast<volatile __int64*>(&tail_),
+                reinterpret_cast<__int64>(unmaskedTail->next_),
+                reinterpret_cast<__int64>(oldTail));
+        }
+    }
 
-		/*	int ls = localsize;
-			unsigned short li = InterlockedIncrement16(&_logindex);
-			MakeScenario(GetCurrentThreadId(), 0xDDDDDDDDDDDDDDDD, ls, (Node*)oldhead, 0, next, li);*/
+    Node* UnmaskNode(Node* node)
+    {
+        return reinterpret_cast<Node*>(
+            reinterpret_cast<__int64>(node) & DKServerCore::AddressMask);
+    }
 
+private:
+    volatile long size_;
+    volatile __int64 index_;
 
-		Node* unmasknext = (Node*)((__int64)next & LFQTAGMASK);
-		*t = unmasknext->data;
+    Node* head_;
+    Node* tail_;
 
-
-		_nodepool.Free(unmaskhead);
-
-		return true;
-	}
-
-	/*void MakeScenario(DWORD _thread, __int64 _work, DWORD _size, Node* _current, Node* _old, Node* _new, int Index)
-	{
-		logdata[Index]._thread = _thread;
-		logdata[Index]._work = _work;
-		logdata[Index]._size = _size;
-		logdata[Index]._current = _current;
-		logdata[Index]._old = _old;
-		logdata[Index]._new = _new;
-	}*/
-
-
-	int GetSize()
-	{
-		return _size;
-	}
-
-
+    static TLSObjectFreeList<Node> nodePool_;
 };
 
-
-template<class DATA>
-TLSObjectFreeList<typename LFQ<DATA>::Node> LFQ<DATA>::_nodepool(0);
+template <class DataType>
+TLSObjectFreeList<typename LockFreeQueue<DataType>::Node> LockFreeQueue<DataType>::nodePool_(0);

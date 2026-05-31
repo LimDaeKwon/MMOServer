@@ -66,7 +66,7 @@ public:
 	};
 
 
-	LFQ<MessageData*> MessageQueue;
+	LockFreeQueue<MessageData*> MessageQueue;
 	TLSObjectFreeList<MessageData> MessageDataFreeList;
 	HANDLE MessageEvent;
 
