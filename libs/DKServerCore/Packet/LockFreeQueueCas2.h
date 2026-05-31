@@ -1,248 +1,215 @@
 #pragma once
 
+#include <Windows.h>
+
+#include "CoreDefines.h"
 #include "TLSObjectFreeList.h"
-//#define SCENARIO
 
-#ifdef SCENARIO
-#define MAKESCENARIO(ThreadID,What,Size,CurrentNode,OldNode,NewNode,Cookie) MakeScenario(ThreadID,What,Size,CurrentNode,OldNode,NewNode,Cookie)
-#define MAXLOGBUFFERSIZE 65536
-
-
-#else
-#define MAKESCENARIO(ThreadID,What,Size,CurrentNode,OldNode,NewNode,Cookie)
-#define MAXLOGBUFFERSIZE 1
-
-#endif
-//클래스 멤버에 넣는다면? 
-
-#define ADRMASK 0x00007fffffffffff
-#define TAGMASK 0xffff800000000000
-#define MAKETAG 0x0000800000000000
-
-#define MAXQSIZE 200
-
-
-//unsigned long long logindexQ = 0;
-struct LogData
-{
-	DWORD ThreadID;
-	int Work = 0xcccccccc;//0xbbbbbbbb Enqueue 0xdddddddd Dequeue
-	int Size = 0xcccccccc;
-	int Cookie = 0xcccccccc;
-	void* CurrentNode = nullptr;
-	__int64 Cookie2 = 0xcccccccccccccccc;
-	void* OldNode = nullptr;
-	__int64 Cookie3 = 0xcccccccccccccccc;
-	void* NewNode = nullptr;
-};
-
-//LogData LogBuffer[MAXLOGBUFFERSIZE];
-
-template <class DATA>
-class TLockFreeQueue
+template <class DataType>
+class LockFreeQueueCas2
 {
 private:
-	struct Node
-	{
-		DATA Data;
-		Node* Next;
-	};
+    struct Node
+    {
+        DataType data_;
+        Node* next_;
+    };
 
 public:
-	TLockFreeQueue() //: NodeFreeList(0)
-	{
-		Node* DummyNode = NodeFreeList.Alloc();
-		DummyNode->Next = nullptr;
-		Head = DummyNode;
-		Tail = DummyNode;
-	}
-	~TLockFreeQueue()
-	{
-		Node* DeleteNode;
-		while (1)
-		{
-			DeleteNode = UnMaskTag((unsigned long long) Head);
+    LockFreeQueueCas2()
+        : head_(nullptr),
+        tail_(nullptr),
+        size_(0)
+    {
+        Node* dummyNode = nodeFreeList_.Alloc();
 
-			if (DeleteNode->Next == nullptr)
-			{
-				delete DeleteNode;
-				break;
-			}
-			Head = DeleteNode->Next;
-			delete DeleteNode;
-		}
-	}
+        dummyNode->next_ = nullptr;
 
-	__int64 MaskNewTag(__int64 LocalTop, __int64 MaskNewNode)
-	{
-		__int64 Tag = LocalTop;
-		Tag &= TAGMASK;
-		Tag += MAKETAG;
-		MaskNewNode |= Tag;
+        head_ = dummyNode;
+        tail_ = dummyNode;
+    }
 
-		return MaskNewNode;
-	}
+    ~LockFreeQueueCas2()
+    {
+        Node* deleteNode = nullptr;
 
+        while (true)
+        {
+            deleteNode = UnmaskTag(reinterpret_cast<__int64>(head_));
 
-	Node* UnMaskTag(__int64 HeadNode)
-	{
-		HeadNode &= ADRMASK;
-		return (Node*)HeadNode;
-	}
+            if (deleteNode->next_ == nullptr)
+            {
+                nodeFreeList_.Free(deleteNode);
+                break;
+            }
 
+            head_ = deleteNode->next_;
+            nodeFreeList_.Free(deleteNode);
+        }
+    }
 
-	int Enqueue(DATA data)
-	{
+    int Enqueue(DataType data)
+    {
+        long queueSize = InterlockedOr(&size_, 0);
 
-		//unsigned long QueueSize = InterlockedIncrement(&Size);
-		//if (MAXQSIZE < QueueSize)
-		//{
-		//	InterlockedDecrement(&Size);
-		//	return false;
-		//}
-		// 
-		//이러면 인큐 실패 시 디큐에 묶여있음.
-		
-		//Or로 체크하는게 좋아보인다. 
+        if (DKServerCore::LockFreeQueueCas2MaxSize < queueSize)
+        {
+            return false;
+        }
 
-		long QueueSize = InterlockedOr(&Size,0);
-		
-		if (MAXQSIZE < QueueSize)
-		{
-			//__debugbreak();
-			return false;
-		}
+        Node* oldTail = nullptr;
+        Node* unmaskedTail = nullptr;
 
+        Node* newNode = nodeFreeList_.Alloc();
 
+        newNode->data_ = data;
+        newNode->next_ = nullptr;
 
-		Node* OldTail;
-		Node* UnMaskTail;
-		Node* NewNode = NodeFreeList.Alloc();
-		NewNode->Data = data;
-		NewNode->Next = nullptr;
-		unsigned long long MaskNewNode;
+        unsigned long long maskedNewNode = 0;
 
+        while (true)
+        {
+            oldTail = tail_;
+            maskedNewNode = MaskNewTag(
+                reinterpret_cast<__int64>(oldTail),
+                reinterpret_cast<__int64>(newNode));
 
-		while (1)
-		{
-			OldTail = Tail;
-			MaskNewNode = MaskNewTag((__int64)OldTail, (__int64)NewNode);
-			UnMaskTail = UnMaskTag((unsigned long long)OldTail);
+            unmaskedTail = UnmaskTag(reinterpret_cast<__int64>(oldTail));
 
-			if (UnMaskTail->Next != nullptr)
-			{
-				InterlockedCompareExchange64((__int64*)&Tail, (__int64)UnMaskTail->Next, (__int64)OldTail);
-				continue;
-			}
-			//공용 노드 풀 사용과 큐의 결함을 막기 위한 CAS 순서 바꾸기..  맘에 들지는 않음. 
-			if (InterlockedCompareExchange64((__int64*)&Tail, (_int64)MaskNewNode, (__int64)OldTail) == (__int64)OldTail)
-			{
-				if (InterlockedCompareExchange64((__int64*)&UnMaskTail->Next, (__int64)MaskNewNode, (__int64)nullptr) == (__int64)nullptr)
-				{
-					break;
-				}
-			}
-		}
-		__int64 CurrentTail = InterlockedCompareExchange64((__int64*)&Tail, (_int64)MaskNewNode, (__int64)OldTail);
+            if (unmaskedTail->next_ != nullptr)
+            {
+                InterlockedCompareExchange64(
+                    reinterpret_cast<volatile __int64*>(&tail_),
+                    reinterpret_cast<__int64>(unmaskedTail->next_),
+                    reinterpret_cast<__int64>(oldTail));
 
-		InterlockedIncrement(&Size);
+                continue;
+            }
 
+            if (InterlockedCompareExchange64(
+                reinterpret_cast<volatile __int64*>(&tail_),
+                static_cast<__int64>(maskedNewNode),
+                reinterpret_cast<__int64>(oldTail)) == reinterpret_cast<__int64>(oldTail))
+            {
+                if (InterlockedCompareExchange64(
+                    reinterpret_cast<volatile __int64*>(&unmaskedTail->next_),
+                    static_cast<__int64>(maskedNewNode),
+                    reinterpret_cast<__int64>(nullptr)) == reinterpret_cast<__int64>(nullptr))
+                {
+                    break;
+                }
+            }
+        }
 
-		MAKESCENARIO(GetCurrentThreadId(), 0xeeeeeeee, QueueSize, (Node*)CurrentTail, OldTail, (Node*)MaskNewNode, 0xeeeeeeeeeeeeeeee);
+        InterlockedCompareExchange64(
+            reinterpret_cast<volatile __int64*>(&tail_),
+            static_cast<__int64>(maskedNewNode),
+            reinterpret_cast<__int64>(oldTail));
 
-		return true;
+        InterlockedIncrement(&size_);
 
-	}
+        return true;
+    }
 
-	bool Dequeue(DATA* data)
-	{
-		long QueueSize = InterlockedDecrement(&Size);
-		if (QueueSize < 0)
-		{
-			InterlockedIncrement(&Size);
-			return false;
-		}
+    bool Dequeue(DataType* data)
+    {
+        long queueSize = InterlockedDecrement(&size_);
 
-		Node* OldHead = nullptr;
-		Node* NewHead = nullptr;
-		Node* UnMaskHead = nullptr;
+        if (queueSize < 0)
+        {
+            InterlockedIncrement(&size_);
+            return false;
+        }
 
-		while (1)
-		{
-			AdvanceTailToNull();
-			OldHead = Head;
-			UnMaskHead = UnMaskTag((unsigned long long)OldHead);
-			NewHead = UnMaskHead->Next;
-			if (NewHead == nullptr)
-			{
-				continue;
-			}
+        Node* oldHead = nullptr;
+        Node* newHead = nullptr;
+        Node* unmaskedHead = nullptr;
 
-			Node* DataNode = UnMaskTag((unsigned long long)NewHead);
-			*data = DataNode->Data;
-			if (InterlockedCompareExchange64((__int64*)&Head, (__int64)NewHead, (__int64)OldHead) == (__int64)OldHead)
-			{
-				break;
-			}
-		}
+        while (true)
+        {
+            AdvanceTailToNull();
 
-		NodeFreeList.Free(UnMaskHead);
-		MAKESCENARIO(GetCurrentThreadId(), 0xdddddddd, QueueSize, (Node*)nullptr, OldHead, NewHead, 0xdddddddddddddddd);
+            oldHead = head_;
+            unmaskedHead = UnmaskTag(reinterpret_cast<__int64>(oldHead));
+            newHead = unmaskedHead->next_;
 
-		return true;
-	}
+            if (newHead == nullptr)
+            {
+                continue;
+            }
 
-	void AdvanceTailToNull()
-	{
-		while (1)
-		{
-			Node* OldTail;
-			Node* UnMaskTail;
+            Node* dataNode = UnmaskTag(reinterpret_cast<__int64>(newHead));
 
-			OldTail = Tail;
-			UnMaskTail = UnMaskTag((unsigned long long)OldTail);
-			if (UnMaskTail->Next == nullptr)
-			{
-				break;
-			}
-			InterlockedCompareExchange64((__int64*)&Tail, (__int64)UnMaskTail->Next, (__int64)OldTail);
-		}
-	}
+            *data = dataNode->data_;
 
+            if (InterlockedCompareExchange64(
+                reinterpret_cast<volatile __int64*>(&head_),
+                reinterpret_cast<__int64>(newHead),
+                reinterpret_cast<__int64>(oldHead)) == reinterpret_cast<__int64>(oldHead))
+            {
+                break;
+            }
+        }
 
-	void MakeScenario(DWORD ThreadID, DWORD What, DWORD Size, Node* CurrentNode, Node* OldNode, Node* NewNode, __int64 Cookie)
-	{
-		//unsigned long long LogIndex = InterlockedIncrement(&logindexQ);
-		//LogIndex %= MAXLOGBUFFERSIZE;
+        nodeFreeList_.Free(unmaskedHead);
 
-		//LogBuffer[LogIndex].ThreadID = ThreadID;
-		//LogBuffer[LogIndex].Work = What;
-		//LogBuffer[LogIndex].Size = What;
-		//LogBuffer[LogIndex].CurrentNode = CurrentNode;
-		//LogBuffer[LogIndex].OldNode = OldNode;
-		//LogBuffer[LogIndex].NewNode = NewNode;
-		//LogBuffer[LogIndex].Cookie2 = Cookie;
-		//LogBuffer[LogIndex].Cookie3 = Cookie;
-	}
+        return true;
+    }
 
-	long GetSize()
-	{
-		return Size;
-	}
+    long GetSize()
+    {
+        return InterlockedOr(&size_, 0);
+    }
 
-
-	
 private:
+    __int64 MaskNewTag(__int64 localTop, __int64 maskedNewNode)
+    {
+        __int64 tag = localTop;
 
-	static TLSObjectFreeList<Node> NodeFreeList;
+        tag &= DKServerCore::TagMask;
+        tag += static_cast<__int64>(1) << DKServerCore::TagOffset;
 
-	//TLSObjectFreeList<Node> NodeFreeList;
-	Node* Head;
-	Node* Tail;
-	long Size = 0;
-	
+        maskedNewNode |= tag;
+
+        return maskedNewNode;
+    }
+
+    Node* UnmaskTag(__int64 node)
+    {
+        node &= DKServerCore::AddressMask;
+
+        return reinterpret_cast<Node*>(node);
+    }
+
+    void AdvanceTailToNull()
+    {
+        while (true)
+        {
+            Node* oldTail = tail_;
+            Node* unmaskedTail = UnmaskTag(reinterpret_cast<__int64>(oldTail));
+
+            if (unmaskedTail->next_ == nullptr)
+            {
+                break;
+            }
+
+            InterlockedCompareExchange64(
+                reinterpret_cast<volatile __int64*>(&tail_),
+                reinterpret_cast<__int64>(unmaskedTail->next_),
+                reinterpret_cast<__int64>(oldTail));
+        }
+    }
+
+private:
+    static TLSObjectFreeList<Node> nodeFreeList_;
+
+    Node* head_;
+    Node* tail_;
+    volatile long size_;
 };
 
+template <class DataType>
+TLSObjectFreeList<typename LockFreeQueueCas2<DataType>::Node> LockFreeQueueCas2<DataType>::nodeFreeList_(0);
 
-template<class DATA>
-TLSObjectFreeList<typename TLockFreeQueue<DATA>::Node> TLockFreeQueue<DATA>::NodeFreeList(0);
+template <class DataType>
+using TLockFreeQueue = LockFreeQueueCas2<DataType>;
