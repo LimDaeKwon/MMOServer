@@ -6,7 +6,7 @@
 #include "NetworkStub.h"
 #include "CPacket.h"
 #include <unordered_map>
-#include "MyRingBuffer.h"
+#include "RingBuffer.h"
 #include <list>
 #include "ObjectFreeList.h"
 
@@ -32,8 +32,8 @@ struct SESSION
 	unsigned int SessionID;
 
 	SOCKET Socket;
-	MyRingBuffer SendQ;
-	MyRingBuffer ReceiveQ;
+	RingBuffer SendQ;
+	RingBuffer ReceiveQ;
 
 
 	unsigned int IsDelete;

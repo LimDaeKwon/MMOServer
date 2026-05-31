@@ -176,7 +176,7 @@
     <ClInclude Include="Packet\LockFreeQueue.h" />
     <ClInclude Include="Packet\LockFreeQueueCas2.h" />
     <ClInclude Include="Packet\MessageDataQueue.h" />
-    <ClInclude Include="Packet\MyRingBuffer.h" />
+    <ClInclude Include="Packet\RingBuffer.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Utils\CoreDefines.h" />
     <ClInclude Include="Utils\CrashDump.h" />
@@ -199,7 +199,7 @@
     <ClCompile Include="Packet\CPacket.cpp" />
     <ClCompile Include="Packet\CpacketQueue.cpp" />
     <ClCompile Include="Packet\MessageDataQueue.cpp" />
-    <ClCompile Include="Packet\MyRingBuffer.cpp" />
+    <ClCompile Include="Packet\RingBuffer.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

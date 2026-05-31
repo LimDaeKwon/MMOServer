@@ -6,7 +6,7 @@
 #include "TLSObjectFreeList.h"
 
 template <class DataType>
-class LockFreeQueueCas2
+class TLockFreeQueue
 {
 private:
     struct Node
@@ -16,7 +16,7 @@ private:
     };
 
 public:
-    LockFreeQueueCas2()
+    TLockFreeQueue()
         : head_(nullptr),
         tail_(nullptr),
         size_(0)
@@ -29,7 +29,7 @@ public:
         tail_ = dummyNode;
     }
 
-    ~LockFreeQueueCas2()
+    ~TLockFreeQueue()
     {
         Node* deleteNode = nullptr;
 
@@ -209,7 +209,4 @@ private:
 };
 
 template <class DataType>
-TLSObjectFreeList<typename LockFreeQueueCas2<DataType>::Node> LockFreeQueueCas2<DataType>::nodeFreeList_(0);
-
-template <class DataType>
-using TLockFreeQueue = LockFreeQueueCas2<DataType>;
+TLSObjectFreeList<typename TLockFreeQueue<DataType>::Node> TLockFreeQueue<DataType>::nodeFreeList_(0);

@@ -6,7 +6,7 @@
 #include "ContentsCPacket.h"
 #include "LockFreeQueue.h"
 #include "LockFreeQueueCas2.h"
-#include "MyRingBuffer.h"
+#include "RingBuffer.h"
 #define RECV 10
 #define SEND 20
 
@@ -52,7 +52,7 @@ public:
 		MyOverlapped send_overlapped;
 		MyOverlapped recv_overlapped;
 
-		MyRingBuffer recv_buffer;
+		RingBuffer recv_buffer;
 
 		SOCKET sock;
 		__int64 session_id = 0;

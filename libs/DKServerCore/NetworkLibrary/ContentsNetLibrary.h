@@ -4,7 +4,7 @@
 #include <winsock2.h>
 #include "LockFreeObjectFreeList.h"
 #include "ContentsCPacket.h"
-#include "MyRingBuffer.h"
+#include "RingBuffer.h"
 #include "LockFreeQueueCas2.h"
 #include "GroupManager.h"
 
@@ -44,7 +44,7 @@ struct Session
 	MyOverlapped send_overlapped;
 	MyOverlapped recv_overlapped;
 
-	MyRingBuffer recv_buffer;
+	RingBuffer recv_buffer;
 
 	SOCKET sock;
 	__int64 session_id = 0;

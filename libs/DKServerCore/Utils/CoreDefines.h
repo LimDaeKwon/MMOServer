@@ -16,4 +16,6 @@ namespace DKServerCore
     constexpr int MessageDataQueueDefaultBufferSize = 500000;
     constexpr long LockFreeQueueMaxSize = 50000;
     constexpr int LockFreeQueueCas2MaxSize = 200;
+    constexpr int RingBufferDefaultBufferSize = 5000;
+
 }

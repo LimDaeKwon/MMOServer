@@ -1,6 +1,6 @@
 #include "Network.h"
 #include <iostream>
-#include "MyRingBuffer.h"
+#include "RingBuffer.h"
 #include "winsock2.h"
 #include "ws2tcpip.h"
 #include "PacketDefine.h"
@@ -21,8 +21,8 @@ struct SESSION
 	unsigned int SessionID;
 
 	SOCKET Socket;
-	MyRingBuffer SendQ;
-	MyRingBuffer ReceiveQ;
+	RingBuffer SendQ;
+	RingBuffer ReceiveQ;
 
 	
 	unsigned int IsDelete;

@@ -50,7 +50,7 @@
     <ClInclude Include="Packet\MessageDataQueue.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="Packet\MyRingBuffer.h">
+    <ClInclude Include="Packet\RingBuffer.h">
       <Filter>Packet</Filter>
     </ClInclude>
     <ClInclude Include="NetworkLibrary\ContentGroupBase.h">
@@ -124,7 +124,7 @@
     <ClCompile Include="Packet\MessageDataQueue.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
-    <ClCompile Include="Packet\MyRingBuffer.cpp">
+    <ClCompile Include="Packet\RingBuffer.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
     <ClCompile Include="NetworkLibrary\ContentGroupBase.cpp">
