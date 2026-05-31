@@ -1,152 +1,159 @@
+#include "ContentsNetLibrary.h"
+#include "ContentsCPacket.h"
 #include "ContentGroupBase.h"
+
 #include <process.h>
 
-
-
-
-ContentGroupBase::ContentGroupBase():messageDataFreeList_(0)
+ContentGroupBase::ContentGroupBase()
+    : groupId_(0),
+    messageQueue_(),
+    messageDataFreeList_(0),
+    messageEvent_(nullptr),
+    logicThreadHandle_(nullptr),
+    contentsServer_(nullptr),
+    frameMS_(0)
 {
-	
-	messageEvent_ = CreateEvent(NULL, FALSE, FALSE, nullptr);
+    messageEvent_ = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 
-	if (messageEvent_ == NULL)
-	{
-		//printf("CreateEvent failed (%d)\n", GetLastError());
-		//이제 이런거 다 로그로 대체.
-		DebugBreak();
-	}
-
+    if (messageEvent_ == nullptr)
+    {
+        DebugBreak();
+    }
 }
 
 void ContentGroupBase::Start()
 {
-	logicThreadHandle_ = (HANDLE)_beginthreadex(nullptr, 0, GroupThread, this, 0, nullptr);
+    logicThreadHandle_ = reinterpret_cast<HANDLE>( _beginthreadex(nullptr, 0, GroupThread, this, 0, nullptr));
 
+    if (logicThreadHandle_ == nullptr)
+    {
+        DebugBreak();
+    }
 }
 
-DWORD ContentGroupBase::GetFrame()
+DWORD ContentGroupBase::GetFrame() const
 {
-	return frameMS_;
+    return frameMS_;
 }
-
-
 
 void ContentGroupBase::PushEnter(SessionId sessionId)
 {
+    MessageData* messageData = messageDataFreeList_.Alloc();
 
-	MessageData* msg_data = messageDataFreeList_.Alloc();
-	msg_data->sessionId = sessionId;
-	//msg_data->contentsPackets = nullptr;
-	msg_data->messageType = ENTER;
+    messageData->sessionId_ = sessionId;
+    messageData->contentsPacket_ = nullptr;
+    messageData->messageType_ = Enter;
 
-	messageQueue_.Enqueue(msg_data);
-	SetEvent(messageEvent_);
-
-
+    messageQueue_.Enqueue(messageData);
+    SetEvent(messageEvent_);
 }
 
 void ContentGroupBase::PushUpdate()
 {
-	MessageData* msg_data = messageDataFreeList_.Alloc();
-	msg_data->sessionId = NULL;
-	//msg_data->contentsPackets = nullptr;
-	msg_data->messageType = UPDATE;
+    MessageData* messageData = messageDataFreeList_.Alloc();
 
-	messageQueue_.Enqueue(msg_data);
-	SetEvent(messageEvent_);
+    messageData->sessionId_ = 0;
+    messageData->contentsPacket_ = nullptr;
+    messageData->messageType_ = Update;
+
+    messageQueue_.Enqueue(messageData);
+    SetEvent(messageEvent_);
 }
 
 void ContentGroupBase::PushLeave(SessionId sessionId)
 {
-	MessageData* msg_data = messageDataFreeList_.Alloc();
-	msg_data->sessionId = sessionId;
-	//msg_data->contentsPacket = nullptr;
-	msg_data->messageType = LEAVE;
+    MessageData* messageData = messageDataFreeList_.Alloc();
 
-	messageQueue_.Enqueue(msg_data);
-	SetEvent(messageEvent_);
+    messageData->sessionId_ = sessionId;
+    messageData->contentsPacket_ = nullptr;
+    messageData->messageType_ = Leave;
 
+    messageQueue_.Enqueue(messageData);
+    SetEvent(messageEvent_);
 }
 
 void ContentGroupBase::PushMessages(SessionId sessionId, ContentsCPacket* packet)
 {
-	MessageData* msg_data = messageDataFreeList_.Alloc();
-	msg_data->sessionId = sessionId;
+    MessageData* messageData = messageDataFreeList_.Alloc();
 
-	msg_data->contentsPackets = packet;
+    messageData->sessionId_ = sessionId;
+    messageData->contentsPacket_ = packet;
+    messageData->messageType_ = Message;
 
-	msg_data->messageType = MESSAGE;
-
-	messageQueue_.Enqueue(msg_data);
-	SetEvent(messageEvent_);
-
+    messageQueue_.Enqueue(messageData);
+    SetEvent(messageEvent_);
 }
 
 void ContentGroupBase::AttachServer(ContentsNetLibrary* contentsServer)
 {
-	contentsServer_ = contentsServer;
+    contentsServer_ = contentsServer;
 }
 
-
-unsigned int __stdcall ContentGroupBase::GroupThread(LPVOID this_ptr)
+unsigned int __stdcall ContentGroupBase::GroupThread(void* thisPointer)
 {
+    ContentGroupBase* contents = static_cast<ContentGroupBase*>(thisPointer);
+    DWORD oldTick = timeGetTime();
 
-	ContentGroupBase* contents = static_cast<ContentGroupBase*>(this_ptr);
-	DWORD oldTick = timeGetTime();
+    while (true)
+    {
+        WaitForSingleObject(contents->messageEvent_, 1);
 
-	while (true)
-	{
-		WaitForSingleObject(contents->messageEvent_, 1);
+        while (true)
+        {
+            MessageData* messageData = nullptr;
 
-		while (true)
-		{
-			MessageData* msg = nullptr;
-			if (!contents->messageQueue_.Dequeue(&msg))
-			{
-				break;
-			}
+            if (contents->messageQueue_.Dequeue(&messageData) == false)
+            {
+                break;
+            }
 
-			switch (msg->messageType)
-			{
-			case ContentGroupBase::ENTER:
-			{
-				contents->OnEnter(msg->sessionId);
-				break;
-			}
-			case ContentGroupBase::MESSAGE:
-			{
+            switch (messageData->messageType_)
+            {
+            case ContentGroupBase::Enter:
+            {
+                contents->OnEnter(messageData->sessionId_);
+                break;
+            }
 
-				contents->OnMessage(msg->sessionId, msg->contentsPackets);
+            case ContentGroupBase::Message:
+            {
+                contents->OnMessage(
+                    messageData->sessionId_,
+                    messageData->contentsPacket_);
 
-				break;
-			}
-			case ContentGroupBase::LEAVE:
-			{
-				contents->OnLeave(msg->sessionId);
-				break;
-			}
-			default:
-			{
-				break;
-			}
-			}
-			contents->messageDataFreeList_.Free(msg);
-		}
-		//프레임 돌림
-		// UPDATE:
+                break;
+            }
 
-		DWORD tick = timeGetTime();
-		if (tick - oldTick > contents->frameMS_)
-		{
-			contents->OnUpdate();
-			oldTick += contents->frameMS_ * ((tick - oldTick) / contents->frameMS_);
+            case ContentGroupBase::Leave:
+            {
+                contents->OnLeave(messageData->sessionId_);
+                break;
+            }
 
-		}
-		
+            case ContentGroupBase::Update:
+            {
+                contents->OnUpdate();
+                break;
+            }
 
+            default:
+            {
+                break;
+            }
+            }
 
-	}
-	return 0;
+            contents->messageDataFreeList_.Free(messageData);
+        }
+
+        DWORD tick = timeGetTime();
+
+        if (contents->frameMS_ > 0 && tick - oldTick > contents->frameMS_)
+        {
+            contents->OnUpdate();
+
+            oldTick += contents->frameMS_ * ((tick - oldTick) / contents->frameMS_);
+        }
+    }
+
+    return 0;
 }
-
-
