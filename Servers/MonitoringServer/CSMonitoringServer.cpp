@@ -345,7 +345,7 @@ void CSMonitoringServer::TPSProc(MessageData* msg_data)
 			if (GetTickCount64() - target->timeOut_ > 10000)
 			{
 				Disconnect(target->sessionID_);
-				DCUnloginTimeout++;
+				dcUnloginTimeout_++;
 			}
 			//1초단위의 타임아웃처리. 
 			continue;

@@ -444,6 +444,7 @@ LanLibrary::Session* LanLibrary::SessionAlloc(int* emptyIndex, unsigned long lon
 
     if (InterlockedIncrement(&sessionNum_) > maxSession_)
     {
+		InterlockedDecrement(&sessionNum_);
         return nullptr;
     }
 
