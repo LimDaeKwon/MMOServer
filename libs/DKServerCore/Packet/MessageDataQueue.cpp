@@ -1,160 +1,115 @@
-
-#include "memory.h"
-#include "Windows.h"
-
 #include "MessageDataQueue.h"
 
-
-
-#define DEFAULTBUFFERSIZE 500000
-
-
-MessageDataQueue::MessageDataQueue(void) : front(0), rear(0), size(DEFAULTBUFFERSIZE)
+MessageDataQueue::MessageDataQueue()
+    : messageQueue_(nullptr),
+    front_(0),
+    rear_(0),
+    size_(DKServerCore::MessageDataQueueDefaultBufferSize)
 {
-
-	packet_queue = (MessageData**)malloc(sizeof(MessageData*) * DEFAULTBUFFERSIZE);
-
+    messageQueue_ = new MessageData * [DKServerCore::MessageDataQueueDefaultBufferSize];
 }
 
-MessageDataQueue::MessageDataQueue(int BufferSize) : front(0), rear(0), size(BufferSize)
+MessageDataQueue::MessageDataQueue(int bufferSize)
+    : messageQueue_(nullptr),
+    front_(0),
+    rear_(0),
+    size_(bufferSize)
 {
-
-	packet_queue = (MessageData**)malloc(sizeof(MessageData*) * BufferSize);
-
+    messageQueue_ = new MessageData * [bufferSize];
 }
 
 MessageDataQueue::~MessageDataQueue()
 {
-	delete packet_queue;
+    delete[] messageQueue_;
 }
 
-
-
-void MessageDataQueue::Resize(int NewSize)
+void MessageDataQueue::Resize(int newSize)
 {
-	//더 작은 크기로 옮기고 싶은거면?
-	//지금 사용중인 버퍼의 크기가 NewSize보다 크다면 불가능. 아니면 가능.
-	//if (GetUseSize() > NewSize)
-	//{
-	//	//지금 사용중인 버퍼의 크기가 NewSize보다 크다면 불가능. 
-
-	//	return;
-	//}
-
-	//더 큰 크기로 옮기고 싶은거면?
-	//그냥 냅다 옮겨줘. // 바껴야합니다.
-	//들어있는 크기만큼 싹 디큐를 해줘서 하면 되겠네.
-
-
-
-	/*char* Temp = new char[NewSize];
-	int UseSize = GetUseSize();
-	if (Dequeue(Temp, UseSize) != UseSize)
-	{
-
-		int Error = GetLastError();
-		wprintf(L"Dequeue Error %d \n", Error);
-		DebugBreak();
-
-
-	}
-	delete[] RingBuffer;
-
-	RingBuffer = Temp;
-	Front = 0;
-	Rear = UseSize;
-	Size = NewSize;*/
-
-
 }
 
-int MessageDataQueue::GetBufferSize(void)
+int MessageDataQueue::GetBufferSize() const
 {
-	return size;
+    return size_;
 }
 
-//리어가 3이고 프론트가 0이면 012 즉 3개있는것.,
-int MessageDataQueue::GetUseSize(void)
+int MessageDataQueue::GetUseSize() const
 {
-	int LocalFront;
-	int LocalRear;
+    int localFront = front_;
+    int localRear = rear_;
 
-	LocalFront = front;
-	LocalRear = rear;
+    if (localFront > localRear)
+    {
+        return size_ - localFront + localRear;
+    }
 
-	if (LocalFront > LocalRear)
-	{
-
-
-		return size - LocalFront + LocalRear;
-	}
-
-
-	return LocalRear - LocalFront;
+    return localRear - localFront;
 }
-int MessageDataQueue::GetFreeSize(void)
+
+int MessageDataQueue::GetFreeSize() const
 {
-	//쓰고 있는 사이즈가 8 . 버퍼는 10. 그럼 1 
-
-	return size - GetUseSize() - 1;
+    return size_ - GetUseSize() - 1;
 }
 
-int MessageDataQueue::IsEmpty(void)
+int MessageDataQueue::IsEmpty() const
 {
-	return rear == front;
+    return rear_ == front_;
 }
 
-bool MessageDataQueue::Enqueue(MessageData* Data)
+bool MessageDataQueue::Enqueue(MessageData* data)
 {
-	messageQueueLock_.Lock();
+    messageQueueLock_.Lock();
 
-	if (GetFreeSize() == 0)
-	{
-		messageQueueLock_.Unlock();
-		return false;
-	}
+    if (GetFreeSize() == 0)
+    {
+        messageQueueLock_.Unlock();
+        return false;
+    }
 
-	packet_queue[rear] = Data;
+    messageQueue_[rear_] = data;
 
+    if (rear_ == size_ - 1)
+    {
+        rear_ = 0;
+    }
+    else
+    {
+        ++rear_;
+    }
 
-	if (rear == size - 1)
-	{
-		rear = 0;
-	}
-	else
-	{
-		rear++;
-	}
+    messageQueueLock_.Unlock();
 
-	messageQueueLock_.Unlock();
-	return true;
+    return true;
 }
 
-bool MessageDataQueue::Dequeue(MessageData** Out)
+bool MessageDataQueue::Dequeue(MessageData** out)
 {
-	if (IsEmpty())
-	{
-		return false;
+    //Dequeue는 하나의 스레드에서만 진행 할 목적이므로 락을 걸지 않음.
+    if (out == nullptr)
+    {
+        return false;
+    }
 
-	}
-	*Out = packet_queue[front];
+    if (IsEmpty())
+    {
+        return false;
+    }
 
+    *out = messageQueue_[front_];
 
-	if (front == size - 1)
-	{
-		front = 0;
-	}
-	else
-	{
-		front++;
-	}	
-	return true;
+    if (front_ == size_ - 1)
+    {
+        front_ = 0;
+    }
+    else
+    {
+        ++front_;
+    }
+
+    return true;
 }
 
-void MessageDataQueue::ClearBuffer(void)
+void MessageDataQueue::ClearBuffer()
 {
-	front = 0;
-	rear = 0;
+    front_ = 0;
+    rear_ = 0;
 }
-
-
