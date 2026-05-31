@@ -1,125 +1,167 @@
 #pragma once
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <crtdbg.h>
 #include <Windows.h>
-#include <psapi.h>
-#include <minidumpapiset.h>
+#include <Psapi.h>
+#include <DbgHelp.h>
+#include <crtdbg.h>
+#include <cstdint>
+#include <cstdio>
 
-#pragma comment (lib,"Dbghelp.lib")
+#pragma comment(lib, "Dbghelp.lib")
 
 class CrashDump
 {
 public:
+    CrashDump()
+    {
+        _set_invalid_parameter_handler(MyInvalidParameterHandler);
 
-	CrashDump()
-	{
-		//dump_count = 0;
+        _CrtSetReportMode(_CRT_WARN, 0);
+        _CrtSetReportMode(_CRT_ASSERT, 0);
+        _CrtSetReportMode(_CRT_ERROR, 0);
 
+        _CrtSetReportHook(CustomReportHook);
 
-		_invalid_parameter_handler old_handler;
-		_invalid_parameter_handler new_handler;
+        _set_purecall_handler(MyPurecallHandler);
 
-		new_handler = MyInvalidParameterHandler;
-		old_handler = _set_invalid_parameter_handler(new_handler);
+        SetHandlerDump();
+    }
 
-		_CrtSetReportMode(_CRT_WARN, 0);
-		_CrtSetReportMode(_CRT_ASSERT, 0);
-		_CrtSetReportMode(_CRT_ERROR, 0);
+    static void Crash()
+    {
+        int* pointer = nullptr;
 
-		_CrtSetReportHook(CustomReportHook);
+        *pointer = 0;
+    }
 
-		_set_purecall_handler(MyPurecallHandler);
+    static void SetHandlerDump()
+    {
+        SetUnhandledExceptionFilter(MyExceptionFilter);
+    }
 
-		SetHandlerDump();
+private:
+    static LONG WINAPI MyExceptionFilter(PEXCEPTION_POINTERS exceptionPointers)
+    {
+        int workingMemory = 0;
+        SYSTEMTIME time;
 
-	}
+        long localDumpCount = InterlockedIncrement(&DumpCount());
 
-	static void Crash()
-	{
-		int* p = nullptr;
-		*p = 0;
+        HANDLE process = GetCurrentProcess();
+        PROCESS_MEMORY_COUNTERS processMemoryCounters;
 
-	}
+        if (GetProcessMemoryInfo(
+            process,
+            &processMemoryCounters,
+            sizeof(processMemoryCounters)))
+        {
+            workingMemory = static_cast<int>(
+                processMemoryCounters.WorkingSetSize / 1024 / 1024);
+        }
 
-	static LONG WINAPI MyExcpetionFilter(__in PEXCEPTION_POINTERS exception_pointer)
-	{
-		int working_memory = 0;
-		SYSTEMTIME time;
+        WCHAR fileName[MAX_PATH];
 
-		long local_dump_count = InterlockedIncrement(&dump_count);
+        GetLocalTime(&time);
 
-		HANDLE process = 0;
-		PROCESS_MEMORY_COUNTERS pmc;
+        swprintf_s(
+            fileName,
+            MAX_PATH,
+            L"Dump_%d%02d%02d_%02d.%02d.%02d_%d_%dMB.dmp",
+            time.wYear,
+            time.wMonth,
+            time.wDay,
+            time.wHour,
+            time.wMinute,
+            time.wSecond,
+            localDumpCount,
+            workingMemory);
 
-		process = GetCurrentProcess();
+        wprintf(
+            L"\n\n\n!!! Crash Error ..... %d.%d.%d / %d:%d:%d \n",
+            time.wYear,
+            time.wMonth,
+            time.wDay,
+            time.wHour,
+            time.wMinute,
+            time.wSecond);
 
-		if (NULL == process)
-		{
-			return 0;
-		}
+        HANDLE dumpFile = CreateFile(
+            fileName,
+            GENERIC_WRITE,
+            FILE_SHARE_WRITE,
+            nullptr,
+            CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr);
 
-		if (GetProcessMemoryInfo(process, &pmc, sizeof(pmc)))
-		{
-			working_memory = (int)(pmc.WorkingSetSize / 1024 / 1024);
-		}
-		CloseHandle(process);
+        if (dumpFile != INVALID_HANDLE_VALUE)
+        {
+            MINIDUMP_EXCEPTION_INFORMATION minidumpExceptionInformation;
 
-		WCHAR filename[MAX_PATH];
+            minidumpExceptionInformation.ThreadId = GetCurrentThreadId();
+            minidumpExceptionInformation.ExceptionPointers = exceptionPointers;
+            minidumpExceptionInformation.ClientPointers = TRUE;
 
-		GetLocalTime(&time);
-		wsprintf(filename, L"Dump_%d%02d%02d_%02d.%02d.%02d_%d_%dMB.dmp",
-			time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, local_dump_count, working_memory);
+            BOOL result = MiniDumpWriteDump(
+                GetCurrentProcess(),
+                GetCurrentProcessId(),
+                dumpFile,
+                MiniDumpWithFullMemory,
+                &minidumpExceptionInformation,
+                nullptr,
+                nullptr);
 
-		wprintf(L"\n\n\n!!! Crash Error ..... %d.%d.%d / %d:%d:%d \n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond);
+            if (result == FALSE)
+            {
+                DWORD error = GetLastError();
 
-		HANDLE dump_file = CreateFile(filename, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+                wprintf(L"MiniDumpWriteDump Error %lu\n", error);
+            }
 
-		if (dump_file != INVALID_HANDLE_VALUE)
-		{
-			_MINIDUMP_EXCEPTION_INFORMATION minidump_exception_information;
+            CloseHandle(dumpFile);
 
-			minidump_exception_information.ThreadId = GetCurrentThreadId();
-			minidump_exception_information.ExceptionPointers = exception_pointer;
-			minidump_exception_information.ClientPointers = TRUE;
+            wprintf(L"Save Finish");
+        }
 
-			MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), dump_file, MiniDumpWithFullMemory, &minidump_exception_information, NULL, NULL);
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
 
-			CloseHandle(dump_file);
+    static void MyInvalidParameterHandler(
+        const wchar_t* expression,
+        const wchar_t* function,
+        const wchar_t* file,
+        unsigned int line,
+        uintptr_t reserved)
+    {
+        UNREFERENCED_PARAMETER(expression);
+        UNREFERENCED_PARAMETER(function);
+        UNREFERENCED_PARAMETER(file);
+        UNREFERENCED_PARAMETER(line);
+        UNREFERENCED_PARAMETER(reserved);
 
-			wprintf(L"Save Finish");
+        Crash();
+    }
 
-		}
+    static int CustomReportHook(int reportType, char* message, int* returnValue)
+    {
+        UNREFERENCED_PARAMETER(reportType);
+        UNREFERENCED_PARAMETER(message);
+        UNREFERENCED_PARAMETER(returnValue);
 
-		return EXCEPTION_EXECUTE_HANDLER;
-	}
+        Crash();
 
+        return TRUE;
+    }
 
+    static void MyPurecallHandler()
+    {
+        Crash();
+    }
 
-	static void SetHandlerDump()
-	{
-		SetUnhandledExceptionFilter(MyExcpetionFilter);
-	}
+    static volatile long& DumpCount()
+    {
+        static volatile long dumpCount = 0;
 
-	static void MyInvalidParameterHandler(const wchar_t* expression, const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t reserved)
-	{
-		Crash();
-	}
-
-	static int CustomReportHook(int ireposttype, char* message, int* returnvalue)
-	{
-		Crash();
-		return true;
-	}
-
-	static void MyPurecallHandler()
-	{
-		Crash();
-	}
-
-	static long dump_count ;
+        return dumpCount;
+    }
 };
-
-
-long CrashDump::dump_count = 0;
