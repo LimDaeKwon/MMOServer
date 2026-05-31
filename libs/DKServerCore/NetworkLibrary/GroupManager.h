@@ -1,15 +1,17 @@
 #pragma once
 
-#include "ContentGroupBase.h"
+#include <Windows.h>
+
 #include <unordered_map>
 
+#include "ContentGroupBase.h"
+
 struct Session;
+class ContentsCPacket;
 
 class GroupManager
 {
 public:
-
-
     GroupManager();
     virtual ~GroupManager();
 
@@ -18,10 +20,11 @@ public:
 
     ContentGroupBase* FindGroup(GroupId groupId);
 
-    bool RegisterSession(Session* session); // 디폴트 그룹으로 넣어줌. 
+    bool RegisterSession(Session* session);
     bool EnterGroup(Session* session, GroupId groupId);
     bool LeaveGroup(Session* session);
     bool MoveGroup(Session* session, GroupId groupId);
+
     int GetGroupPlayerSize(GroupId groupId);
     int GetGroupFPS(GroupId groupId);
 
@@ -29,15 +32,11 @@ public:
 
     void GroupOnInitializeTPS();
 
-    static unsigned int WINAPI FrameThread(LPVOID this_ptr);
-
+    static unsigned int __stdcall FrameThread(void* thisPointer);
 
 private:
-   
-
     std::unordered_map<GroupId, ContentGroupBase*> groupMap_;
 
     SRWLOCK groupMapLock_;
-    GroupId defaultGroupId_{ 0 };
-
+    GroupId defaultGroupId_;
 };

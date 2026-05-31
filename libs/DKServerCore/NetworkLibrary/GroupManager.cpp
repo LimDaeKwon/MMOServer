@@ -1,10 +1,11 @@
-
 #include "ContentsNetLibrary.h"
 #include "GroupManager.h"
-GroupManager::GroupManager()
-{
-	InitializeSRWLock(&groupMapLock_);
 
+
+GroupManager::GroupManager()
+    : defaultGroupId_(0)
+{
+    InitializeSRWLock(&groupMapLock_);
 }
 
 GroupManager::~GroupManager()
@@ -13,182 +14,210 @@ GroupManager::~GroupManager()
 
 bool GroupManager::AddGroup(ContentGroupBase* group, GroupId groupId)
 {
-	AcquireSRWLockExclusive(&groupMapLock_);
+    AcquireSRWLockExclusive(&groupMapLock_);
 
-	groupMap_.insert(std::pair<GroupId, ContentGroupBase*>(groupId, group));
-	ReleaseSRWLockExclusive(&groupMapLock_);
+    groupMap_.insert(std::pair<GroupId, ContentGroupBase*>(groupId, group));
 
-	return false;
+    ReleaseSRWLockExclusive(&groupMapLock_);
+
+    return true;
 }
 
 bool GroupManager::RemoveGroup(GroupId groupId)
 {
-	AcquireSRWLockExclusive(&groupMapLock_);
+    AcquireSRWLockExclusive(&groupMapLock_);
 
-	std::unordered_map<__int64, ContentGroupBase*>::iterator GI = groupMap_.find(groupId);
-	if (GI == groupMap_.end())
-	{
-		// 특이사항. 
-		//DebugBreak();
-	}
+    std::unordered_map<GroupId, ContentGroupBase*>::iterator groupIterator =
+        groupMap_.find(groupId);
 
-	groupMap_.erase(groupId);
+    if (groupIterator == groupMap_.end())
+    {
+    }
 
-	ReleaseSRWLockExclusive(&groupMapLock_);
+    groupMap_.erase(groupId);
 
+    ReleaseSRWLockExclusive(&groupMapLock_);
 
-	return false;
+    return true;
 }
 
 ContentGroupBase* GroupManager::FindGroup(GroupId groupId)
 {
-	return nullptr;
+    AcquireSRWLockShared(&groupMapLock_);
+
+    ContentGroupBase* group = nullptr;
+
+    std::unordered_map<GroupId, ContentGroupBase*>::iterator groupIterator =
+        groupMap_.find(groupId);
+
+    if (groupIterator != groupMap_.end())
+    {
+        group = groupIterator->second;
+    }
+
+    ReleaseSRWLockShared(&groupMapLock_);
+
+    return group;
 }
 
 bool GroupManager::RegisterSession(Session* session)
 {
-	session->currentGroupId_ = defaultGroupId_;
-	EnterGroup(session, defaultGroupId_);
+    session->currentGroupId_ = defaultGroupId_;
 
-	return false;
+    EnterGroup(session, defaultGroupId_);
+
+    return true;
 }
 
 bool GroupManager::EnterGroup(Session* session, GroupId groupId)
 {
+    ContentGroupBase* contentsGroup = FindGroup(groupId);
 
-	std::unordered_map<__int64, ContentGroupBase*>::iterator GI = groupMap_.find(groupId);
-	ContentGroupBase* contentsGroup = GI->second;
-	//스레드에 메시지 인큐. 
-	contentsGroup->PushEnter(session->session_id);
-	session->currentGroupId_ = groupId;
+    if (contentsGroup == nullptr)
+    {
+        return false;
+    }
 
 
-	return false;
+    contentsGroup->PushEnter(session->session_id);
+    session->currentGroupId_ = groupId;
+
+    return true;
 }
 
 bool GroupManager::LeaveGroup(Session* session)
 {
-	std::unordered_map<__int64, ContentGroupBase*>::iterator GI = groupMap_.find(session->currentGroupId_);
-	ContentGroupBase* contentsGroup = GI->second;
-	contentsGroup->PushLeave(session->session_id);
+    ContentGroupBase* contentsGroup = FindGroup(session->currentGroupId_);
 
-	session->currentGroupId_ = defaultGroupId_;
+    if (contentsGroup == nullptr)
+    {
+        return false;
+    }
 
 
-	return false;
+
+    contentsGroup->PushLeave(session->session_id);
+
+    session->currentGroupId_ = defaultGroupId_;
+
+    return true;
 }
 
 bool GroupManager::MoveGroup(Session* session, GroupId groupId)
 {
-	std::unordered_map<__int64, ContentGroupBase*>::iterator GI;
+    ContentGroupBase* contentsGroup = FindGroup(session->currentGroupId_);
 
-	GI = groupMap_.find(session->currentGroupId_);
-	ContentGroupBase* contentsGroup = GI->second;
-	contentsGroup->OnLeave(session->session_id);
-
-
-	GI = groupMap_.find(groupId);
-	contentsGroup = GI->second;
-	session->currentGroupId_ = groupId;
-	contentsGroup->PushEnter(session->session_id);
+    if (contentsGroup == nullptr)
+    {
+        return false;
+    }
 
 
-	return false;
+
+    contentsGroup->OnLeave(session->session_id);
+
+    contentsGroup = FindGroup(groupId);
+
+    session->currentGroupId_ = groupId;
+    contentsGroup->PushEnter(session->session_id);
+
+    return true;
 }
 
 int GroupManager::GetGroupPlayerSize(GroupId groupId)
 {
-	AcquireSRWLockShared(&groupMapLock_);
+    ContentGroupBase* target = FindGroup(groupId);
 
-	int playerNum = 0;
+    int playerNum = 0;
 
-	std::unordered_map<__int64, ContentGroupBase*>::iterator GI;
-	GI = groupMap_.find(groupId);
-	if (GI != groupMap_.end())
-	{
-		ContentGroupBase* target = GI->second;
-		playerNum = target->GetPlayerNum();
-	}
+    if (target != nullptr)
+    {
+        playerNum = target->GetPlayerNum();
+    }
 
-	ReleaseSRWLockShared(&groupMapLock_);
-
-	return playerNum;
+    return playerNum;
 }
 
 int GroupManager::GetGroupFPS(GroupId groupId)
 {
-	AcquireSRWLockShared(&groupMapLock_);
+    ContentGroupBase* target = FindGroup(groupId);
 
-	int TPS = 0;
+    int fps = 0;
 
-	std::unordered_map<__int64, ContentGroupBase*>::iterator GI;
-	GI = groupMap_.find(groupId);
-	if (GI != groupMap_.end())
-	{
-		ContentGroupBase* target = GI->second;
-		TPS = target->GetFPS();
-	}
+    if (target != nullptr)
+    {
+        fps = target->GetFPS();
+    }
 
-	ReleaseSRWLockShared(&groupMapLock_);
-	return TPS;
+    return fps;
 }
 
 bool GroupManager::RouteMessage(Session* session, ContentsCPacket* packet)
 {
+    ContentGroupBase* contentsGroup = FindGroup(session->currentGroupId_);
 
-	std::unordered_map<__int64, ContentGroupBase*>::iterator GI = groupMap_.find(session->currentGroupId_);
-	ContentGroupBase* contentsGroup = GI->second;
+    if (contentsGroup == nullptr)
+    {
+        return false;
+    }
 
-	contentsGroup->PushMessages(session->session_id, packet);
 
-	return false;
+    contentsGroup->PushMessages(session->session_id, packet);
+
+    return true;
 }
 
 void GroupManager::GroupOnInitializeTPS()
 {
-	AcquireSRWLockShared(&groupMapLock_);
+    AcquireSRWLockShared(&groupMapLock_);
 
-	for (std::unordered_map<GroupId, ContentGroupBase*>::iterator iter = groupMap_.begin(); iter != groupMap_.end(); ++iter)
-	{
-		ContentGroupBase* target = iter->second;
-		target->OnInitializeTPS();
-	}
-	ReleaseSRWLockShared(&groupMapLock_);
+    for (std::unordered_map<GroupId, ContentGroupBase*>::iterator iter = groupMap_.begin();
+        iter != groupMap_.end();
+        ++iter)
+    {
+        ContentGroupBase* target = iter->second;
+
+        target->OnInitializeTPS();
+    }
+
+    ReleaseSRWLockShared(&groupMapLock_);
 }
 
-
-
-
-
-unsigned int __stdcall GroupManager::FrameThread(LPVOID this_ptr)
+unsigned int __stdcall GroupManager::FrameThread(void* thisPointer)
 {
-	GroupManager* groupManager = static_cast<GroupManager*>(this_ptr);
+    GroupManager* groupManager = static_cast<GroupManager*>(thisPointer);
 
-	DWORD oldTick = timeGetTime();
+    DWORD oldTick = timeGetTime();
 
-	while (1)
-	{
-		DWORD tick = timeGetTime();
-		AcquireSRWLockShared(&groupManager->groupMapLock_);
+    while (true)
+    {
+        DWORD tick = timeGetTime();
 
-		for (std::unordered_map<GroupId, ContentGroupBase*>::iterator iter = groupManager->groupMap_.begin(); iter != groupManager->groupMap_.end(); ++iter)
-		{
-			ContentGroupBase* target = iter->second;
+        AcquireSRWLockShared(&groupManager->groupMapLock_);
 
-			if (tick - oldTick < target->GetFrame())
-			{
-				target->PushUpdate();
-			}
-		}
-		ReleaseSRWLockShared(&groupManager->groupMapLock_);
+        for (std::unordered_map<GroupId, ContentGroupBase*>::iterator iter =
+            groupManager->groupMap_.begin();
+            iter != groupManager->groupMap_.end();
+            ++iter)
+        {
+            ContentGroupBase* target = iter->second;
 
-		if (tick - oldTick < 20)
-		{
-			Sleep(tick - oldTick);
-		}
-		oldTick += 20;
+            if (tick - oldTick < target->GetFrame())
+            {
+                target->PushUpdate();
+            }
+        }
 
-	}
+        ReleaseSRWLockShared(&groupManager->groupMapLock_);
 
-	return 0;
+        DWORD elapsedTick = tick - oldTick;
+
+        if (elapsedTick < 20)
+        {
+            Sleep(20 - elapsedTick);
+        }
+        oldTick += 20;
+    }
+
+    return 0;
 }

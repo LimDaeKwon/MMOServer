@@ -1,7 +1,6 @@
 #include "ContentsNetLibrary.h"
 #include "ContentsCPacket.h"
 #include "ContentGroupBase.h"
-
 #include <process.h>
 
 ContentGroupBase::ContentGroupBase()
