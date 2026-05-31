@@ -27,4 +27,11 @@ namespace DKServerCore
     constexpr int MaxPacketPack = 20;
 
     constexpr long ReleaseFlag = static_cast<long>(0x80000000u);
+
+    constexpr int LanPacketType = 0;
+    constexpr int NetPacketType = 1;
+
+    constexpr int LanNetworkMaxBatchSize = 250;
+    constexpr unsigned char LibraryPacketCode = 0x89;
+
 }

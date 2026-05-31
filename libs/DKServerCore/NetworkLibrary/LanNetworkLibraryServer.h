@@ -1,184 +1,147 @@
 #pragma once
 
-#include <winsock2.h>
+#include <WinSock2.h>
+
+#include "CoreDefines.h"
 #include "LockFreeObjectFreeList.h"
 #include "ContentsCPacket.h"
 #include "LockFreeQueueCas2.h"
 #include "RingBuffer.h"
-#define RECV 10
-#define SEND 20
-#define LAN 0
-#define NET 1
-#define MAXBATCHSIZE 250
 
 class LanNetworkLibraryServer
 {
 public:
-	LanNetworkLibraryServer();
+    LanNetworkLibraryServer();
+    virtual ~LanNetworkLibraryServer();
 
-	virtual ~LanNetworkLibraryServer();
+    struct LanPacketHeader
+    {
+        unsigned short length_;
+    };
 
-	struct LanPacketHeader
-	{
-		unsigned short length;
-	};
-
-#pragma pack(push,1)
-	struct NetPacketHeader
-	{
-		BYTE byCode;			// 패킷코드 0x89 고정.
-		BYTE bySize;			// 패킷 사이즈.
-	};
+#pragma pack(push, 1)
+    struct NetPacketHeader
+    {
+        BYTE code_;
+        BYTE size_;
+    };
 #pragma pack(pop)
 
-	struct MyOverlapped
-	{
-		WSAOVERLAPPED overlapped;
-		int Type;
-	};
+    struct MyOverlapped
+    {
+        WSAOVERLAPPED overlapped_;
+        int type_;
+    };
 
-	struct BufferCount
-	{
-		CPacket* buffers[250];
-		long count;
-	};
+    struct BufferCount
+    {
+        CPacket* buffers_[DKServerCore::LanNetworkMaxBatchSize];
+        long count_;
+    };
 
-	struct Session
-	{
-		TLockFreeQueue<CPacket*> send_buffer;
+    struct Session
+    {
+        TLockFreeQueue<CPacket*> sendBuffer_;
 
-		MyOverlapped send_overlapped;
-		MyOverlapped recv_overlapped;
+        MyOverlapped sendOverlapped_;
+        MyOverlapped recvOverlapped_;
 
-		RingBuffer recv_buffer;
+        RingBuffer recvBuffer_;
 
-		SOCKET sock;
-		__int64 session_id = 0;
-		bool disconnect_flag = 0;
-		bool send_flag = 0;
-		long io_count = 0;
-		long send_count = 0; // sendTPS용
+        SOCKET sock_;
+        __int64 sessionId_ = 0;
+        bool disconnectFlag_ = false;
+        bool sendFlag_ = false;
+        long ioCount_ = 0;
+        long sendCount_ = 0;
 
-		BufferCount buffer_count; // 직렬화버퍼 지우기용.
-		
-		unsigned long long last_recv_time = 0; // Heartbeat용
-		bool use_flag = 0;
-		bool login_flag = 0;
+        BufferCount bufferCount_;
 
-		int* index;//인덱스 저장용
+        unsigned long long lastRecvTime_ = 0;
+        bool useFlag_ = false;
+        bool loginFlag_ = false;
 
-	};
+        int* index_;
+    };
 
-	
+    bool Start(const char* serverIp, unsigned int serverPort, unsigned int threadsCount, unsigned int concurrentThreads, unsigned int nagle, unsigned int sessions, unsigned int headerSize);
+    bool Stop();
+    int GetSessionCount();
+    void Disconnect(__int64 sessionId);
 
-	bool Start(const char* server_IP, unsigned int  server_port, unsigned int threads_count, unsigned int concurrent_threads, unsigned int nagle, unsigned int sessions , unsigned int header_size);
-	bool Stop();
-	int GetSessionCount();
-	void Disconnect(__int64 session_ID);
-	Session* SessionAlloc(int* empty_index , unsigned long long client_sock);
+    Session* SessionAlloc(int* emptyIndex, unsigned long long clientSock);
 
-	void SendCompletion(Session* target);
-	void RecvCompletion(Session* target , DWORD cbTransferred);
+    void SendCompletion(Session* target);
+    void RecvCompletion(Session* target, DWORD cbTransferred);
 
-	void SendPacket(__int64 session_ID, CPacket* send_packet);
-	void SendPost(Session* Target);
+    void SendPacket(__int64 sessionId, CPacket* sendPacket);
+    void SendPost(Session* target);
 
-	void ReceiveFirst(Session* new_session);
-	void RecvProc(Session* target);
-	void Receive(Session* target);
-	void LanAddHeader(CPacket* packet_buffer);
-	void NetAddHeader(CPacket* packet_buffer);
+    void ReceiveFirst(Session* newSession);
+    void RecvProc(Session* target);
+    void Receive(Session* target);
+    void LanAddHeader(CPacket* packetBuffer);
+    void NetAddHeader(CPacket* packetBuffer);
 
-	void Release(Session* target);
+    void Release(Session* target);
 
-	//IOCP 생성과 등록 구분하기. 
-	void RegisterIOCP(HANDLE new_socket, ULONG_PTR key);
-	HANDLE CreateIOCP(DWORD cuncurrent);
+    void RegisterIOCP(HANDLE newSocket, ULONG_PTR key);
+    HANDLE CreateIOCP(DWORD concurrent);
 
+    void ReturnReference(Session* target);
+    int SetWSABUF(Session* target, WSABUF* wsaBuf);
+    void GetClientAddress(SOCKET clientSocket, sockaddr_in& clientAddr, WCHAR* addr);
+    void RecursiveCheck(Session* target);
+    void CheckSendReturn(Session* target, int sendReturn);
+    void CheckRecvReturn(Session* target, int recvReturn);
+    bool CheckLibraryPacketCode(BYTE code);
 
-	//소유권 반환
-	void ReturnReference(Session* target);
+    int FindSession(__int64 sessionId);
+    int* FindEmptySession();
 
-	//WSA버퍼 세팅
-	int SetWSABUF(Session* target, WSABUF* wsabuf);
+    void ClearSendBuffer(Session* target);
 
-	//
-	void GetClientAddress(SOCKET client_socket, sockaddr_in& client_addr, WCHAR* addrl);
+    static unsigned int WINAPI AcceptThread(void* thisPointer);
+    static unsigned int WINAPI WorkerThread(void* thisPointer);
+    static unsigned int WINAPI MonitorThread(void* thisPointer);
+    static unsigned int WINAPI HeartbeatThread(void* thisPointer);
 
-	//
-	void RecursiveCheck(Session* target);
+    virtual bool OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort) = 0;
+    virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId) = 0;
+    virtual void OnRelease(__int64 sessionId) = 0;
+    virtual void OnMessage(__int64 sessionId, CPacket* sendPacket) = 0;
+    virtual void OnError(int errorCode, const wchar_t* errorLog) = 0;
 
-	//
-	void CheckSendReturn(Session* target, int send_return);
+    int GetAcceptTPS();
+    int GetRecvMessageTPS();
+    int GetSendMessageTPS();
 
-	//
-	void CheckRecvReturn(Session* target, int recv_return);
+    unsigned int acceptTps_;
+    unsigned int recvMessageTps_;
+    unsigned int sendMessageTps_;
 
-	//
-	bool CheckLibraryPacketCode(BYTE Code);
+    unsigned int acceptCount_;
+    unsigned int recvMessageCount_;
+    long sendMessageCount_;
 
-	int FindSession(__int64 session_ID);
-	int* FindEmptySession();
+    unsigned int maxSession_;
+    unsigned int sessionNum_;
+    unsigned int threadsNum_;
+    __int64 uniqueId_ = 1;
 
-	void ClearSendBuffer(Session* target);
+    unsigned int headerSize_;
+    unsigned int packetType_ = 1;
 
+    unsigned long long timeout_;
+    unsigned long long unloginTimeout_;
 
-	static unsigned int WINAPI AcceptThread(LPVOID this_ptr);
-	static unsigned int WINAPI WorkerThread(LPVOID this_ptr);
-	static unsigned int WINAPI MonitorThread(LPVOID this_ptr);
-	static unsigned int WINAPI HeartbeatThread(LPVOID this_ptr);
+    HANDLE handleIocp_;
+    SOCKET listenSock_;
+    HANDLE* threads_;
+    HANDLE acceptThread_;
+    HANDLE monitorThread_;
+    HANDLE heartbeatThread_;
+    Session* sessionArray_;
 
-
-	virtual bool OnConnectionRequest(const wchar_t* server_IP, unsigned short server_port) = 0;
-	virtual void OnAccept(const wchar_t* server_IP, unsigned short server_port, __int64 session_ID) = 0;
-	virtual void OnRelease(__int64 session_ID) = 0;
-
-	virtual void OnMessage(__int64 session_ID, CPacket* send_packet) = 0;
-
-	virtual void OnError(int errorcode, const wchar_t* error_log) = 0;
-
-	int GetAcceptTPS();
-	int GetRecvMessageTPS();
-	int GetSendMessageTPS();
-
-
-
-	unsigned int accept_TPS;
-	unsigned int recv_message_TPS;
-	unsigned int send_message_TPS;
-
-	unsigned int accept_count;
-	unsigned int recv_message_count;
-	long send_message_count;
-
-
-	unsigned int max_session;
-	unsigned int session_num;
-	unsigned int threads_num;
-	__int64 unique_id = 1;
-
-
-	unsigned int header_size;
-	//일단 귀찮아서 하드코딩
-	unsigned int packet_type = 1;
-
-
-	unsigned long long timeout;
-	unsigned long long unlogin_timeout;
-
-
-
-	HANDLE handle_iocp;
-	SOCKET listen_sock;
-	HANDLE* threads;
-	HANDLE accept_thread;
-	HANDLE monitor_thread;
-	HANDLE heartbeat_thread;
-	Session* session_array;
-
-	LFObjectFreeList<int> index_list;
-
-
-
+    LFObjectFreeList<int> indexList_;
 };
-
