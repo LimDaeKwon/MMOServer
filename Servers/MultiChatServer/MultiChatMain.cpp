@@ -65,11 +65,11 @@ int main()
 		wprintf(L"\n------------------------------------------------------------ \n");
 		wprintf(L"TPS \n");
 		wprintf(L"AccpetTPS  :  %d \n", ChatInstance->GetAcceptTPS());
-		wprintf(L"RecvTPS  :  %d     SendTPS  :  %d  MonitorSendTPS  :  %d\n", ChatInstance->GetRecvMessageTPS(), ChatInstance->GetSendMessageTPS(), ChatInstance->monitoringClient_.send_message_count);
+		wprintf(L"RecvTPS  :  %d     SendTPS  :  %d  MonitorSendTPS  :  %d\n", ChatInstance->GetRecvMessageTPS(), ChatInstance->GetSendMessageTPS(), ChatInstance->monitoringClient_.sendMessageCount_);
 		wprintf(L"LogicTPS  :  %d      LoginTPS  :  %d\n", ChatInstance->GetLogicTPS(), ChatInstance->GetLoginTPS());
 		wprintf(L"SectorMoveTPS  :  %d     ChatTPS  :  %d \n", ChatInstance->GetSectorMoveTPS(), ChatInstance->GetChatTPS());
 
-		InterlockedExchange(&ChatInstance->monitoringClient_.send_message_count, 0);
+		InterlockedExchange(&ChatInstance->monitoringClient_.sendMessageCount_, 0);
 
 
 

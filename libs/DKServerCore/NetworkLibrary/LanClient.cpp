@@ -1,12 +1,12 @@
 #include "LanClient.h"
 
-#include "winsock2.h"
-#include "ws2tcpip.h"
-#pragma comment(lib,"Ws2_32.lib")
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <Windows.h>
 
-//TODO : 이런 Define들은 헤더파일로 옮기기.
+#include <process.h>
 
-#define RELEASEFLAG 0x80000000
+#pragma comment(lib, "Ws2_32.lib")
 
 LanClient::LanClient()
 {
@@ -14,517 +14,562 @@ LanClient::LanClient()
 
 LanClient::~LanClient()
 {
-	Stop();
+    Stop();
 }
 
-bool LanClient::Start(const char* server_IP, unsigned int  server_port, unsigned int nagle, unsigned int header)
+bool LanClient::Start(
+    const char* serverIp,
+    unsigned int serverPort,
+    unsigned int nagle,
+    unsigned int header)
 {
-	header_size = header;
+    headerSize_ = header;
 
-	WSADATA wsa;
-	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-	{
-		return false;
-	}
+    WSADATA wsa;
 
-	handle_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
-	if (handle_iocp == NULL)
-	{
-		return false;
-	}
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+    {
+        return false;
+    }
 
-	client_session = new ClientSession;
+    handleIocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
 
-	client_session->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (client_session->sock == INVALID_SOCKET)
-	{
-		int error = WSAGetLastError();
-		wprintf(L"socket Error %d", error);
-		return false;
-	}
+    if (handleIocp_ == nullptr)
+    {
+        return false;
+    }
 
-	DWORD zero = 0;
-	setsockopt(client_session->sock, SOL_SOCKET, SO_SNDBUF, (const char*)&zero, sizeof(zero));
+    clientSession_ = new ClientSession;
 
-	LINGER linger;
-	linger.l_onoff = 1;
-	linger.l_linger = 0;
-	setsockopt(client_session->sock, SOL_SOCKET, SO_LINGER, (const char*)&linger, sizeof(linger));
+    clientSession_->sock_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	if (nagle)
-	{
-		DWORD NoDelay = 1;
-		setsockopt(client_session->sock, IPPROTO_TCP, TCP_NODELAY, (const char*)&NoDelay, sizeof(NoDelay));
-	}
+    if (clientSession_->sock_ == INVALID_SOCKET)
+    {
+        int error = WSAGetLastError();
+        wprintf(L"socket Error %d", error);
+        return false;
+    }
 
-	// 주소
-	SOCKADDR_IN server_address;
-	ZeroMemory(&server_address, sizeof(server_address));
-	server_address.sin_family = AF_INET;
-	InetPtonA(AF_INET, server_IP, &server_address.sin_addr);
-	server_address.sin_port = htons(server_port);
+    DWORD zero = 0;
+    setsockopt(
+        clientSession_->sock_,
+        SOL_SOCKET,
+        SO_SNDBUF,
+        reinterpret_cast<const char*>(&zero),
+        sizeof(zero));
 
-	//3회까지 시도
-	int connect_return = 0;
-	for (int i = 0; i < 3; i++)
-	{
-		connect_return = connect(client_session->sock, (sockaddr*)&server_address, sizeof(server_address));
-		if (connect_return == 0)
-		{
-			break;
-		}
+    LINGER linger;
+    linger.l_onoff = 1;
+    linger.l_linger = 0;
 
-		connect_return = WSAGetLastError();
-	}
+    setsockopt(
+        clientSession_->sock_,
+        SOL_SOCKET,
+        SO_LINGER,
+        reinterpret_cast<const char*>(&linger),
+        sizeof(linger));
 
-	if (connect_return != 0)
-	{
-		DebugBreak();
-	}
+    if (nagle)
+    {
+        DWORD noDelay = 1;
 
+        setsockopt(
+            clientSession_->sock_,
+            IPPROTO_TCP,
+            TCP_NODELAY,
+            reinterpret_cast<const char*>(&noDelay),
+            sizeof(noDelay));
+    }
 
+    SOCKADDR_IN serverAddress;
+    ZeroMemory(&serverAddress, sizeof(serverAddress));
+    serverAddress.sin_family = AF_INET;
+    InetPtonA(AF_INET, serverIp, &serverAddress.sin_addr);
+    serverAddress.sin_port = htons(serverPort);
 
-	if (CreateIoCompletionPort((HANDLE)client_session->sock, handle_iocp, (ULONG_PTR)client_session, 0) == 0)
-	{
-		int error = GetLastError();
-		wprintf(L"CreateIoCompletionPort Error %d", error);
-		DebugBreak();
-		return false;
-	}
+    int connectReturn = 0;
 
-	client_session->recv_overlapped.Type = RECV;
-	client_session->send_overlapped.Type = SEND;
-	client_session->io_count = 1;
+    for (int i = 0; i < 3; ++i)
+    {
+        connectReturn = connect(
+            clientSession_->sock_,
+            reinterpret_cast<sockaddr*>(&serverAddress),
+            sizeof(serverAddress));
 
+        if (connectReturn == 0)
+        {
+            break;
+        }
 
-	ReceiveFirst(client_session);
+        connectReturn = WSAGetLastError();
+    }
 
+    if (connectReturn != 0)
+    {
+        DebugBreak();
+    }
 
-	worker_thread = (HANDLE)_beginthreadex(NULL, 0, ClientWorkerThread, this, 0, NULL);
-	if (worker_thread == NULL)
-	{
-		wprintf(L"_beginthreadex Failed");
-		DebugBreak();
-		return false;
-	}
+    if (CreateIoCompletionPort(
+        reinterpret_cast<HANDLE>(clientSession_->sock_),
+        handleIocp_,
+        reinterpret_cast<ULONG_PTR>(clientSession_),
+        0) == nullptr)
+    {
+        int error = GetLastError();
+        wprintf(L"CreateIoCompletionPort Error %d", error);
+        DebugBreak();
+        return false;
+    }
 
-	OnConnect();
-	return true;
+    clientSession_->recvOverlapped_.type_ = DKServerCore::RecvIoType;
+    clientSession_->sendOverlapped_.type_ = DKServerCore::SendIoType;
+    clientSession_->ioCount_ = 1;
 
+    ReceiveFirst(clientSession_);
+
+    workerThread_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ClientWorkerThread, this, 0, nullptr));
+
+    if (workerThread_ == nullptr)
+    {
+        wprintf(L"_beginthreadex Failed");
+        DebugBreak();
+        return false;
+    }
+
+    OnConnect();
+
+    return true;
 }
 
 bool LanClient::Stop()
 {
-	if (handle_iocp)
-		PostQueuedCompletionStatus(handle_iocp, 0, 0, NULL);
+    if (handleIocp_)
+    {
+        PostQueuedCompletionStatus(handleIocp_, 0, 0, nullptr);
+    }
 
-	if (worker_thread)
-	{
-		WaitForSingleObject(worker_thread, INFINITE);
-		CloseHandle(worker_thread);
-		worker_thread = NULL;
-	}
+    if (workerThread_)
+    {
+        WaitForSingleObject(workerThread_, INFINITE);
+        CloseHandle(workerThread_);
+        workerThread_ = nullptr;
+    }
 
-	if (handle_iocp)
-	{
-		CloseHandle(handle_iocp);
-		handle_iocp = NULL;
-	}
+    if (handleIocp_)
+    {
+        CloseHandle(handleIocp_);
+        handleIocp_ = nullptr;
+    }
 
+    if (clientSession_->sock_ != INVALID_SOCKET)
+    {
+        closesocket(clientSession_->sock_);
+    }
 
-	if (client_session->sock != INVALID_SOCKET)
-	{
-		closesocket(client_session->sock);
-	}
-		
-	delete client_session;
-	client_session = nullptr;
+    delete clientSession_;
+    clientSession_ = nullptr;
 
+    WSACleanup();
 
-	WSACleanup();
-	return true;
+    return true;
 }
 
 void LanClient::Close()
 {
+    if (InterlockedExchange8(reinterpret_cast<volatile char*>(&clientSession_->closeFlag_), 1) == 1)
+    {
+        return;
+    }
 
-	if (InterlockedExchange8((char*)&client_session->close_flag, 1) == 1)
-	{
-		return;
-	}
-
-	CancelIoEx((HANDLE)client_session->sock, nullptr);
+    CancelIoEx(reinterpret_cast<HANDLE>(clientSession_->sock_), nullptr);
 }
 
-
-
-unsigned int __stdcall LanClient::ClientWorkerThread(LPVOID this_ptr)
+unsigned int __stdcall LanClient::ClientWorkerThread(void* thisPointer)
 {
-	LanClient* this_for_worker = (LanClient*)this_ptr;
+    LanClient* thisForWorker = static_cast<LanClient*>(thisPointer);
 
-	while (1)
-	{
-		DWORD cbTransferred = 0;
-		MyOverlapped* overlap_ptr;
-		ClientSession* target = nullptr;
-		int retval;
-		retval = GetQueuedCompletionStatus(this_for_worker->handle_iocp, &cbTransferred, (PULONG_PTR)&target, (LPOVERLAPPED*)&overlap_ptr, INFINITE);
+    while (true)
+    {
+        DWORD cbTransferred = 0;
+        MyOverlapped* overlapPointer = nullptr;
+        ClientSession* target = nullptr;
 
-		//IOCP 종료 메시지 이건 누가날려주지? 소멸자에서 날려주나? 
-		if (overlap_ptr == NULL && cbTransferred == NULL && target == NULL)
-		{
-			break;
-		}
+        int retval = GetQueuedCompletionStatus(
+            thisForWorker->handleIocp_,
+            &cbTransferred,
+            reinterpret_cast<PULONG_PTR>(&target),
+            reinterpret_cast<LPOVERLAPPED*>(&overlapPointer),
+            INFINITE);
 
-		//IO 문제 발생. 
-		if (retval == 0)
-		{
-			int error = WSAGetLastError();
-			if (!(error == 64 || error == 995)) // 다른 특이한 에러가 있는지 보기 위해서 하나씩 추가.
-			{
-				//64 : 연결을 끊음.
-				//995 : CancelIoEx에 의한 취소.
-				//__debugbreak();
-			}
+        if (overlapPointer == nullptr && cbTransferred == 0 && target == nullptr)
+        {
+            break;
+        }
 
-		}
-		else
-		{
-			if (overlap_ptr->Type == RECV)
-			{
-				this_for_worker->RecvCompletion(target, cbTransferred);
-			}
-			if (overlap_ptr->Type == SEND)
-			{
-				this_for_worker->SendCompletion(target);
-			}
-		}
+        if (retval == 0)
+        {
+            int error = WSAGetLastError();
 
-		if (InterlockedDecrement(&target->io_count) == 0)
-		{
-			this_for_worker->Release(target);
-			//Release시점은 서버와의 연결 종료시점..? 
-		}
+            if (!(error == 64 || error == 995))
+            {
+            }
+        }
+        else
+        {
+            if (overlapPointer->type_ == DKServerCore::RecvIoType)
+            {
+                thisForWorker->RecvCompletion(target, cbTransferred);
+            }
 
+            if (overlapPointer->type_ == DKServerCore::SendIoType)
+            {
+                thisForWorker->SendCompletion(target);
+            }
+        }
 
-	}
-	return 0;
+        if (InterlockedDecrement(&target->ioCount_) == 0)
+        {
+            thisForWorker->Release(target);
+        }
+    }
+
+    return 0;
 }
 
-
-void LanClient::SendPacket(ContentsCPacket contents_packet)
+void LanClient::SendPacket(ContentsCPacket contentsPacket)
 {
+    ClientSession* target = clientSession_;
 
-	ClientSession* target = client_session;
-	int local_count = InterlockedIncrement(&target->io_count);
+    int localCount = InterlockedIncrement(&target->ioCount_);
 
-	if ((local_count & RELEASEFLAG) == RELEASEFLAG)
-	{
-		if (InterlockedDecrement(&target->io_count) == 0)
-		{
-			Release(target);
-		}
-		return;
-	}
+    if ((localCount & DKServerCore::ReleaseFlag) == DKServerCore::ReleaseFlag)
+    {
+        if (InterlockedDecrement(&target->ioCount_) == 0)
+        {
+            Release(target);
+        }
 
+        return;
+    }
 
-	//인큐 , Send 
-	CPacket* send_packet = contents_packet.packetBuffer_;
+    CPacket* sendPacket = contentsPacket.packetBuffer_;
 
-	AddHeader(send_packet);
-	send_packet->IncreaseRefCount();
+    AddHeader(sendPacket);
+    sendPacket->IncreaseRefCount();
 
-	int enqueue_return = target->send_buffer.Enqueue(send_packet);
+    int enqueueReturn = target->sendBuffer_.Enqueue(sendPacket);
 
-	InterlockedIncrement(&target->send_count);
-	if (enqueue_return == false)
-	{
-		wprintf(L"EnqueueFail in SendPacketUnicast Client \n");
-		//DebugBreak();
-		return;
-	}
+    InterlockedIncrement(&target->sendCount_);
 
-	SendPost(target);
+    if (enqueueReturn == false)
+    {
 
-	if (InterlockedDecrement(&target->io_count) == 0)
-	{
-		Release(target);
-	}
+        CPacket::Free(sendPacket);
 
+        wprintf(L"EnqueueFail in SendPacketUnicast Client \n");
+
+        if (InterlockedDecrement(&target->ioCount_) == 0)
+        {
+            Release(target);
+        }
+
+        return;
+    }
+
+    SendPost(target);
+
+    if (InterlockedDecrement(&target->ioCount_) == 0)
+    {
+        Release(target);
+    }
 }
 
-
-void LanClient::ReceiveFirst(ClientSession* new_session)
+void LanClient::ReceiveFirst(ClientSession* newSession)
 {
-	WSABUF wsabuf;
-	wsabuf.buf = new_session->recv_buffer.GetRearBufferPtr();
-	wsabuf.len = new_session->recv_buffer.GetFreeSize();
+    WSABUF wsaBuf;
+    wsaBuf.buf = newSession->recvBuffer_.GetRearBufferPtr();
+    wsaBuf.len = newSession->recvBuffer_.GetFreeSize();
 
-	DWORD recvbytes;
-	DWORD flags = 0;
-	int retval;
+    DWORD recvBytes;
+    DWORD flags = 0;
 
-	ZeroMemory(&new_session->recv_overlapped.overlapped, sizeof(new_session->recv_overlapped.overlapped));
-	retval = WSARecv(new_session->sock, &wsabuf, 1, &recvbytes, &flags, (WSAOVERLAPPED*)&new_session->recv_overlapped.overlapped, 0);
+    ZeroMemory(&newSession->recvOverlapped_.overlapped_, sizeof(newSession->recvOverlapped_.overlapped_));
 
-	if (retval == SOCKET_ERROR)
-	{
-		int WSARecv_error = WSAGetLastError();
-		if (WSARecv_error != WSA_IO_PENDING)
-		{
+    int retval = WSARecv(
+        newSession->sock_,
+        &wsaBuf,
+        1,
+        &recvBytes,
+        &flags,
+        &newSession->recvOverlapped_.overlapped_,
+        0);
 
-			wprintf(L"In First WSARecvError : %d  Client \n", WSARecv_error);
+    if (retval == SOCKET_ERROR)
+    {
+        int wsaRecvError = WSAGetLastError();
 
-			if (InterlockedDecrement(&new_session->io_count) == 0)
-			{
-				Release(new_session);
-			}
-		}
-	}
+        if (wsaRecvError != WSA_IO_PENDING)
+        {
+            wprintf(L"In First WSARecvError : %d  Client \n", wsaRecvError);
+
+            if (InterlockedDecrement(&newSession->ioCount_) == 0)
+            {
+                Release(newSession);
+            }
+        }
+    }
 }
-
 
 void LanClient::Release(ClientSession* target)
 {
-	//여기서 IO/Count와 릴리즈 플래그를 한 번에 
-	//RELEASEFLAG 사용. 
+    if (InterlockedCompareExchange(&target->ioCount_, DKServerCore::ReleaseFlag, 0) != 0)
+    {
+        return;
+    }
 
-	if (InterlockedCompareExchange(&target->io_count, RELEASEFLAG, 0) != 0)
-	{
-		return;
-	}
+    for (int i = 0; i < target->bufferCount_.count_; ++i)
+    {
+        CPacket::Free(target->bufferCount_.buffers_[i]);
+    }
 
+    target->bufferCount_.count_ = 0;
 
-	for (int i = 0; i < target->buffer_count.count; ++i)
-	{
+    target->recvBuffer_.ClearBuffer();
+    ClearSendBuffer(target);
 
-		CPacket::Free(target->buffer_count.buffers[i]);
-	}
-	target->buffer_count.count = 0;
+    closesocket(target->sock_);
+    target->sock_ = INVALID_SOCKET;
 
-	target->recv_buffer.ClearBuffer();
-	ClearSendBuffer(target);
-
-
-	closesocket(target->sock);
-	target->sock = INVALID_SOCKET;
-
-
-
-	return;
+    return;
 }
+
 void LanClient::SendPost(ClientSession* target)
 {
-	
-	
-	
-	
-	if (target->close_flag == 1)
-	{
-		return;
-	}
+    if (target->closeFlag_ == 1)
+    {
+        return;
+    }
 
+    if (InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 1) != 0)
+    {
+        return;
+    }
 
-	if (InterlockedExchange8((char*)&target->send_flag, 1) != 0)
-	{
-		return;
+    WSABUF localWsaBuf[DKServerCore::MaxBatchSize];
 
-	}
+    int bufCount = 0;
 
+    while (bufCount < DKServerCore::MaxBatchSize)
+    {
+        CPacket* temp = nullptr;
 
-	WSABUF local_wsabuf[MAXBATCHSIZE];
-	int buf_count = 0;
-	while (buf_count < MAXBATCHSIZE)
-	{
-		CPacket* temp = nullptr;
+        if (target->sendBuffer_.Dequeue(&temp) == false)
+        {
+            break;
+        }
 
-		if (target->send_buffer.Dequeue(&temp) == false)
-		{
-			break;
-		}
-		target->buffer_count.buffers[buf_count] = temp;
-		local_wsabuf[buf_count].buf = temp->GetBufferPtr();
-		local_wsabuf[buf_count].len = temp->GetDataSize() + header_size;
-		buf_count++;
+        target->bufferCount_.buffers_[bufCount] = temp;
+        localWsaBuf[bufCount].buf = temp->GetBufferPtr();
+        localWsaBuf[bufCount].len = temp->GetDataSize() + headerSize_;
+        bufCount++;
+    }
 
-	}
-	target->buffer_count.count = buf_count;
+    target->bufferCount_.count_ = bufCount;
 
-	if (buf_count == 0)
-	{
-		InterlockedExchange8((char*)&target->send_flag, 0);
-		if (target->send_buffer.GetSize() != 0)
-		{
-			SendPost(target);
-		}
-		return;
-	}
-	InterlockedAdd(&send_message_count, target->send_count);
+    if (bufCount == 0)
+    {
+        InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 0);
 
-	InterlockedExchange(&target->send_count, 0);
-	
+        if (target->sendBuffer_.GetSize() != 0)
+        {
+            SendPost(target);
+        }
 
-	DWORD sendbytes = 0;
-	InterlockedIncrement(&target->io_count);
+        return;
+    }
 
+    InterlockedAdd(&sendMessageCount_, target->sendCount_);
 
-	ZeroMemory(&target->send_overlapped.overlapped, sizeof(target->send_overlapped.overlapped));
+    InterlockedExchange(&target->sendCount_, 0);
 
-	int WSASend_return;
-	WSASend_return = WSASend(target->sock, local_wsabuf, buf_count, &sendbytes, 0, &target->send_overlapped.overlapped, NULL);
-	if (WSASend_return == SOCKET_ERROR)
-	{
-		int WSASendError = WSAGetLastError();
+    DWORD sendBytes = 0;
 
-		if (WSASendError == WSA_IO_PENDING)
-		{
+    InterlockedIncrement(&target->ioCount_);
 
-			if (target->close_flag == 1)
-			{
-				CancelIoEx((HANDLE)target->sock, nullptr);
+    ZeroMemory(&target->sendOverlapped_.overlapped_, sizeof(target->sendOverlapped_.overlapped_));
 
+    int wsaSendReturn = WSASend(
+        target->sock_,
+        localWsaBuf,
+        bufCount,
+        &sendBytes,
+        0,
+        &target->sendOverlapped_.overlapped_,
+        nullptr);
 
-			}
+    if (wsaSendReturn == SOCKET_ERROR)
+    {
+        int wsaSendError = WSAGetLastError();
 
-		}
-		else
-		{
-			if (WSASendError == 10038)
-			{
-				//DebugBreak();
-			}
-			if (InterlockedDecrement(&target->io_count) == 0)
-			{
-				Release(target);
-				return;
-			}
-		}
-	}
+        if (wsaSendError == WSA_IO_PENDING)
+        {
+            if (target->closeFlag_ == 1)
+            {
+                CancelIoEx(reinterpret_cast<HANDLE>(target->sock_), nullptr);
+            }
+        }
+        else
+        {
+            if (wsaSendError == 10038)
+            {
+            }
 
+            if (InterlockedDecrement(&target->ioCount_) == 0)
+            {
+                Release(target);
+                return;
+            }
+        }
+    }
 }
 
 void LanClient::SendCompletion(ClientSession* target)
 {
-	for (int i = 0; i < target->buffer_count.count; ++i)
-	{
-		CPacket::Free(target->buffer_count.buffers[i]);
-	}
-	target->buffer_count.count = 0;
-	InterlockedExchange8((char*)&target->send_flag, 0);
-	SendPost(target);
+    for (int i = 0; i < target->bufferCount_.count_; ++i)
+    {
+        CPacket::Free(target->bufferCount_.buffers_[i]);
+    }
+
+    target->bufferCount_.count_ = 0;
+
+    InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 0);
+
+    SendPost(target);
 }
 
 void LanClient::RecvCompletion(ClientSession* target, DWORD cbTransferred)
 {
-
-	target->recv_buffer.MoveRear(cbTransferred);
-	RecvProc(target);
-	Receive(target);
+    target->recvBuffer_.MoveRear(cbTransferred);
+    RecvProc(target);
+    Receive(target);
 }
 
 void LanClient::RecvProc(ClientSession* target)
 {
-	while (1)
-	{
-		int target_recv_buffer_size = target->recv_buffer.GetUseSize();
-		PacketHeader header;
-		if (target_recv_buffer_size < sizeof(header))
-		{
-			break;
-		}
+    while (true)
+    {
+        int targetRecvBufferSize = target->recvBuffer_.GetUseSize();
+        PacketHeader header;
 
-		if (target->recv_buffer.Peek((char*)&header, sizeof(header)) != sizeof(header))
-		{
-			break;
-		}
+        if (targetRecvBufferSize < sizeof(header))
+        {
+            break;
+        }
 
-		if (target_recv_buffer_size < sizeof(header) + header.length)
-		{
-			break;
-		}
+        if (target->recvBuffer_.Peek(reinterpret_cast<char*>(&header), sizeof(header)) != sizeof(header))
+        {
+            break;
+        }
 
-		target->recv_buffer.MoveFront(sizeof(header));
+        if (targetRecvBufferSize < sizeof(header) + header.length_)
+        {
+            break;
+        }
 
-		CPacket* packet_buffer = CPacket::Alloc();
-		unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize, header.length);
+        target->recvBuffer_.MoveFront(sizeof(header));
 
-		if (receive_dequeue_packet_size != header.length)
-		{
-			OnError(0, L"## ReceiveQDequeuePacketSize != Header.BySize (Client)");
-			CPacket::Free(packet_buffer);
-			break;
-		}
+        CPacket* packetBuffer = CPacket::Alloc();
 
-		packet_buffer->IncreaseRefCount();
-		packet_buffer->MoveWritePosition(receive_dequeue_packet_size);
-		OnMessage((ContentsCPacket*)packet_buffer);
-		CPacket::Free(packet_buffer);
-	}
+        unsigned int receiveDequeuePacketSize = target->recvBuffer_.Dequeue(
+            packetBuffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize,
+            header.length_);
+
+        if (receiveDequeuePacketSize != header.length_)
+        {
+            OnError(0, L"## ReceiveQDequeuePacketSize != Header.BySize (Client)");
+            CPacket::Free(packetBuffer);
+            break;
+        }
+
+        packetBuffer->IncreaseRefCount();
+        packetBuffer->MoveWritePosition(receiveDequeuePacketSize);
+
+        OnMessage(reinterpret_cast<ContentsCPacket*>(packetBuffer));
+
+        CPacket::Free(packetBuffer);
+    }
 }
-
 
 void LanClient::Receive(ClientSession* target)
 {
-	if (target->close_flag)
-	{
-		return;
-	}
+    if (target->closeFlag_)
+    {
+        return;
+    }
 
-	WSABUF recv_wsabuf[2];
-	recv_wsabuf[0].buf = target->recv_buffer.GetRearBufferPtr();
-	recv_wsabuf[0].len = target->recv_buffer.DirectEnqueueSize();
-	recv_wsabuf[1].buf = target->recv_buffer.GetStartBufferPtr();
-	recv_wsabuf[1].len = target->recv_buffer.GetFreeSize() - target->recv_buffer.DirectEnqueueSize();
+    WSABUF recvWsaBuf[2];
 
-	DWORD recvbytes = 0;
-	DWORD flags = 0;
+    recvWsaBuf[0].buf = target->recvBuffer_.GetRearBufferPtr();
+    recvWsaBuf[0].len = target->recvBuffer_.DirectEnqueueSize();
+    recvWsaBuf[1].buf = target->recvBuffer_.GetStartBufferPtr();
+    recvWsaBuf[1].len = target->recvBuffer_.GetFreeSize() - target->recvBuffer_.DirectEnqueueSize();
 
-	ZeroMemory(&target->recv_overlapped.overlapped, sizeof(target->recv_overlapped.overlapped));
-	InterlockedIncrement(&target->io_count);
+    DWORD recvBytes = 0;
+    DWORD flags = 0;
 
-	int retval = WSARecv(target->sock, recv_wsabuf, 2, &recvbytes, &flags, &target->recv_overlapped.overlapped, 0);
-	if (retval == SOCKET_ERROR)
-	{
-		int WSARecv_error = WSAGetLastError();
-		if (WSARecv_error == WSA_IO_PENDING)
-		{
-			if (target->close_flag == 1)
-			{
-				CancelIoEx((HANDLE)target->sock, nullptr);
-			}
+    ZeroMemory(&target->recvOverlapped_.overlapped_, sizeof(target->recvOverlapped_.overlapped_));
 
-		}
-		else
-		{
-			if (InterlockedDecrement(&target->io_count) == 0)
-			{
-				Release(target);
-			}
+    InterlockedIncrement(&target->ioCount_);
 
-		}
-	}
+    int retval = WSARecv(
+        target->sock_,
+        recvWsaBuf,
+        2,
+        &recvBytes,
+        &flags,
+        &target->recvOverlapped_.overlapped_,
+        0);
+
+    if (retval == SOCKET_ERROR)
+    {
+        int wsaRecvError = WSAGetLastError();
+
+        if (wsaRecvError == WSA_IO_PENDING)
+        {
+            if (target->closeFlag_ == 1)
+            {
+                CancelIoEx(reinterpret_cast<HANDLE>(target->sock_), nullptr);
+            }
+        }
+        else
+        {
+            if (InterlockedDecrement(&target->ioCount_) == 0)
+            {
+                Release(target);
+            }
+        }
+    }
 }
 
-void LanClient::AddHeader(CPacket* packet_buffer)
+void LanClient::AddHeader(CPacket* packetBuffer)
 {
-	char* temp = packet_buffer->GetBufferPtr();
+    char* temp = packetBuffer->GetBufferPtr();
 
-	unsigned short len = (unsigned short)packet_buffer->GetDataSize();
-	(*(unsigned short*)(temp)) = len;
-
+    unsigned short len = static_cast<unsigned short>(packetBuffer->GetDataSize());
+    *reinterpret_cast<unsigned short*>(temp) = len;
 }
 
 void LanClient::ClearSendBuffer(ClientSession* target)
 {
-	while (1)
-	{
-		CPacket* t;
+    while (true)
+    {
+        CPacket* temp;
 
-		if (target->send_buffer.Dequeue(&t) == false)
-		{
-			break;
-		}
-		CPacket::Free(t);
-	}
+        if (target->sendBuffer_.Dequeue(&temp) == false)
+        {
+            break;
+        }
 
+        CPacket::Free(temp);
+    }
 }
