@@ -1,78 +1,56 @@
 #pragma once
-#include"CPacket.h"
+
+#include "CPacket.h"
 
 class ContentsCPacket
 {
 private:
-	ContentsCPacket();
-	
-	
+    ContentsCPacket();
 
 public:
+    ContentsCPacket(ContentsCPacket& copy);
+    ContentsCPacket(ContentsCPacket* copy);
+    ContentsCPacket(CPacket* allocBuffer);
 
-	ContentsCPacket(ContentsCPacket& copy);
-	ContentsCPacket(ContentsCPacket* copy);
-	ContentsCPacket(CPacket* alloc_buffer);
+    ~ContentsCPacket();
 
-	
-	//ContentsCPacket& operator=(CPacket* alloc_buffer);
+    static CPacket* MakeContentsPacket();
+    static CPacket* MakeContentsPacket(CPacket* other);
+    static CPacket* MakeContentsPacket(ContentsCPacket* other);
 
-	static CPacket* MakeContentsPacket();
-	static CPacket* MakeContentsPacket(CPacket* other);
-	static CPacket* MakeContentsPacket(ContentsCPacket* other);
+    void IncreaseRefCount();
 
-	//ContentsCPacket& operator=(ContentsCPacket* alloc_buffer);
+    ContentsCPacket& operator<<(unsigned char value);
+    ContentsCPacket& operator<<(char value);
 
-	~ContentsCPacket();
-	 
-	void IncreaseRefCount()
-	{
-		packet_buffer->IncreaseRefCount();
-	}
+    ContentsCPacket& operator<<(short value);
+    ContentsCPacket& operator<<(unsigned short value);
 
-	CPacket* packet_buffer;
+    ContentsCPacket& operator<<(int value);
+    ContentsCPacket& operator<<(long value);
+    ContentsCPacket& operator<<(unsigned int value);
+    ContentsCPacket& operator<<(float value);
 
+    ContentsCPacket& operator<<(__int64 value);
+    ContentsCPacket& operator<<(double value);
 
-	//////////////////////////////////////////////////////////////////////////
-	// 넣기.	각 변수 타입마다 모두 만듬.
-	//////////////////////////////////////////////////////////////////////////
-	ContentsCPacket& operator << (unsigned char Value);
-	ContentsCPacket& operator << (char Value);
+    ContentsCPacket& operator>>(unsigned char& value);
+    ContentsCPacket& operator>>(char& value);
 
-	ContentsCPacket& operator << (short Value);
-	ContentsCPacket& operator << (unsigned short Value);
+    ContentsCPacket& operator>>(short& value);
+    ContentsCPacket& operator>>(unsigned short& value);
 
-	ContentsCPacket& operator << (int Value);
-	ContentsCPacket& operator << (long Value);
-	ContentsCPacket& operator << (unsigned int Value);
-	ContentsCPacket& operator << (float Value);
+    ContentsCPacket& operator>>(int& value);
+    ContentsCPacket& operator>>(unsigned int& value);
+    ContentsCPacket& operator>>(float& value);
 
-	ContentsCPacket& operator << (__int64 Value);
-	ContentsCPacket& operator << (double Value);
+    ContentsCPacket& operator>>(__int64& value);
+    ContentsCPacket& operator>>(double& value);
 
+    int GetData(char* destination, int destinationSize);
+    int PutData(char* source, int sourceSize);
+    int GetDataSize() const;
 
-	//////////////////////////////////////////////////////////////////////////
-	// 빼기.	각 변수 타입마다 모두 만듬.
-	//////////////////////////////////////////////////////////////////////////
-	ContentsCPacket& operator >> (unsigned char& Value);
-	ContentsCPacket& operator >> (char& Value);
-
-	ContentsCPacket& operator >> (short& Value);
-	ContentsCPacket& operator >> (unsigned short& Value);
-
-	ContentsCPacket& operator >> (int& Value);
-	ContentsCPacket& operator >> (unsigned int& Value);
-	ContentsCPacket& operator >> (float& Value);
-
-	ContentsCPacket& operator >> (__int64& Value);
-	ContentsCPacket& operator >> (double& Value);
-
-
-
-	int		GetData(char* Destination, int DestinationSize);
-
-	int		PutData(char* Source, int SourceSize);
-	int		GetDataSize();
-
+public:
+    CPacket* packetBuffer_;
 };
-

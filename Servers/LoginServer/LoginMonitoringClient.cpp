@@ -12,7 +12,7 @@ LoginMonitoringClient::~LoginMonitoringClient()
 void LoginMonitoringClient::OnConnect()
 {
     ContentsCPacket loginPacket = ContentsCPacket::MakeContentsPacket();
-    loginPacket.packet_buffer->InitLan();
+    loginPacket.packetBuffer_->InitLan();
 
     loginPacket << (WORD)en_PACKET_SS_MONITOR_LOGIN << (int)dfMONITOR_SERVER_TYPE_LOGIN;
 
@@ -89,7 +89,7 @@ void LoginMonitoringClient::UpdateMonitorData(BYTE dataType, int dataValue, int 
 void LoginMonitoringClient::SendMonitorValue(BYTE dataType, const MonitorValue& monitorValue)
 {
     ContentsCPacket packet = ContentsCPacket::MakeContentsPacket();
-    packet.packet_buffer->InitLan();
+    packet.packetBuffer_->InitLan();
     packet << static_cast<WORD>(en_PACKET_SS_MONITOR_DATA_UPDATE);
     packet << dataType;
     packet << monitorValue.value_;

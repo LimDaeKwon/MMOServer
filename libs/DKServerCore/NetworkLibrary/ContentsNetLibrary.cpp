@@ -681,7 +681,7 @@ void ContentsNetLibrary::SendPacket(__int64 session_ID, ContentsCPacket contents
 		}
 		return;
 	}
-	CPacket* send_packet = contents_packet.packet_buffer;
+	CPacket* send_packet = contents_packet.packetBuffer_;
 
 	send_packet->IncreaseRefCount();
 	//ÀÎÅ¥ , Send 

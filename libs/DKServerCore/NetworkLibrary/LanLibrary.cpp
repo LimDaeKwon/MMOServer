@@ -612,7 +612,7 @@ void LanLibrary::SendPacket(__int64 session_ID, ContentsCPacket contents_packet)
 		}
 		return;
 	}
-	CPacket* send_packet = contents_packet.packet_buffer;
+	CPacket* send_packet = contents_packet.packetBuffer_;
 
 	send_packet->IncreaseRefCount();
 	int enqueue_return = target->send_buffer.Enqueue(send_packet);

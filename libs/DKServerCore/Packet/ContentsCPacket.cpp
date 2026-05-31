@@ -1,257 +1,195 @@
 #include "ContentsCPacket.h"
 
 ContentsCPacket::ContentsCPacket()
+    : packetBuffer_(nullptr)
 {
-
-
 }
 
-
-
-
-
-ContentsCPacket::ContentsCPacket(CPacket* alloc_buffer)
+ContentsCPacket::ContentsCPacket(CPacket* allocBuffer)
+    : packetBuffer_(allocBuffer)
 {
-	packet_buffer = alloc_buffer;
-
-	//packet_buffer->IncreaseRefCount();
-
-	
 }
 
 ContentsCPacket::ContentsCPacket(ContentsCPacket& copy)
+    : packetBuffer_(copy.packetBuffer_)
 {
-	packet_buffer = copy.packet_buffer;
-
-	packet_buffer->IncreaseRefCount();
-
+    packetBuffer_->IncreaseRefCount();
 }
 
 ContentsCPacket::ContentsCPacket(ContentsCPacket* copy)
+    : packetBuffer_(reinterpret_cast<CPacket*>(copy))
 {
-	packet_buffer = (CPacket*)copy;
-
 }
 
-
-
-//ContentsCPacket& ContentsCPacket::operator=(CPacket* alloc_buffer)
-//{
-//	packet_buffer = alloc_buffer;
-//
-//	packet_buffer->IncreaseRefCount();
-//
-//	
-//
-//	return *this; // 객체 자신의 참조 반환
-//}
-
-//ContentsCPacket& ContentsCPacket::operator=(ContentsCPacket* alloc_buffer)
-//{
-//	packet_buffer = alloc_buffer->packet_buffer;
-//
-//	packet_buffer->IncreaseRefCount();
-//
-//	
-//
-//	return *this; // 객체 자신의 참조 반환
-//}
+ContentsCPacket::~ContentsCPacket()
+{
+    CPacket::Free(packetBuffer_);
+}
 
 CPacket* ContentsCPacket::MakeContentsPacket()
 {
-
-	return CPacket::Alloc();
+    return CPacket::Alloc();
 }
 
 CPacket* ContentsCPacket::MakeContentsPacket(CPacket* other)
 {
-
-	return other;
+    return other;
 }
 
 CPacket* ContentsCPacket::MakeContentsPacket(ContentsCPacket* other)
 {
-	
-	return other->packet_buffer;
+    return other->packetBuffer_;
 }
 
-
-ContentsCPacket::~ContentsCPacket()
+void ContentsCPacket::IncreaseRefCount()
 {
-	//if (packet_buffer->DecreaseRefCount() == 0)
-	//{
-	CPacket::Free(packet_buffer);
-	//}
+    packetBuffer_->IncreaseRefCount();
 }
 
-
-
-ContentsCPacket& ContentsCPacket::operator<<(unsigned char Value)
+ContentsCPacket& ContentsCPacket::operator<<(unsigned char value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
-	// TODO: 여기에 return 문을 삽입합니다.
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(char Value)
+ContentsCPacket& ContentsCPacket::operator<<(char value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
-	// TODO: 여기에 return 문을 삽입합니다.
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(short Value)
+ContentsCPacket& ContentsCPacket::operator<<(short value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
-	// TODO: 여기에 return 문을 삽입합니다.
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(unsigned short Value)
+ContentsCPacket& ContentsCPacket::operator<<(unsigned short value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
-	// TODO: 여기에 return 문을 삽입합니다.
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(int Value)
+ContentsCPacket& ContentsCPacket::operator<<(int value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(long Value)
+ContentsCPacket& ContentsCPacket::operator<<(long value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(unsigned int Value)
+ContentsCPacket& ContentsCPacket::operator<<(unsigned int value)
 {
-	*packet_buffer << Value;
-	return *this;
+    *packetBuffer_ << value;
+
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(float Value)
+ContentsCPacket& ContentsCPacket::operator<<(float value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(__int64 Value)
+ContentsCPacket& ContentsCPacket::operator<<(__int64 value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator<<(double Value)
+ContentsCPacket& ContentsCPacket::operator<<(double value)
 {
-	*packet_buffer << Value;
+    *packetBuffer_ << value;
 
-	return *this;
+    return *this;
 }
 
-
-//-----------------------------------------------------------------
-//(*(unsigned short*)(SerializeBuffer + WritePosition)) = Value;
-ContentsCPacket& ContentsCPacket::operator>>(unsigned char& Value)
+ContentsCPacket& ContentsCPacket::operator>>(unsigned char& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator>>(char& Value)
+ContentsCPacket& ContentsCPacket::operator>>(char& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator>>(short& Value)
+ContentsCPacket& ContentsCPacket::operator>>(short& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-
-
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator>>(unsigned short& Value)
+ContentsCPacket& ContentsCPacket::operator>>(unsigned short& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-
-
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator>>(int& Value)
+ContentsCPacket& ContentsCPacket::operator>>(int& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-
-
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator>>(unsigned int& Value)
+ContentsCPacket& ContentsCPacket::operator>>(unsigned int& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-
-
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator>>(float& Value)
+ContentsCPacket& ContentsCPacket::operator>>(float& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator>>(__int64& Value)
+ContentsCPacket& ContentsCPacket::operator>>(__int64& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-
-
-	return *this;
+    return *this;
 }
 
-ContentsCPacket& ContentsCPacket::operator>>(double& Value)
+ContentsCPacket& ContentsCPacket::operator>>(double& value)
 {
-	*packet_buffer >> Value;
+    *packetBuffer_ >> value;
 
-	return *this;
+    return *this;
 }
 
-int ContentsCPacket::GetData(char* Destination, int DestinationSize)
+int ContentsCPacket::GetData(char* destination, int destinationSize)
 {
-	return packet_buffer->GetData(Destination, DestinationSize);
-
+    return packetBuffer_->GetData(destination, destinationSize);
 }
 
-//풋데이터는 타입이 없으니까?
-
-int ContentsCPacket::PutData(char* Source, int SourceSize)
+int ContentsCPacket::PutData(char* source, int sourceSize)
 {
-
-	return packet_buffer->PutData(Source, SourceSize);;
+    return packetBuffer_->PutData(source, sourceSize);
 }
 
-int ContentsCPacket::GetDataSize()
+int ContentsCPacket::GetDataSize() const
 {
-	return packet_buffer->GetDataSize();
+    return packetBuffer_->GetDataSize();
 }

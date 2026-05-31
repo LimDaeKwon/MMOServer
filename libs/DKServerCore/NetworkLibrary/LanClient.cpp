@@ -229,7 +229,7 @@ void LanClient::SendPacket(ContentsCPacket contents_packet)
 
 
 	//ÀÎÅ¥ , Send 
-	CPacket* send_packet = contents_packet.packet_buffer;
+	CPacket* send_packet = contents_packet.packetBuffer_;
 
 	AddHeader(send_packet);
 	send_packet->IncreaseRefCount();
