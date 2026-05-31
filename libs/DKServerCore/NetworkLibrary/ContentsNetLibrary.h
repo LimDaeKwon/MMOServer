@@ -1,7 +1,8 @@
-
 #pragma once
 
-#include <winsock2.h>
+#include <WinSock2.h>
+
+#include "CoreDefines.h"
 #include "LockFreeObjectFreeList.h"
 #include "ContentsCPacket.h"
 #include "RingBuffer.h"
@@ -10,191 +11,183 @@
 
 using GroupId = __int64;
 
-#define RECV 10
-#define SEND 20
-
-#define MAXBATCHSIZE 100
-
-#pragma pack(push,1)
+#pragma pack(push, 1)
 struct NetPacketHeader
 {
-	BYTE Code;
-	WORD Len;
-	BYTE RandKey;
-	BYTE CheckSum;
+    BYTE code_;
+    WORD len_;
+    BYTE randKey_;
+    BYTE checkSum_;
 };
 #pragma pack(pop)
 
 struct MyOverlapped
 {
-	WSAOVERLAPPED overlapped;
-	int Type;
+    WSAOVERLAPPED overlapped_;
+    int type_;
 };
 
 struct BufferCount
 {
-	CPacket* buffers[MAXBATCHSIZE];
-	long count;
+    CPacket* buffers_[DKServerCore::MaxBatchSize];
+    long count_;
 };
 
 struct Session
 {
-	TLockFreeQueue<CPacket*> send_buffer;
+    TLockFreeQueue<CPacket*> sendBuffer_;
 
-	MyOverlapped send_overlapped;
-	MyOverlapped recv_overlapped;
+    MyOverlapped sendOverlapped_;
+    MyOverlapped recvOverlapped_;
 
-	RingBuffer recv_buffer;
+    RingBuffer recvBuffer_;
 
-	SOCKET sock;
-	__int64 session_id = 0;
-	bool disconnect_flag = 0;
-	bool send_flag = 0;
-	long io_count = 0;
-	long send_count = 0; // sendTPS용
+    SOCKET sock_;
+    __int64 sessionId_ = 0;
+    bool disconnectFlag_ = false;
+    bool sendFlag_ = false;
+    long ioCount_ = 0;
+    long sendCount_ = 0;
 
-	GroupId currentGroupId_ = 0;
+    GroupId currentGroupId_ = 0;
 
-	BufferCount buffer_count; // 직렬화버퍼 지우기용.
+    BufferCount bufferCount_;
 
-	unsigned long long last_recv_time = 0; // Heartbeat용
-	bool use_flag = 0;
-	bool login_flag = 0;
-	int* index;//인덱스 저장용 // 락프리스택으로 바꾸면서 없애야 함. 
-
+    unsigned long long lastRecvTime_ = 0;
+    bool useFlag_ = false;
+    bool loginFlag_ = false;
+    int* index_;
 };
 
 struct Player
 {
-	SessionId SessionID;
-	INT64 AccountNo;
+    SessionId sessionId_;
+    INT64 accountNo_;
 };
-
 
 class ContentsNetLibrary
 {
 public:
-	ContentsNetLibrary();
+    ContentsNetLibrary();
+    virtual ~ContentsNetLibrary();
 
-	virtual ~ContentsNetLibrary();
+    bool Start(
+        const char* serverIp,
+        unsigned int serverPort,
+        unsigned int threadsCount,
+        unsigned int concurrentThreads,
+        unsigned int nagle,
+        unsigned int sessions,
+        unsigned int headerSize,
+        unsigned int sync,
+        unsigned int sendThreads,
+        unsigned char packetCode);
 
+    bool Stop();
+    void Disconnect(__int64 sessionId);
 
-	bool Start(const char* server_IP, unsigned int  server_port, unsigned int threads_count, unsigned int concurrent_threads, unsigned int nagle, unsigned int sessions, unsigned int header_size, unsigned int sync, unsigned int sendthreads, unsigned char packetCode);
-	bool Stop();
-	void Disconnect(__int64 session_ID);
-	Session* SessionAlloc(int* empty_index, unsigned long long client_sock);
+    Session* SessionAlloc(int* emptyIndex, unsigned long long clientSock);
 
-	void SendCompletion(Session* target);
-	void RecvCompletion(Session* target, DWORD cbTransferred);
+    void SendCompletion(Session* target);
+    void RecvCompletion(Session* target, DWORD cbTransferred);
 
-	void SendPacket(__int64 session_ID, ContentsCPacket send_packet);
-	void SendPost(Session* Target);
+    void SendPacket(__int64 sessionId, ContentsCPacket sendPacket);
+    void SendPost(Session* target);
 
-	void ReceiveFirst(Session* new_session);
-	void RecvProc(Session* target);
-	void Receive(Session* target);
-	void AddHeader(CPacket* packet_buffer);
-	void NetAddHeader(CPacket* packet_buffer);
+    void ReceiveFirst(Session* newSession);
+    void RecvProc(Session* target);
+    void Receive(Session* target);
+    void AddHeader(CPacket* packetBuffer);
+    void NetAddHeader(CPacket* packetBuffer);
 
-	void Release(Session* target);
+    void Release(Session* target);
 
+    int FindSession(__int64 sessionId);
+    int* FindEmptySession();
 
-	int FindSession(__int64 session_ID);
-	int* FindEmptySession();
+    void ClearSendBuffer(Session* target);
 
-	void ClearSendBuffer(Session* target);
+    void MoveGroup(__int64 sessionId, GroupId moveGroupId);
 
-	void MoveGroup(__int64 sessionId, GroupId moveGroupId);
+    virtual void* GetPlayerPointer(__int64 sessionId) = 0;
 
-	virtual void* GetPlayerPointer(__int64 sessionId)  = 0;
+    static unsigned int WINAPI AcceptThread(void* thisPointer);
+    static unsigned int WINAPI WorkerThread(void* thisPointer);
+    static unsigned int WINAPI MonitorThread(void* thisPointer);
+    static unsigned int WINAPI HeartbeatThread(void* thisPointer);
+    static unsigned int WINAPI SendThread(void* thisPointer);
 
+    void ThreadSendPost(Session* target);
 
+    virtual bool OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort) = 0;
+    virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId) = 0;
+    virtual void OnRelease(__int64 sessionId) = 0;
+    virtual void OnMessage(__int64 sessionId, ContentsCPacket* sendPacket) = 0;
+    virtual void OnError(int errorCode, const wchar_t* errorLog) = 0;
+    virtual void OnInitializeTPS() = 0;
 
-	static unsigned int WINAPI AcceptThread(LPVOID this_ptr);
-	static unsigned int WINAPI WorkerThread(LPVOID this_ptr);
-	static unsigned int WINAPI MonitorThread(LPVOID this_ptr);
-	static unsigned int WINAPI HeartbeatThread(LPVOID this_ptr);
-	static unsigned int WINAPI SendThread(LPVOID this_ptr);
+    int GetAcceptTPS();
+    int GetRecvMessageTPS();
+    int GetSendMessageTPS();
 
-	void ThreadSendPost(Session* target);
+    DWORD acceptTps_;
+    DWORD recvMessageTps_;
+    DWORD sendMessageTps_;
 
-	virtual bool OnConnectionRequest(const wchar_t* server_IP, unsigned short server_port) = 0;
-	virtual void OnAccept(const wchar_t* server_IP, unsigned short server_port, __int64 session_ID) = 0;
-	virtual void OnRelease(__int64 session_ID) = 0;
-	virtual void OnMessage(__int64 session_ID, ContentsCPacket* send_packet) = 0;
-	virtual void OnError(int errorcode, const wchar_t* error_log) = 0;
-	virtual void OnInitializeTPS() = 0;
+    DWORD acceptCount_;
+    DWORD recvMessageCount_;
+    long sendMessageCount_;
 
-	int GetAcceptTPS();
-	int GetRecvMessageTPS();
-	int GetSendMessageTPS();
+    DWORD maxSession_;
+    DWORD sessionNum_;
+    DWORD threadsNum_;
+    __int64 uniqueId_ = 1;
 
+    DWORD headerSize_;
 
+    DWORD packetType_ = 1;
 
-	DWORD accept_TPS;
-	DWORD recv_message_TPS;
-	DWORD send_message_TPS;
+    unsigned long long timeout_;
+    unsigned long long unloginTimeout_;
 
-	DWORD accept_count;
-	DWORD recv_message_count;
-	long send_message_count;
+    DWORD disconnectCount_;
+    DWORD dcUnloginTimeout_;
+    DWORD dcLoginTimeout_;
+    DWORD dcSendBufferFull_;
+    DWORD dcPacketCodeError_;
+    DWORD dcDecodeError_;
+    DWORD dcSessionFull_;
+    DWORD dcImpossiblePacketLength_;
 
+    DWORD GetDisconnectCount();
+    DWORD GetDCUnloginTimeout();
+    DWORD GetDCLoginTimeout();
+    DWORD GetDCSendBufferFull();
+    DWORD GetDCPacketCodeError();
+    DWORD GetDCDecodeError();
+    DWORD GetDCSessionFull();
+    DWORD GetDCImpossiblePacketLength();
 
-	DWORD max_session;
-	DWORD session_num;
-	DWORD threads_num;
-	__int64 unique_id = 1;
+    DWORD GetSessionNum();
 
+    unsigned long long GetAcceptTotal();
 
-	DWORD header_size;
+    unsigned int sendThreads_ = 0;
 
-	//일단 귀찮아서 하드코딩
-	DWORD packet_type = 1;
+    HANDLE handleIocp_;
+    SOCKET listenSock_;
+    HANDLE* threads_;
+    HANDLE acceptThread_;
+    HANDLE monitorThread_;
+    HANDLE heartbeatThread_;
+    HANDLE sendThread_;
+    HANDLE sendThread2_;
+    Session* sessionArray_;
 
+    LFObjectFreeList<int> indexList_;
 
-	unsigned long long timeout;
-	unsigned long long unlogin_timeout;
+    GroupManager groupManager_;
 
-	DWORD DisconnectCount;
-	DWORD DCUnloginTimeout;
-	DWORD DCLoginTimeout;
-	DWORD DCSendBufferFull;
-	DWORD DCPacketCodeError;
-	DWORD DCDecodeError;
-	DWORD DCSessionFull;
-	DWORD DCImpossiblePacketLength;
-
-	DWORD GetDisconnectCount();
-	DWORD GetDCUnloginTimeout();
-	DWORD GetDCLoginTimeout();
-	DWORD GetDCSendBufferFull();
-	DWORD GetDCPacketCodeError();
-	DWORD GetDCDecodeError();
-	DWORD GetDCSessionFull();
-	DWORD GetDCImpossiblePacketLength();
-
-	DWORD GetSessionNum();
-
-	unsigned long long GetAcceptTotal();
-
-
-	unsigned int sendThreads_ = 0;
-
-	HANDLE handle_iocp;
-	SOCKET listen_sock;
-	HANDLE* threads;
-	HANDLE accept_thread;
-	HANDLE monitor_thread;
-	HANDLE heartbeat_thread;
-	HANDLE sendThread_;
-	HANDLE sendThread2_;
-	Session* session_array;
-
-	LFObjectFreeList<int> index_list; // 얘를 락프리스택으로 바꿔야 함 
-
-	GroupManager groupManager_;
-
-	unsigned char packetCode_ = 0;
-	unsigned long long acceptTotal_ = 0;
+    unsigned char packetCode_ = 0;
+    unsigned long long acceptTotal_ = 0;
 };
-

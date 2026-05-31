@@ -79,7 +79,7 @@ bool GroupManager::EnterGroup(Session* session, GroupId groupId)
     }
 
 
-    contentsGroup->PushEnter(session->session_id);
+    contentsGroup->PushEnter(session->sessionId_);
     session->currentGroupId_ = groupId;
 
     return true;
@@ -96,7 +96,7 @@ bool GroupManager::LeaveGroup(Session* session)
 
 
 
-    contentsGroup->PushLeave(session->session_id);
+    contentsGroup->PushLeave(session->sessionId_);
 
     session->currentGroupId_ = defaultGroupId_;
 
@@ -114,12 +114,12 @@ bool GroupManager::MoveGroup(Session* session, GroupId groupId)
 
 
 
-    contentsGroup->OnLeave(session->session_id);
+    contentsGroup->OnLeave(session->sessionId_);
 
     contentsGroup = FindGroup(groupId);
 
     session->currentGroupId_ = groupId;
-    contentsGroup->PushEnter(session->session_id);
+    contentsGroup->PushEnter(session->sessionId_);
 
     return true;
 }
@@ -162,7 +162,7 @@ bool GroupManager::RouteMessage(Session* session, ContentsCPacket* packet)
     }
 
 
-    contentsGroup->PushMessages(session->session_id, packet);
+    contentsGroup->PushMessages(session->sessionId_, packet);
 
     return true;
 }

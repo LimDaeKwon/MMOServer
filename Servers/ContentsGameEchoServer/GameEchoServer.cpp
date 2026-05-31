@@ -43,8 +43,8 @@ void GameEchoServer::OnAccept(const wchar_t* server_IP, unsigned short server_po
 
 	AcquireSRWLockExclusive(&playerMapLock_);
 	Player* newPlayer = playerPool_.Alloc();
-	newPlayer->SessionID = sessionId;
-	playerMap_.insert(std::unordered_map<__int64, Player*>::value_type(newPlayer->SessionID, newPlayer));
+	newPlayer->sessionId_ = sessionId;
+	playerMap_.insert(std::unordered_map<__int64, Player*>::value_type(newPlayer->sessionId_, newPlayer));
 	ReleaseSRWLockExclusive(&playerMapLock_);
 
 }

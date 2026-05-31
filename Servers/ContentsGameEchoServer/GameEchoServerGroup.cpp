@@ -22,7 +22,7 @@ void AuthGroup::OnEnter(SessionId sessionId)
 		//엔터가 수행되기 전 끊긴거. 그냥 리턴시키기.
 		return;
 	}
-	authPlayerMap_.insert(std::unordered_map<__int64, Player*>::value_type(newPlayer->SessionID, newPlayer));
+	authPlayerMap_.insert(std::unordered_map<__int64, Player*>::value_type(newPlayer->sessionId_, newPlayer));
 }
 
 void AuthGroup::OnLeave(SessionId sessionId)
@@ -85,7 +85,7 @@ void AuthGroup::OnMessage(SessionId sessionId, ContentsCPacket* packet)
 			contentsPacket.GetData((char*)sessionKey, 64);
 			contentsPacket >> version;
 
-			target->AccountNo = accountNo;
+			target->accountNo_ = accountNo;
 
 			//contentsServer_->loginlogintpsLoginTPS
 
@@ -165,14 +165,14 @@ void EchoGroup::OnEnter(SessionId sessionId)
 		return;
 	}
 
-	echoPlayerMap_.insert(std::unordered_map<__int64, Player*>::value_type(target->SessionID, target));;
+	echoPlayerMap_.insert(std::unordered_map<__int64, Player*>::value_type(target->sessionId_, target));;
 
 
 	//로그인 응답 메시지 쏴주기. 
 	ContentsCPacket login_packet = ContentsCPacket::MakeContentsPacket();
-	login_packet << (WORD)en_PACKET_CS_GAME_RES_LOGIN << BYTE(TRUE) << target->AccountNo;
+	login_packet << (WORD)en_PACKET_CS_GAME_RES_LOGIN << BYTE(TRUE) << target->accountNo_;
 
-	contentsServer_->SendPacket(target->SessionID, login_packet);
+	contentsServer_->SendPacket(target->sessionId_, login_packet);
 
 }
 
@@ -232,7 +232,7 @@ void EchoGroup::OnMessage(SessionId sessionId, ContentsCPacket* packet)
 			contentsPacket >> accountoNo;
 			contentsPacket >> sendTick;
 
-			if (target->AccountNo != accountoNo)
+			if (target->accountNo_ != accountoNo)
 			{
 				//음?
 				contentsServer_->Disconnect(sessionId);
@@ -240,9 +240,9 @@ void EchoGroup::OnMessage(SessionId sessionId, ContentsCPacket* packet)
 
 
 			ContentsCPacket echoPacket = ContentsCPacket::MakeContentsPacket();
-			echoPacket << (WORD)en_PACKET_CS_GAME_RES_ECHO << target->AccountNo << sendTick;
+			echoPacket << (WORD)en_PACKET_CS_GAME_RES_ECHO << target->accountNo_ << sendTick;
 
-			contentsServer_->SendPacket(target->SessionID, echoPacket);
+			contentsServer_->SendPacket(target->sessionId_, echoPacket);
 
 		}
 
