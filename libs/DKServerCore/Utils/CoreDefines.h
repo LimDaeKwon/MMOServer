@@ -11,4 +11,6 @@ namespace DKServerCore
     constexpr int PacketDefaultBufferSize = 500;
     constexpr int PacketLibHeaderSize = 5;
     constexpr int PacketServerKey = 0x32;
+
+    constexpr int PacketQueueDefaultBufferSize = 5000;
 }
