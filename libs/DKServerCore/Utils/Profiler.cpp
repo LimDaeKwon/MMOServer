@@ -1,214 +1,254 @@
 #include "Profiler.h"
+
+#include <climits>
+#include <cstdio>
+#include <cstring>
 #include <vector>
 
-DWORD TLS_index;
+DWORD tlsIndex;
+LARGE_INTEGER frequency;
 
-LARGE_INTEGER Freq;
+std::vector<ProfileManagement*> profileList;
 
-std::vector<ProfileManagement*> ProfileList;
-
-void ProfileBegin(const WCHAR* szName)
+void ProfileBegin(const WCHAR* tagName)
 {
-	ProfileManagement* ProfileManage = (ProfileManagement*)TlsGetValue(TLS_index);
-	if (ProfileManage == NULL)
-	{
-		ProfileManage = new ProfileManagement[MAXINDEX];
-		memset(ProfileManage, 0, sizeof(ProfileManagement) * MAXINDEX);
+    ProfileManagement* profileManagement =
+        static_cast<ProfileManagement*>(TlsGetValue(tlsIndex));
 
-		TlsSetValue(TLS_index, ProfileManage);
-		//ProfileReset();
-		ProfileManage->ThreadID = GetCurrentThreadId();
-		ProfileList.push_back(ProfileManage);
-		
-	}
+    if (profileManagement == nullptr)
+    {
+        profileManagement = new ProfileManagement[DKServerCore::ProfilerMaxIndex];
+        memset(
+            profileManagement,
+            0,
+            sizeof(ProfileManagement) * DKServerCore::ProfilerMaxIndex);
 
+        TlsSetValue(tlsIndex, profileManagement);
 
-	int i;
-	for (i = 0; i < MAXINDEX; i++)
-	{
-		//이미 등록된 함수라면
-		if (ProfileManage[i].Flag == 1)
-		{
-			if (wcscmp(ProfileManage[i].szName, szName) == 0)
-			{
-				LARGE_INTEGER Start;
-				QueryPerformanceCounter(&Start);
-				ProfileManage[i].StartTime = Start;
-				if (InterlockedExchange(&ProfileManage[i].begin_flag, 1) == 1)
-				{
-					DebugBreak();
-				}
+        profileManagement->threadId_ = GetCurrentThreadId();
+        profileList.push_back(profileManagement);
+    }
 
+    int index = 0;
 
-				return;
-			}
-		}
-		else
-		{
-			break;
-		}
-	}
+    for (index = 0; index < DKServerCore::ProfilerMaxIndex; ++index)
+    {
+        if (profileManagement[index].flag_ == 1)
+        {
+            if (wcscmp(profileManagement[index].name_, tagName) == 0)
+            {
+                LARGE_INTEGER start;
 
-	//첫 등록
-	LARGE_INTEGER Start;
-	ProfileManage[i].Flag = 1;
-	wmemcpy(ProfileManage[i].szName, szName, wcslen(szName));
-	QueryPerformanceCounter(&Start);
-	ProfileManage[i].StartTime = Start;
-	ProfileManage[i].Min[0] = INT_MAX;
-	ProfileManage[i].Max[0] = -1;
+                QueryPerformanceCounter(&start);
 
-	ProfileManage[i].Min[1] = INT_MAX;
-	ProfileManage[i].Max[1] = -1;
-	if (InterlockedExchange(&ProfileManage[i].begin_flag, 1) == 1)
-	{
-		DebugBreak();
-	}
+                profileManagement[index].startTime_ = start;
 
+                if (InterlockedExchange(
+                    reinterpret_cast<volatile LONG*>(&profileManagement[index].beginFlag_),
+                    1) == 1)
+                {
+                    DebugBreak();
+                }
 
+                return;
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
 
-}
-void ProfileEnd(const WCHAR* szName)
-{
-	ProfileManagement* ProfileManage = (ProfileManagement*)TlsGetValue(TLS_index);
+    LARGE_INTEGER start;
 
-	int i;
+    profileManagement[index].flag_ = 1;
 
-	for (i = 0; i < MAXINDEX; i++)
-	{
+    wmemcpy(
+        profileManagement[index].name_,
+        tagName,
+        wcslen(tagName));
 
-		if (wcscmp(ProfileManage[i].szName, szName) == 0)
-		{
-			if (InterlockedExchange(&ProfileManage[i].begin_flag, 0) == 0)
-			{
-				DebugBreak();
-			}
-			
-			LARGE_INTEGER End;
-			LARGE_INTEGER ElapsedTime;
-			QueryPerformanceCounter(&End);
-			ElapsedTime.QuadPart = End.QuadPart - ProfileManage[i].StartTime.QuadPart;
+    QueryPerformanceCounter(&start);
 
+    profileManagement[index].startTime_ = start;
+    profileManagement[index].min_[0] = INT_MAX;
+    profileManagement[index].max_[0] = -1;
+    profileManagement[index].min_[1] = INT_MAX;
+    profileManagement[index].max_[1] = -1;
 
-			ProfileManage[i].TotalTime += ElapsedTime.QuadPart;
-
-			if (ElapsedTime.QuadPart < ProfileManage[i].Min[0])
-			{
-				ProfileManage[i].Min[1] = ProfileManage[i].Min[0];
-				ProfileManage[i].Min[0] = ElapsedTime.QuadPart;
-			}
-			else if (ElapsedTime.QuadPart < ProfileManage[i].Min[1])
-			{
-				ProfileManage[i].Min[1] = ElapsedTime.QuadPart;
-			}
-
-			if (ElapsedTime.QuadPart > ProfileManage[i].Max[0])
-			{
-				ProfileManage[i].Max[1] = ProfileManage[i].Max[0];
-				ProfileManage[i].Max[0] = ElapsedTime.QuadPart;
-			}
-			else if (ElapsedTime.QuadPart > ProfileManage[i].Max[1])
-			{
-				ProfileManage[i].Max[1] = ElapsedTime.QuadPart;
-			}
-			ProfileManage[i].Call++;
-
-			break;
-		}
-
-	}
-
+    if (InterlockedExchange(
+        reinterpret_cast<volatile LONG*>(&profileManagement[index].beginFlag_),
+        1) == 1)
+    {
+        DebugBreak();
+    }
 }
 
-void ProfileDataOutText(const WCHAR* szFileName)
+void ProfileEnd(const WCHAR* tagName)
 {
+    ProfileManagement* profileManagement =
+        static_cast<ProfileManagement*>(TlsGetValue(tlsIndex));
 
+    for (int index = 0; index < DKServerCore::ProfilerMaxIndex; ++index)
+    {
+        if (wcscmp(profileManagement[index].name_, tagName) == 0)
+        {
+            if (InterlockedExchange(
+                reinterpret_cast<volatile LONG*>(&profileManagement[index].beginFlag_),
+                0) == 0)
+            {
+                DebugBreak();
+            }
 
-	for (int i = 0; i < ProfileList.size(); i++)
-	{
+            LARGE_INTEGER end;
+            LARGE_INTEGER elapsedTime;
 
-		ProfileManagement* ProfileManage = ProfileList[i];
-		WCHAR filename[MAX_PATH];
-		wsprintf(filename, L"%s%02d.txt",
-			szFileName, ProfileManage->ThreadID);
+            QueryPerformanceCounter(&end);
 
+            elapsedTime.QuadPart =
+                end.QuadPart - profileManagement[index].startTime_.QuadPart;
 
-		FILE* WriteFile;
+            profileManagement[index].totalTime_ += elapsedTime.QuadPart;
 
-		if (_wfopen_s(&WriteFile, filename, L"wb") != 0)
-		{
-			wprintf(L"File Open Failed\n");
-			return;
-		}
+            if (elapsedTime.QuadPart < profileManagement[index].min_[0])
+            {
+                profileManagement[index].min_[1] = profileManagement[index].min_[0];
+                profileManagement[index].min_[0] = elapsedTime.QuadPart;
+            }
+            else if (elapsedTime.QuadPart < profileManagement[index].min_[1])
+            {
+                profileManagement[index].min_[1] = elapsedTime.QuadPart;
+            }
 
+            if (elapsedTime.QuadPart > profileManagement[index].max_[0])
+            {
+                profileManagement[index].max_[1] = profileManagement[index].max_[0];
+                profileManagement[index].max_[0] = elapsedTime.QuadPart;
+            }
+            else if (elapsedTime.QuadPart > profileManagement[index].max_[1])
+            {
+                profileManagement[index].max_[1] = elapsedTime.QuadPart;
+            }
 
-		fwprintf(WriteFile,
-			L"---------------------------------------------------------------------------------------------------------------------\n"
-			L"%20s  %20s  %20s  %25s  %20s \n"
-			L"---------------------------------------------------------------------------------------------------------------------\n",
-			L"Name", L"Average", L"Min", L"Max", L"Call");
+            ++profileManagement[index].call_;
 
-		for (int i = 0; i < MAXINDEX; i++)
-		{
-			if (ProfileManage[i].Flag == 1)
-			{
-				fwprintf(WriteFile,
-					L"%20s  %20s㎲  %20s㎲  %20s㎲  %10s\n",
-					ProfileManage[i].szName,
-					std::to_wstring((double)(ProfileManage[i].TotalTime - ProfileManage[i].Min[0] - ProfileManage[i].Max[0] - ProfileManage[i].Min[1] - ProfileManage[i].Max[1]) / (ProfileManage[i].Call - 4) / Freq.QuadPart * 1000000).c_str(),
-					std::to_wstring((double)((ProfileManage[i].Min[0] + ProfileManage[i].Min[1]) / (double)2) / Freq.QuadPart * 1000000).c_str(),
-					std::to_wstring((double)((ProfileManage[i].Max[0] + ProfileManage[i].Max[1]) / (double)2) / Freq.QuadPart * 1000000).c_str(),
-					std::to_wstring(ProfileManage[i].Call - 4).c_str());
-			}
-			else
-			{
-				break;
-			}
-		}
-		fwprintf(WriteFile, L"---------------------------------------------------------------------------------------------------------------------\n");
-
-
-
-		wprintf(L"WriteFileComplete %d\n", ProfileManage->ThreadID);
-
-		fclose(WriteFile);
-	}
-
-
+            break;
+        }
+    }
 }
+
+void ProfileDataOutText(const WCHAR* fileName)
+{
+    for (int profileIndex = 0; profileIndex < static_cast<int>(profileList.size()); ++profileIndex)
+    {
+        ProfileManagement* profileManagement = profileList[profileIndex];
+
+        WCHAR outputFileName[MAX_PATH];
+
+        swprintf_s(
+            outputFileName,
+            MAX_PATH,
+            L"%s%02d.txt",
+            fileName,
+            profileManagement->threadId_);
+
+        FILE* writeFile = nullptr;
+
+        if (_wfopen_s(&writeFile, outputFileName, L"wb") != 0)
+        {
+            wprintf(L"File Open Failed\n");
+            return;
+        }
+
+        fwprintf(
+            writeFile,
+            L"---------------------------------------------------------------------------------------------------------------------\n"
+            L"%20s  %20s  %20s  %25s  %20s \n"
+            L"---------------------------------------------------------------------------------------------------------------------\n",
+            L"Name",
+            L"Average",
+            L"Min",
+            L"Max",
+            L"Call");
+
+        for (int index = 0; index < DKServerCore::ProfilerMaxIndex; ++index)
+        {
+            if (profileManagement[index].flag_ == 1)
+            {
+                fwprintf(
+                    writeFile,
+                    L"%20s  %20s㎲  %20s㎲  %20s㎲  %10s\n",
+                    profileManagement[index].name_,
+                    std::to_wstring(
+                        static_cast<double>(
+                            profileManagement[index].totalTime_
+                            - profileManagement[index].min_[0]
+                            - profileManagement[index].max_[0]
+                            - profileManagement[index].min_[1]
+                            - profileManagement[index].max_[1])
+                        / (profileManagement[index].call_ - 4)
+                        / frequency.QuadPart
+                        * 1000000).c_str(),
+                    std::to_wstring(
+                        static_cast<double>(
+                            (profileManagement[index].min_[0] + profileManagement[index].min_[1])
+                            / static_cast<double>(2))
+                        / frequency.QuadPart
+                        * 1000000).c_str(),
+                    std::to_wstring(
+                        static_cast<double>(
+                            (profileManagement[index].max_[0] + profileManagement[index].max_[1])
+                            / static_cast<double>(2))
+                        / frequency.QuadPart
+                        * 1000000).c_str(),
+                    std::to_wstring(profileManagement[index].call_ - 4).c_str());
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        fwprintf(
+            writeFile,
+            L"---------------------------------------------------------------------------------------------------------------------\n");
+
+        wprintf(L"WriteFileComplete %d\n", profileManagement->threadId_);
+
+        fclose(writeFile);
+    }
+}
+
 void ProfileReset()
 {
+    for (int profileIndex = 0; profileIndex < static_cast<int>(profileList.size()); ++profileIndex)
+    {
+        ProfileManagement* profileManagement = profileList[profileIndex];
 
-	for (int i = 0; i < ProfileList.size(); i++)
-	{
+        for (int index = 0; index < DKServerCore::ProfilerMaxIndex; ++index)
+        {
+            if (profileManagement[index].flag_ == 1)
+            {
+                profileManagement[index].totalTime_ = 0;
+                profileManagement[index].call_ = 0;
+                profileManagement[index].min_[0] = INT_MAX;
+                profileManagement[index].max_[0] = -1;
+                profileManagement[index].min_[1] = INT_MAX;
+                profileManagement[index].max_[1] = -1;
+            }
+            else
+            {
+                break;
+            }
+        }
 
-		ProfileManagement* ProfileManage = ProfileList[i];
-
-
-		for (int i = 0; i < MAXINDEX; i++)
-		{
-			if (ProfileManage[i].Flag == 1)
-			{
-				ProfileManage[i].TotalTime = 0;
-				ProfileManage[i].Call = 0;
-				ProfileManage[i].Min[0] = INT_MAX;
-				ProfileManage[i].Max[0] = -1;
-				ProfileManage[i].Min[1] = INT_MAX;
-				ProfileManage[i].Max[1] = -1;
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		wprintf(L"ResetComplete %d\n", ProfileManage->ThreadID);
-	}
-
+        wprintf(L"ResetComplete %d\n", profileManagement->threadId_);
+    }
 }
 
 void InitProfile()
 {
-	TLS_index = TlsAlloc();
-	QueryPerformanceFrequency(&Freq);
+    tlsIndex = TlsAlloc();
+
+    QueryPerformanceFrequency(&frequency);
 }

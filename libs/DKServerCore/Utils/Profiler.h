@@ -1,60 +1,56 @@
 #pragma once
 
-#include "stdio.h"
-#include "Windows.h"
+#include <Windows.h>
 #include <string>
-#include "conio.h"
 
-//#define PROFILE
-#define MAXINDEX  20
+#include "CoreDefines.h"
 
-#ifdef PROFILE
-#define PRO_BEGIN(TagName) ProfileBegin(TagName)
-#define PRO_END(TagName) ProfileEnd(TagName)
+//#define DK_ENABLE_PROFILE
+
+#ifdef DK_ENABLE_PROFILE
+#define PRO_BEGIN(tagName) ProfileBegin(tagName)
+#define PRO_END(tagName) ProfileEnd(tagName)
 #define INIT_PROFILE_TLS() InitProfile()
-
 #else
-#define PRO_BEGIN(TagName) 
-#define PRO_END(TagName) 
-#define INIT_PROFILE_TLS() 
-
+#define PRO_BEGIN(tagName)
+#define PRO_END(tagName)
+#define INIT_PROFILE_TLS()
 #endif
-
-
 
 class ProfileManagement
 {
 public:
-	int Flag = 0;
-	WCHAR  szName[64] = {0};
-	LARGE_INTEGER StartTime;
-	__int64 TotalTime= 0;
-	__int64 Min[2] = { 0 };
-	__int64 Max[2] = { 0 };
-	__int64 Call = 0;
-	unsigned long long begin_flag = 0;
-	DWORD ThreadID = 0;
+    int flag_ = 0;
+    WCHAR name_[64] = { 0 };
+    LARGE_INTEGER startTime_;
+    __int64 totalTime_ = 0;
+    __int64 min_[2] = { 0 };
+    __int64 max_[2] = { 0 };
+    __int64 call_ = 0;
+    unsigned long long beginFlag_ = 0;
+    DWORD threadId_ = 0;
 };
 
-
-void ProfileBegin(const WCHAR* szName);
-void ProfileEnd(const WCHAR* szName);
-void ProfileDataOutText(const WCHAR* szFileName);
+void ProfileBegin(const WCHAR* tagName);
+void ProfileEnd(const WCHAR* tagName);
+void ProfileDataOutText(const WCHAR* fileName);
 void ProfileReset();
 void InitProfile();
 
 class Profile
 {
 public:
-	Profile(const WCHAR* NewTag)
-	{
-		PRO_BEGIN(NewTag);
-		Tag = NewTag;
-	}
-	~Profile()
-	{
-		PRO_END(Tag);
-	}
+    Profile(const WCHAR* newTag)
+        : tag_(newTag)
+    {
+        PRO_BEGIN(newTag);
+    }
 
-	const WCHAR* Tag;
+    ~Profile()
+    {
+        PRO_END(tag_);
+    }
+
+private:
+    const WCHAR* tag_;
 };

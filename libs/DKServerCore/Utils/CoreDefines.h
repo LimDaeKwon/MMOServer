@@ -18,4 +18,6 @@ namespace DKServerCore
     constexpr int LockFreeQueueCas2MaxSize = 200;
     constexpr int RingBufferDefaultBufferSize = 5000;
 
+    constexpr int ProfilerMaxIndex = 20;
+
 }
