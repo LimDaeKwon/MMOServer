@@ -1,578 +1,571 @@
 #include "CPacket.h"
-#include "Windows.h"
-//#define dfPACKET_KEY		
-#define SERVERKEY 0x32
 
-TLSObjectFreeList<CPacket> CPacket::serialize_list(0);
+#include <cstring>
 
-CPacket::CPacket() :BufferSize(BUFFER_DEFAULT), DataSize(0), ref_count(0), WritePosition(LIBHEADERSIZE), ReadPosition(LIBHEADERSIZE), EncodingFlag(0)
+TLSObjectFreeList<CPacket> CPacket::serializeList_(0);
+
+CPacket::CPacket()
+    : serializeBuffer_(nullptr),
+    bufferSize_(DKServerCore::PacketDefaultBufferSize),
+    refCount_(0),
+    dataSize_(0),
+    writePosition_(DKServerCore::PacketLibHeaderSize),
+    readPosition_(DKServerCore::PacketLibHeaderSize),
+    encodingFlag_(0)
 {
-	InitializeCriticalSection(&EncodingLock);
-	SerializeBuffer = new char[BUFFER_DEFAULT];
-
-
+    InitializeCriticalSection(&encodingLock_);
+    serializeBuffer_ = new char[DKServerCore::PacketDefaultBufferSize];
 }
 
-CPacket::CPacket(int NewBufferSize) :BufferSize(NewBufferSize), DataSize(0), ref_count(0), WritePosition(LIBHEADERSIZE), ReadPosition(LIBHEADERSIZE)
+CPacket::CPacket(int newBufferSize)
+    : serializeBuffer_(nullptr),
+    bufferSize_(newBufferSize),
+    refCount_(0),
+    dataSize_(0),
+    writePosition_(DKServerCore::PacketLibHeaderSize),
+    readPosition_(DKServerCore::PacketLibHeaderSize),
+    encodingFlag_(0)
 {
-
-	SerializeBuffer = new char[NewBufferSize];
-
+    InitializeCriticalSection(&encodingLock_);
+    serializeBuffer_ = new char[newBufferSize];
 }
 
 CPacket::~CPacket()
 {
-	delete[] SerializeBuffer;
+    DeleteCriticalSection(&encodingLock_);
+    delete[] serializeBuffer_;
 }
 
-void CPacket::Clear(void)
+void CPacket::Clear()
 {
-	DataSize = 0;
-	WritePosition = LIBHEADERSIZE;
-	ReadPosition = LIBHEADERSIZE;
-	EncodingFlag = 0;
+    dataSize_ = 0;
+    writePosition_ = DKServerCore::PacketLibHeaderSize;
+    readPosition_ = DKServerCore::PacketLibHeaderSize;
+    encodingFlag_ = 0;
 }
 
-void CPacket::InitLan(void)
+void CPacket::InitLan()
 {
-	DataSize = 0;
-	WritePosition = 2;
-	ReadPosition = 2;
-	EncodingFlag = 0;
+    dataSize_ = 0;
+    writePosition_ = 2;
+    readPosition_ = 2;
+    encodingFlag_ = 0;
 }
 
-
-int CPacket::MoveWritePosition(int Size)
+int CPacket::GetBufferSize() const
 {
-
-
-	if (DataSize + Size > BufferSize)
-	{
-		//고민. 최대한 넣어줄것인가.
-		//끌까? 아니요. 최대한 넣어주고 로그를 남깁시다.
-		//로그는 근데 자료구조에서 남기는게 아님. -1을 리턴 후 -1이라면 로그찍기를 컨텐츠단에서 진행.
-		return -1;
-	}
-
-	WritePosition += Size;
-	DataSize += Size;
-
-	return Size;
-
+    return bufferSize_;
 }
 
-int CPacket::MoveReadPosition(int Size)
+int CPacket::GetDataSize() const
 {
-	if (DataSize - Size < 0)
-	{
-		//고민. 최대한 빼 줄 것인가?
-		//끌까? 아니요. 최대한 넣어주고 로그를 남깁시다.
-		//로그는 근데 자료구조에서 남기는게 아님. -1을 리턴 후 -1이라면 로그찍기를 컨텐츠단에서 진행.
-		return -1;
-	}
+    return dataSize_;
+}
 
-	ReadPosition += Size;
-	DataSize -= Size;
+char* CPacket::GetBufferPtr()
+{
+    return serializeBuffer_;
+}
 
-	return Size;
+char* CPacket::GetWriteBufferPtr()
+{
+    return serializeBuffer_ + writePosition_;
+}
+
+char* CPacket::GetReadPosition()
+{
+    return serializeBuffer_ + DKServerCore::PacketLibHeaderSize;
+}
+
+int CPacket::MoveWritePosition(int size)
+{
+    if (dataSize_ + size > bufferSize_)
+    {
+        return -1;
+    }
+
+    writePosition_ += size;
+    dataSize_ += size;
+
+    return size;
+}
+
+int CPacket::MoveReadPosition(int size)
+{
+    if (dataSize_ - size < 0)
+    {
+        return -1;
+    }
+
+    readPosition_ += size;
+    dataSize_ -= size;
+
+    return size;
 }
 
 int CPacket::IncreaseRefCount()
 {
-	return InterlockedIncrement(&ref_count);
+    return InterlockedIncrement(&refCount_);
 }
 
 int CPacket::DecreaseRefCount()
 {
-	return InterlockedDecrement(&ref_count);;
+    return InterlockedDecrement(&refCount_);
 }
 
 CPacket* CPacket::Alloc()
 {
-	CPacket* packet = serialize_list.Alloc();	
-	
-	packet->IncreaseRefCount();
-	
-	return packet;
+    CPacket* packet = serializeList_.Alloc();
+
+    packet->IncreaseRefCount();
+
+    return packet;
 }
 
-
-
-void CPacket::Free(CPacket* packet_buffer)
+void CPacket::Free(CPacket* packet)
 {
-	if (packet_buffer->DecreaseRefCount() == 0)
-	{
-		packet_buffer->Clear();
-		serialize_list.Free(packet_buffer);
-	}
-
+    if (packet->DecreaseRefCount() == 0)
+    {
+        packet->Clear();
+        serializeList_.Free(packet);
+    }
 }
 
 int CPacket::GetPoolSize()
 {
-	 return serialize_list.GetPoolSize();
+    return serializeList_.GetPoolSize();
 }
 
 int CPacket::GetUseSize()
 {
-	return serialize_list.GetUseCount();
+    return serializeList_.GetUseCount();
 }
 
 int CPacket::GetCapacity()
 {
-	return serialize_list.GetCapacityCount();
+    return serializeList_.GetCapacityCount();
 }
 
-
-
-CPacket& CPacket::operator=(CPacket& SourcePacket)
+CPacket& CPacket::operator=(const CPacket& sourcePacket)
 {
-	if (BufferSize < SourcePacket.DataSize)
-	{
-		//이건 일단 사이즈를 늘려줘야겠지?
-		BufferSize = SourcePacket.DataSize;
-		delete[] SerializeBuffer;
+    if (bufferSize_ < sourcePacket.dataSize_)
+    {
+        bufferSize_ = sourcePacket.dataSize_;
 
-		SerializeBuffer = new char[BufferSize];
-	}
+        delete[] serializeBuffer_;
+        serializeBuffer_ = new char[bufferSize_];
+    }
 
+    if (memcpy_s(
+        serializeBuffer_,
+        bufferSize_,
+        sourcePacket.serializeBuffer_,
+        sourcePacket.dataSize_) != 0)
+    {
+        return *this;
+    }
 
-	if (memcpy_s(SerializeBuffer, SourcePacket.DataSize, SourcePacket.SerializeBuffer, SourcePacket.DataSize) != 0)
-	{
+    bufferSize_ = sourcePacket.bufferSize_;
+    dataSize_ = sourcePacket.dataSize_;
+    writePosition_ = sourcePacket.writePosition_;
+    readPosition_ = sourcePacket.readPosition_;
+    encodingFlag_ = sourcePacket.encodingFlag_;
 
-	}
-	BufferSize = SourcePacket.BufferSize;
-	DataSize = SourcePacket.DataSize;
-	WritePosition = SourcePacket.WritePosition;
-	ReadPosition = SourcePacket.ReadPosition;
-
-
-	return *this;
-
+    return *this;
 }
-//이걸 성능 좋게 어떻게 하지.
-CPacket& CPacket::operator<<(unsigned char Value)
+
+CPacket& CPacket::operator<<(unsigned char value)
 {
-	if (DataSize + sizeof(unsigned char) >= BufferSize)
-	{
-		return *this;
-	}
+    if (dataSize_ + sizeof(unsigned char) >= bufferSize_)
+    {
+        return *this;
+    }
 
-	*(SerializeBuffer + WritePosition) = Value;
+    *(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(unsigned char);
-	DataSize += sizeof(unsigned char);
+    writePosition_ += sizeof(unsigned char);
+    dataSize_ += sizeof(unsigned char);
 
-	return *this;
-	// TODO: 여기에 return 문을 삽입합니다.
+    return *this;
 }
 
-CPacket& CPacket::operator<<(char Value)
+CPacket& CPacket::operator<<(char value)
 {
-	if (DataSize + sizeof(char) >= BufferSize)
-	{
-		return *this;
-	}
+    if (dataSize_ + sizeof(char) >= bufferSize_)
+    {
+        return *this;
+    }
 
-	*(SerializeBuffer + WritePosition) = Value;
+    *(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(char);
-	DataSize += sizeof(char);
+    writePosition_ += sizeof(char);
+    dataSize_ += sizeof(char);
 
-	return *this;
-	// TODO: 여기에 return 문을 삽입합니다.
+    return *this;
 }
 
-CPacket& CPacket::operator<<(short Value)
+CPacket& CPacket::operator<<(short value)
 {
-	if (DataSize + sizeof(short) >= BufferSize)
-	{
-		return *this;
-	}
+    if (dataSize_ + sizeof(short) >= bufferSize_)
+    {
+        return *this;
+    }
 
-	(*(short*)(SerializeBuffer + WritePosition)) = Value;
+    *reinterpret_cast<short*>(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(short);
-	DataSize += sizeof(short);
+    writePosition_ += sizeof(short);
+    dataSize_ += sizeof(short);
 
-	return *this;
-	// TODO: 여기에 return 문을 삽입합니다.
+    return *this;
 }
 
-CPacket& CPacket::operator<<(unsigned short Value)
+CPacket& CPacket::operator<<(unsigned short value)
 {
-	if (DataSize + sizeof(unsigned short) >= BufferSize)
-	{
-		return *this;
-	}
-	(*(unsigned short*)(SerializeBuffer + WritePosition)) = Value;
+    if (dataSize_ + sizeof(unsigned short) >= bufferSize_)
+    {
+        return *this;
+    }
 
+    *reinterpret_cast<unsigned short*>(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(unsigned short);
-	DataSize += sizeof(unsigned short);
+    writePosition_ += sizeof(unsigned short);
+    dataSize_ += sizeof(unsigned short);
 
-	return *this;
-	// TODO: 여기에 return 문을 삽입합니다.
+    return *this;
 }
 
-CPacket& CPacket::operator<<(int Value)
+CPacket& CPacket::operator<<(int value)
 {
-	if (DataSize + sizeof(int) >= BufferSize)
-	{
-		return *this;
-	}
-	(*(int*)(SerializeBuffer + WritePosition)) = Value;
+    if (dataSize_ + sizeof(int) >= bufferSize_)
+    {
+        return *this;
+    }
 
+    *reinterpret_cast<int*>(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(int);
-	DataSize += sizeof(int);
+    writePosition_ += sizeof(int);
+    dataSize_ += sizeof(int);
 
-	return *this;
+    return *this;
 }
 
-CPacket& CPacket::operator<<(long Value)
+CPacket& CPacket::operator<<(long value)
 {
-	if (DataSize + sizeof(long) >= BufferSize)
-	{
-		return *this;
-	}
-	(*(long*)(SerializeBuffer + WritePosition)) = Value;
+    if (dataSize_ + sizeof(long) >= bufferSize_)
+    {
+        return *this;
+    }
 
+    *reinterpret_cast<long*>(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(long);
-	DataSize += sizeof(long);
+    writePosition_ += sizeof(long);
+    dataSize_ += sizeof(long);
 
-	return *this;
+    return *this;
 }
 
-CPacket& CPacket::operator<<(unsigned int Value)
+CPacket& CPacket::operator<<(unsigned int value)
 {
-	if (DataSize + sizeof(unsigned int) >= BufferSize)
-	{
-		return *this;
-	}
-	(*(unsigned int*)(SerializeBuffer + WritePosition)) = Value;
+    if (dataSize_ + sizeof(unsigned int) >= bufferSize_)
+    {
+        return *this;
+    }
 
+    *reinterpret_cast<unsigned int*>(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(unsigned int);
-	DataSize += sizeof(unsigned int);
+    writePosition_ += sizeof(unsigned int);
+    dataSize_ += sizeof(unsigned int);
 
-	return *this;
+    return *this;
 }
 
-CPacket& CPacket::operator<<(float Value)
+CPacket& CPacket::operator<<(float value)
 {
-	if (DataSize + sizeof(float) >= BufferSize)
-	{
-		return *this;
-	}
-	(*(float*)(SerializeBuffer + WritePosition)) = Value;
+    if (dataSize_ + sizeof(float) >= bufferSize_)
+    {
+        return *this;
+    }
 
+    *reinterpret_cast<float*>(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(float);
-	DataSize += sizeof(float);
+    writePosition_ += sizeof(float);
+    dataSize_ += sizeof(float);
 
-	return *this;
+    return *this;
 }
 
-CPacket& CPacket::operator<<(__int64 Value)
+CPacket& CPacket::operator<<(__int64 value)
 {
-	if (DataSize + sizeof(__int64) >= BufferSize)
-	{
-		return *this;
-	}
-	(*(__int64*)(SerializeBuffer + WritePosition)) = Value;
+    if (dataSize_ + sizeof(__int64) >= bufferSize_)
+    {
+        return *this;
+    }
 
+    *reinterpret_cast<__int64*>(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(__int64);
-	DataSize += sizeof(__int64);
+    writePosition_ += sizeof(__int64);
+    dataSize_ += sizeof(__int64);
 
-	return *this;
+    return *this;
 }
 
-CPacket& CPacket::operator<<(double Value)
+CPacket& CPacket::operator<<(double value)
 {
-	if (DataSize + sizeof(double) >= BufferSize)
-	{
-		return *this;
-	}
-	(*(double*)(SerializeBuffer + WritePosition)) = Value;
+    if (dataSize_ + sizeof(double) >= bufferSize_)
+    {
+        return *this;
+    }
 
+    *reinterpret_cast<double*>(serializeBuffer_ + writePosition_) = value;
 
-	WritePosition += sizeof(double);
-	DataSize += sizeof(double);
+    writePosition_ += sizeof(double);
+    dataSize_ += sizeof(double);
 
-	return *this;
+    return *this;
 }
 
-
-//-----------------------------------------------------------------
-//(*(unsigned short*)(SerializeBuffer + WritePosition)) = Value;
-CPacket& CPacket::operator>>(unsigned char& Value)
+CPacket& CPacket::operator>>(unsigned char& value)
 {
-	if (DataSize < sizeof(unsigned char))
-	{
-		return *this;
-	}
+    if (dataSize_ < sizeof(unsigned char))
+    {
+        return *this;
+    }
 
-	Value = (*(unsigned char*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(unsigned char);
-	DataSize -= sizeof(unsigned char);
+    value = *reinterpret_cast<unsigned char*>(serializeBuffer_ + readPosition_);
 
-	return *this;
+    readPosition_ += sizeof(unsigned char);
+    dataSize_ -= sizeof(unsigned char);
+
+    return *this;
 }
 
-CPacket& CPacket::operator>>(char& Value)
+CPacket& CPacket::operator>>(char& value)
 {
-	if (DataSize < sizeof(char))
-	{
-		return *this;
-	}
+    if (dataSize_ < sizeof(char))
+    {
+        return *this;
+    }
 
-	Value = (*(char*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(char);
-	DataSize -= sizeof(char);
+    value = *reinterpret_cast<char*>(serializeBuffer_ + readPosition_);
 
-	return *this;
+    readPosition_ += sizeof(char);
+    dataSize_ -= sizeof(char);
+
+    return *this;
 }
 
-CPacket& CPacket::operator>>(short& Value)
+CPacket& CPacket::operator>>(short& value)
 {
-	if (DataSize < sizeof(short))
-	{
-		return *this;
-	}
-	
-	Value = (*(short*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(short);
-	DataSize -= sizeof(short);
+    if (dataSize_ < sizeof(short))
+    {
+        return *this;
+    }
 
-	return *this;
+    value = *reinterpret_cast<short*>(serializeBuffer_ + readPosition_);
+
+    readPosition_ += sizeof(short);
+    dataSize_ -= sizeof(short);
+
+    return *this;
 }
 
-CPacket& CPacket::operator>>(unsigned short& Value)
+CPacket& CPacket::operator>>(unsigned short& value)
 {
-	if (DataSize < sizeof(unsigned short))
-	{
-		return *this;
-	}
+    if (dataSize_ < sizeof(unsigned short))
+    {
+        return *this;
+    }
 
-	Value = (*(unsigned short*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(unsigned short);
-	DataSize -= sizeof(unsigned short);
+    value = *reinterpret_cast<unsigned short*>(serializeBuffer_ + readPosition_);
 
-	return *this;
+    readPosition_ += sizeof(unsigned short);
+    dataSize_ -= sizeof(unsigned short);
+
+    return *this;
 }
 
-CPacket& CPacket::operator>>(int& Value)
+CPacket& CPacket::operator>>(int& value)
 {
-	if (DataSize < sizeof(int))
-	{
-		return *this;
-	}
+    if (dataSize_ < sizeof(int))
+    {
+        return *this;
+    }
 
-	Value = (*(int*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(int);
-	DataSize -= sizeof(int);
+    value = *reinterpret_cast<int*>(serializeBuffer_ + readPosition_);
 
-	return *this;
+    readPosition_ += sizeof(int);
+    dataSize_ -= sizeof(int);
+
+    return *this;
 }
 
-CPacket& CPacket::operator>>(unsigned int& Value)
+CPacket& CPacket::operator>>(unsigned int& value)
 {
-	if (DataSize < sizeof(unsigned int))
-	{
-		return *this;
-	}
+    if (dataSize_ < sizeof(unsigned int))
+    {
+        return *this;
+    }
 
-	Value = (*(unsigned int*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(unsigned int);
-	DataSize -= sizeof(unsigned int);
+    value = *reinterpret_cast<unsigned int*>(serializeBuffer_ + readPosition_);
 
-	return *this;
+    readPosition_ += sizeof(unsigned int);
+    dataSize_ -= sizeof(unsigned int);
+
+    return *this;
 }
 
-CPacket& CPacket::operator>>(float& Value)
+CPacket& CPacket::operator>>(float& value)
 {
-	if (DataSize < sizeof(float))
-	{
-		return *this;
-	}
+    if (dataSize_ < sizeof(float))
+    {
+        return *this;
+    }
 
-	Value = (*(float*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(float);
-	DataSize -= sizeof(float);
+    value = *reinterpret_cast<float*>(serializeBuffer_ + readPosition_);
 
+    readPosition_ += sizeof(float);
+    dataSize_ -= sizeof(float);
 
-	return *this;
+    return *this;
 }
 
-CPacket& CPacket::operator>>(__int64& Value)
+CPacket& CPacket::operator>>(__int64& value)
 {
-	if (DataSize < sizeof(__int64))
-	{
-		return *this;
-	}
+    if (dataSize_ < sizeof(__int64))
+    {
+        return *this;
+    }
 
-	Value = (*(__int64*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(__int64);
-	DataSize -= sizeof(__int64);
+    value = *reinterpret_cast<__int64*>(serializeBuffer_ + readPosition_);
 
+    readPosition_ += sizeof(__int64);
+    dataSize_ -= sizeof(__int64);
 
-	return *this;
+    return *this;
 }
 
-CPacket& CPacket::operator>>(double& Value)
+CPacket& CPacket::operator>>(double& value)
 {
-	if (DataSize < sizeof(double))
-	{
-		return *this;
-	}
+    if (dataSize_ < sizeof(double))
+    {
+        return *this;
+    }
 
-	Value = (*(double*)(SerializeBuffer + ReadPosition));
-	ReadPosition += sizeof(double);
-	DataSize -= sizeof(double);
+    value = *reinterpret_cast<double*>(serializeBuffer_ + readPosition_);
 
+    readPosition_ += sizeof(double);
+    dataSize_ -= sizeof(double);
 
-	return *this;
+    return *this;
 }
 
-int CPacket::GetData(char* Destination, int DestinationSize)
+int CPacket::GetData(char* destination, int destinationSize)
 {
-	if (DataSize < DestinationSize)
-	{
-		return -1;
-	}
+    if (dataSize_ < destinationSize)
+    {
+        return -1;
+    }
 
+    if (memcpy_s(
+        destination,
+        destinationSize,
+        serializeBuffer_ + readPosition_,
+        destinationSize) != 0)
+    {
+        return -1;
+    }
 
-	if (memcpy_s(Destination, DestinationSize, SerializeBuffer + ReadPosition, DestinationSize) != 0)
-	{
+    readPosition_ += destinationSize;
+    dataSize_ -= destinationSize;
 
-		//에러.
-		return -1;
-
-	}
-
-	ReadPosition += DestinationSize;
-	DataSize -= DestinationSize;
-
-
-	return DestinationSize;
-
+    return destinationSize;
 }
 
-//풋데이터는 타입이 없으니까?
-
-int CPacket::PutData(char* Source, int SourceSize)
+int CPacket::PutData(char* source, int sourceSize)
 {
-	if (DataSize + SourceSize > BufferSize)
-	{
-		//고민. 최대한 넣어줄것인가.
-		//끌까? 아니요. 최대한 넣어주고 로그를 남깁시다.
-		//로그는 근데 자료구조에서 남기는게 아님. -1을 리턴 후 -1이라면 로그찍기를 컨텐츠단에서 진행.
-		return -1;
-	}
+    if (dataSize_ + sourceSize > bufferSize_)
+    {
+        return -1;
+    }
 
+    if (memcpy_s(
+        serializeBuffer_ + writePosition_,
+        sourceSize,
+        source,
+        sourceSize) != 0)
+    {
+        return -1;
+    }
 
-	if (memcpy_s(SerializeBuffer + WritePosition, SourceSize, Source, SourceSize) != 0)
-	{
+    writePosition_ += sourceSize;
+    dataSize_ += sourceSize;
 
-		//에러.
-		return -1;
-
-	}
-	WritePosition += SourceSize;
-	DataSize += SourceSize;
-
-	return 0;
+    return 0;
 }
 
-//
-//void CPacket::PrintOffset()
-//{
-//	__int64 OffsetBuffer = (__int64)(&(((CPacket*)0)->SerializeBuffer));
-//	__int64 OffsetBufferSize = (__int64)(&(((CPacket*)0)->BufferSize));
-//	__int64 OffsetDataSize = (__int64)(&(((CPacket*)0)->DataSize));
-//	__int64 OffsetWritePosition = (__int64)(&(((CPacket*)0)->WritePosition));
-//	__int64 OffsetReadPosition = (__int64)(&(((CPacket*)0)->ReadPosition));
-//
-//	wprintf(L"OffsetBuffer : %lld \n", OffsetBuffer);
-//	wprintf(L"OffsetBufferSize : %lld \n", OffsetBufferSize);
-//	wprintf(L"OffsetDataSize : %lld \n", OffsetDataSize);
-//	wprintf(L"OffsetWritePosition : %lld \n", OffsetWritePosition);
-//	wprintf(L"OffsetReadPosition : %lld \n", OffsetReadPosition);
-//
-//}
-
-
-
-
-
-
-BYTE CPacket::Encode(char* Text, WORD Size, BYTE rk)
+BYTE CPacket::Encode(char* text, WORD size, BYTE randomKey)
 {
-	unsigned char checksum = 0;
-	for (WORD i = 0; i < Size; i++)
-	{
-		checksum += Text[i];
-	}
-	checksum %= 256;
+    unsigned char checksum = 0;
 
-	unsigned char beforeP = 0;
+    for (WORD i = 0; i < size; ++i)
+    {
+        checksum += text[i];
+    }
 
-	int counter = 1;
-	beforeP = checksum ^ (rk + counter + beforeP);
-	checksum = beforeP ^ (SERVERKEY + counter);
-	counter++;
+    checksum %= 256;
 
-	beforeP = Text[0] ^ (rk + counter + beforeP);
-	Text[0] = beforeP ^ (checksum + SERVERKEY + counter);
+    unsigned char beforePlain = 0;
+    int counter = 1;
 
-	for (WORD i = 1; i < Size; i++)
-	{
-		counter++;
-		beforeP = Text[i] ^ (rk + counter + beforeP);
-		Text[i] = beforeP ^ (Text[i - 1] + SERVERKEY + counter);
-	}
+    beforePlain = checksum ^ (randomKey + counter + beforePlain);
+    checksum = beforePlain ^ (DKServerCore::PacketServerKey + counter);
+    ++counter;
 
-	return checksum;
+    beforePlain = text[0] ^ (randomKey + counter + beforePlain);
+    text[0] = beforePlain ^ (checksum + DKServerCore::PacketServerKey + counter);
 
+    for (WORD i = 1; i < size; ++i)
+    {
+        ++counter;
+
+        beforePlain = text[i] ^ (randomKey + counter + beforePlain);
+        text[i] = beforePlain ^ (text[i - 1] + DKServerCore::PacketServerKey + counter);
+    }
+
+    return checksum;
 }
 
-bool CPacket::Decode(char* Text, WORD Size, BYTE rk)
+bool CPacket::Decode(char* text, WORD size, BYTE randomKey)
 {
-	int counter = 1;
+    int counter = 1;
 
-	BYTE beforeP = Text[0] ^ (SERVERKEY + counter);
-	BYTE beforeE = Text[0];
-	Text[0] = beforeE ^ (SERVERKEY + counter) ^ (rk + counter);
+    BYTE beforePlain = text[0] ^ (DKServerCore::PacketServerKey + counter);
+    BYTE beforeEncoded = text[0];
 
+    text[0] = beforeEncoded ^ (DKServerCore::PacketServerKey + counter) ^ (randomKey + counter);
 
-	for (WORD i = 1; i < Size; i++)
-	{
-		counter++;
-		BYTE nowP = Text[i] ^ (beforeE + SERVERKEY + counter);
-		beforeE = Text[i];
-		Text[i] = nowP ^ (beforeP + rk + counter);
-		beforeP = nowP;
-	}
+    for (WORD i = 1; i < size; ++i)
+    {
+        ++counter;
 
+        BYTE nowPlain = text[i] ^ (beforeEncoded + DKServerCore::PacketServerKey + counter);
 
-	BYTE checksum = 0;
-	for (unsigned int i = 1; i < Size; i++)
-	{
-		checksum += Text[i];
-	}
+        beforeEncoded = text[i];
+        text[i] = nowPlain ^ (beforePlain + randomKey + counter);
+        beforePlain = nowPlain;
+    }
 
-	if ((BYTE)Text[0] != checksum)
-	{
-		return false;
-		
-		//DebugBreak();
-	}
+    BYTE checksum = 0;
 
-	return true;
+    for (unsigned int i = 1; i < size; ++i)
+    {
+        checksum += text[i];
+    }
 
+    if (static_cast<BYTE>(text[0]) != checksum)
+    {
+        return false;
+    }
 
+    return true;
 }
-

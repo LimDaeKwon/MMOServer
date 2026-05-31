@@ -1,195 +1,95 @@
 #pragma once
 
-#define BUFFER_DEFAULT 500
-#define LIBHEADERSIZE 5
+#include <Windows.h>
 
+#include "CoreDefines.h"
 #include "TLSObjectFreeList.h"
-
-
-
 
 class CPacket
 {
-	CPacket();
-	CPacket(int NewBufferSize);
-	
-
+private:
+    CPacket();
+    CPacket(int newBufferSize);
 
 public:
-	friend class LanNetworkLibraryServer;
-	friend class ContentsCPacket;
-	friend class TLSObjectFreeList<CPacket>;
-	friend class ContentsNetLibrary;
-	friend class NetLibrary;
+    friend class LanNetworkLibraryServer;
+    friend class ContentsCPacket;
+    friend class TLSObjectFreeList<CPacket>;
+    friend class ContentsNetLibrary;
+    friend class NetLibrary;
 
+    virtual ~CPacket();
 
-	/*---------------------------------------------------------------
-	Packet Enum.
+    void Clear();
+    void InitLan();
 
-	----------------------------------------------------------------*/
+    int GetBufferSize() const;
+    int GetDataSize() const;
 
-	//////////////////////////////////////////////////////////////////////////
-	// 생성자, 파괴자.
-	//
-	// Return:
-	//////////////////////////////////////////////////////////////////////////
-	
+    char* GetBufferPtr();
+    char* GetWriteBufferPtr();
+    char* GetReadPosition();
 
-	virtual	~CPacket();
+    int MoveWritePosition(int size);
+    int MoveReadPosition(int size);
 
+    int IncreaseRefCount();
+    int DecreaseRefCount();
 
-	//////////////////////////////////////////////////////////////////////////
-	// 패킷 청소.
-	//
-	// Parameters: 없음.
-	// Return: 없음.
-	//////////////////////////////////////////////////////////////////////////
-	void	Clear(void);
-	void InitLan(void);
+    CPacket& operator=(const CPacket& sourcePacket);
 
-	//////////////////////////////////////////////////////////////////////////
-	// 버퍼 사이즈 얻기.
-	//
-	// Parameters: 없음.
-	// Return: (int)패킷 버퍼 사이즈 얻기.
-	//////////////////////////////////////////////////////////////////////////
-	int	GetBufferSize(void) { return BufferSize; }
-	//////////////////////////////////////////////////////////////////////////
-	// 현재 사용중인 사이즈 얻기.
-	//
-	// Parameters: 없음.
-	// Return: (int)사용중인 데이타 사이즈.
-	//////////////////////////////////////////////////////////////////////////
-	int		GetDataSize(void) { return DataSize; }
+    CPacket& operator<<(unsigned char value);
+    CPacket& operator<<(char value);
 
+    CPacket& operator<<(short value);
+    CPacket& operator<<(unsigned short value);
 
+    CPacket& operator<<(int value);
+    CPacket& operator<<(long value);
+    CPacket& operator<<(unsigned int value);
+    CPacket& operator<<(float value);
 
-	//////////////////////////////////////////////////////////////////////////
-	// 버퍼 포인터 얻기.
-	//
-	// Parameters: 없음.
-	// Return: (char *)버퍼 포인터.
-	//////////////////////////////////////////////////////////////////////////
-	char* GetBufferPtr(void) { return SerializeBuffer; }
-	char* GetWriteBufferPtr(void) { return SerializeBuffer + WritePosition; }
-	char* GetReadPosition(void) { return SerializeBuffer + LIBHEADERSIZE; }
+    CPacket& operator<<(__int64 value);
+    CPacket& operator<<(double value);
 
+    CPacket& operator>>(unsigned char& value);
+    CPacket& operator>>(char& value);
 
-	//////////////////////////////////////////////////////////////////////////
-	// 버퍼 Pos 이동. (음수 이동은 안됨)
-	// GetBufferPtr 함수를 이용하여 외부에서 강제로 버퍼 내용을 수정할 경우 사용. 
-	//
-	// Parameters: (int) 이동 사이즈.
-	// Return: (int) 이동된 사이즈.
-	//////////////////////////////////////////////////////////////////////////
-	int		MoveWritePosition(int Size);
-	int		MoveReadPosition(int Size);
+    CPacket& operator>>(short& value);
+    CPacket& operator>>(unsigned short& value);
 
-	int IncreaseRefCount();
-	int DecreaseRefCount();
+    CPacket& operator>>(int& value);
+    CPacket& operator>>(unsigned int& value);
+    CPacket& operator>>(float& value);
 
+    CPacket& operator>>(__int64& value);
+    CPacket& operator>>(double& value);
 
+    int GetData(char* destination, int destinationSize);
+    int PutData(char* source, int sourceSize);
 
+    BYTE Encode(char* text, WORD size, BYTE randomKey);
+    bool Decode(char* text, WORD size, BYTE randomKey);
 
+    static void Free(CPacket* packet);
+    static CPacket* Alloc();
 
-
-
-	/* ============================================================================= */
-	// 연산자 오버로딩
-	/* ============================================================================= */
-	CPacket& operator = (CPacket& SourcePacket);
-
-	//////////////////////////////////////////////////////////////////////////
-	// 넣기.	각 변수 타입마다 모두 만듬.
-	//////////////////////////////////////////////////////////////////////////
-	CPacket& operator << (unsigned char Value);
-	CPacket& operator << (char Value);
-
-	CPacket& operator << (short Value);
-	CPacket& operator << (unsigned short Value);
-
-	CPacket& operator << (int Value);
-	CPacket& operator << (long Value);
-	CPacket& operator << (unsigned int Value);
-	CPacket& operator << (float Value);
-
-	CPacket& operator << (__int64 Value);
-	CPacket& operator << (double Value);
-
-
-	//////////////////////////////////////////////////////////////////////////
-	// 빼기.	각 변수 타입마다 모두 만듬.
-	//////////////////////////////////////////////////////////////////////////
-	CPacket& operator >> (unsigned char& Value);
-	CPacket& operator >> (char& Value);
-
-	CPacket& operator >> (short& Value);
-	CPacket& operator >> (unsigned short& Value);
-
-	CPacket& operator >> (int& Value);
-	CPacket& operator >> (unsigned int& Value);
-	CPacket& operator >> (float& Value);
-
-	CPacket& operator >> (__int64& Value);
-	CPacket& operator >> (double& Value);
-
-
-
-
-	//////////////////////////////////////////////////////////////////////////
-	// 데이타 얻기.
-	//
-	// Parameters: (char *)Dest 포인터. (int)Size.
-	// Return: (int)복사한 사이즈.
-	//////////////////////////////////////////////////////////////////////////
-	int		GetData(char* Destination, int DestinationSize);
-
-	//////////////////////////////////////////////////////////////////////////
-	// 데이타 삽입.
-	//
-	// Parameters: (char *)Src 포인터. (int)SrcSize.
-	// Return: (int)복사한 사이즈.
-	//////////////////////////////////////////////////////////////////////////
-	int		PutData(char* Source, int SourceSize);
-
-	//void PrintOffset();
-	
-	BYTE Encode(char* Text, WORD Size, BYTE rk);
-
-	bool Decode(char* Text, WORD Size, BYTE rk);
-
-	static void Free(CPacket* packet_buffer);
-
-	static CPacket* Alloc();
-
-	static int GetPoolSize();
-
-	static int GetUseSize();
-
-	static int GetCapacity();
+    static int GetPoolSize();
+    static int GetUseSize();
+    static int GetCapacity();
 
 protected:
+    char* serializeBuffer_;
 
-	char* SerializeBuffer;
+    int bufferSize_;
+    long refCount_;
 
-	int	BufferSize;
+    int dataSize_;
+    int writePosition_;
+    int readPosition_;
 
-	long ref_count;
+    int encodingFlag_;
+    CRITICAL_SECTION encodingLock_;
 
-	int	DataSize;
-	//얘가 리어
-
-	int WritePosition;
-	//얘가 프론트
-
-	int ReadPosition;
-
-	int EncodingFlag;
-
-	CRITICAL_SECTION EncodingLock;
-
-	static TLSObjectFreeList<CPacket> serialize_list;
+    static TLSObjectFreeList<CPacket> serializeList_;
 };
-
-
-

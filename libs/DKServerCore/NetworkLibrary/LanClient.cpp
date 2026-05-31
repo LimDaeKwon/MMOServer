@@ -446,7 +446,7 @@ void LanClient::RecvProc(ClientSession* target)
 		target->recv_buffer.MoveFront(sizeof(header));
 
 		CPacket* packet_buffer = CPacket::Alloc();
-		unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr() + LIBHEADERSIZE, header.length);
+		unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize, header.length);
 
 		if (receive_dequeue_packet_size != header.length)
 		{
@@ -508,7 +508,6 @@ void LanClient::Receive(ClientSession* target)
 void LanClient::AddHeader(CPacket* packet_buffer)
 {
 	char* temp = packet_buffer->GetBufferPtr();
-	//temp += LIBHEADERSIZE - header_size;
 
 	unsigned short len = (unsigned short)packet_buffer->GetDataSize();
 	(*(unsigned short*)(temp)) = len;

@@ -680,7 +680,7 @@ void LanNetworkLibraryServer::RecvProc(Session* target)
 
 			CPacket* packet_buffer = CPacket::Alloc();
 
-			packet_buffer->MoveWritePosition(target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr() + LIBHEADERSIZE, header.bySize));
+			packet_buffer->MoveWritePosition(target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize, header.bySize));
 
 			OnMessage(target->session_id, packet_buffer);
 
@@ -713,7 +713,7 @@ void LanNetworkLibraryServer::RecvProc(Session* target)
 			CPacket* packet_buffer = CPacket::Alloc();
 
 
-			unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr() + LIBHEADERSIZE, header.length);
+			unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize, header.length);
 
 			if (receive_dequeue_packet_size != header.length)
 			{
@@ -758,7 +758,7 @@ void LanNetworkLibraryServer::Receive(Session* target)
 void LanNetworkLibraryServer::LanAddHeader(CPacket* packet_buffer)
 {
 	char* temp = packet_buffer->GetBufferPtr();
-	temp += LIBHEADERSIZE - header_size;
+	temp += DKServerCore::PacketLibHeaderSize - header_size;
 	LanPacketHeader LibHeader;
 	LibHeader.length = packet_buffer->GetDataSize();
 
@@ -769,7 +769,7 @@ void LanNetworkLibraryServer::LanAddHeader(CPacket* packet_buffer)
 void LanNetworkLibraryServer::NetAddHeader(CPacket* packet_buffer)
 {
 	char* temp = packet_buffer->GetBufferPtr();
-	temp += LIBHEADERSIZE - header_size;
+	temp += DKServerCore::PacketLibHeaderSize - header_size;
 	unsigned short NetHeader;
 
 	//MMOTCP±âÁØ
@@ -873,7 +873,7 @@ int LanNetworkLibraryServer::SetWSABUF(Session* target, WSABUF* wsabuf)
 			break;
 		}
 		target->buffer_count.buffers[buf_count] = temp;
-		wsabuf[buf_count].buf = temp->GetBufferPtr() + LIBHEADERSIZE - header_size;
+		wsabuf[buf_count].buf = temp->GetBufferPtr() + DKServerCore::PacketLibHeaderSize - header_size;
 		wsabuf[buf_count].len = temp->GetDataSize() + header_size;
 		buf_count++;
 

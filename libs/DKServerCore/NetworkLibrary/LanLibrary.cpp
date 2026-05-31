@@ -684,7 +684,7 @@ void LanLibrary::SendPost(Session* target)
 				break;
 			}
 			target->buffer_count.buffers[buf_count] = temp;
-			local_wsabuf[buf_count].buf = temp->GetBufferPtr() + LIBHEADERSIZE - header_size;
+			local_wsabuf[buf_count].buf = temp->GetBufferPtr() + DKServerCore::PacketLibHeaderSize - header_size;
 			local_wsabuf[buf_count].len = temp->GetDataSize() + header_size;
 			buf_count++;
 
@@ -974,7 +974,7 @@ void LanLibrary::Receive(Session* target)
 void LanLibrary::AddHeader(CPacket* packet_buffer)
 {
 	char* temp = packet_buffer->GetBufferPtr();
-	temp += LIBHEADERSIZE - header_size;
+	temp += DKServerCore::PacketLibHeaderSize - header_size;
 	PacketHeader LibHeader;
 	LibHeader.length = packet_buffer->GetDataSize();
 

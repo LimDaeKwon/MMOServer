@@ -602,16 +602,16 @@ void NetLibrary::SendPacket(__int64 session_ID, ContentsCPacket contents_packet)
 
 	send_packet->IncreaseRefCount();
 	//ÀÎÅ¥ , Send 
-	if (!send_packet->EncodingFlag)
+	if (!send_packet->encodingFlag_)
 	{
-		EnterCriticalSection(&send_packet->EncodingLock);
+		EnterCriticalSection(&send_packet->encodingLock_);
 
-		if (!send_packet->EncodingFlag)
+		if (!send_packet->encodingFlag_)
 		{
-			send_packet->EncodingFlag = 1;
+			send_packet->encodingFlag_ = 1;
 			NetAddHeader(send_packet);
 		}
-		LeaveCriticalSection(&send_packet->EncodingLock);
+		LeaveCriticalSection(&send_packet->encodingLock_);
 	}
 
 
@@ -688,7 +688,7 @@ void NetLibrary::SendPost(Session* target)
 				break;
 			}
 			target->buffer_count.buffers[buf_count] = temp;
-			local_wsabuf[buf_count].buf = temp->GetBufferPtr() + LIBHEADERSIZE - header_size;
+			local_wsabuf[buf_count].buf = temp->GetBufferPtr() + DKServerCore::PacketLibHeaderSize - header_size;
 			local_wsabuf[buf_count].len = temp->GetDataSize() + header_size;
 			buf_count++;
 
@@ -928,9 +928,9 @@ void NetLibrary::RecvProc(Session* target)
 
 		CPacket* packet_buffer = CPacket::Alloc();
 
-		unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr(), LIBHEADERSIZE + header.Len);
+		unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr(), DKServerCore::PacketLibHeaderSize + header.Len);
 
-		if (receive_dequeue_packet_size != header.Len + LIBHEADERSIZE)
+		if (receive_dequeue_packet_size != header.Len + DKServerCore::PacketLibHeaderSize)
 		{
 			wprintf(L"## ReceiveQDequeuePacketSize != Header.BySize : %d \n", receive_dequeue_packet_size);
 			//DebugBreak();
@@ -947,7 +947,7 @@ void NetLibrary::RecvProc(Session* target)
 			break;
 		}
 		packet_buffer->IncreaseRefCount();
-		packet_buffer->MoveWritePosition(receive_dequeue_packet_size - LIBHEADERSIZE);
+		packet_buffer->MoveWritePosition(receive_dequeue_packet_size - DKServerCore::PacketLibHeaderSize);
 		InterlockedIncrement(&recv_message_count);
 		OnMessage(target->session_id, (ContentsCPacket*)packet_buffer);
 		CPacket::Free(packet_buffer);
@@ -1006,7 +1006,7 @@ void NetLibrary::Receive(Session* target)
 void NetLibrary::AddHeader(CPacket* packet_buffer)
 {
 	char* temp = packet_buffer->GetBufferPtr();
-	temp += LIBHEADERSIZE - header_size;
+	temp += DKServerCore::PacketLibHeaderSize - header_size;
 	PacketHeader LibHeader;
 	LibHeader.length = packet_buffer->GetDataSize();
 
@@ -1027,7 +1027,7 @@ void NetLibrary::NetAddHeader(CPacket* packet_buffer)
 
 
 	NetHeader.CheckSum = packet_buffer->Encode(packet_buffer->GetReadPosition(), NetHeader.Len, NetHeader.RandKey);
-	memcpy_s(temp, LIBHEADERSIZE, &NetHeader, LIBHEADERSIZE);
+	memcpy_s(temp, DKServerCore::PacketLibHeaderSize, &NetHeader, DKServerCore::PacketLibHeaderSize);
 
 }
 

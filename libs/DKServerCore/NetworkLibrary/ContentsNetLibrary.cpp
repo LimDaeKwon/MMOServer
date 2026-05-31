@@ -685,16 +685,16 @@ void ContentsNetLibrary::SendPacket(__int64 session_ID, ContentsCPacket contents
 
 	send_packet->IncreaseRefCount();
 	//인큐 , Send 
-	if (!send_packet->EncodingFlag)
+	if (!send_packet->encodingFlag_)
 	{
-		EnterCriticalSection(&send_packet->EncodingLock);
+		EnterCriticalSection(&send_packet->encodingLock_);
 
-		if (!send_packet->EncodingFlag)
+		if (!send_packet->encodingFlag_)
 		{
-			send_packet->EncodingFlag = 1;
+			send_packet->encodingFlag_ = 1;
 			NetAddHeader(send_packet);
 		}
-		LeaveCriticalSection(&send_packet->EncodingLock);
+		LeaveCriticalSection(&send_packet->encodingLock_);
 	}
 
 
@@ -774,7 +774,7 @@ void ContentsNetLibrary::SendPost(Session* target)
 				break;
 			}
 			target->buffer_count.buffers[buf_count] = temp;
-			local_wsabuf[buf_count].buf = temp->GetBufferPtr() + LIBHEADERSIZE - header_size;
+			local_wsabuf[buf_count].buf = temp->GetBufferPtr() + DKServerCore::PacketLibHeaderSize - header_size;
 			local_wsabuf[buf_count].len = temp->GetDataSize() + header_size;
 			buf_count++;
 
@@ -926,33 +926,9 @@ void ContentsNetLibrary::RecvProc(Session* target)
 			packet_buffer->IncreaseRefCount();
 		}
 
-		//unsigned int receive_dequeue_header_size = target->recv_buffer.MoveFront(sizeof(header));
+		unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(decodeBuffer->GetBufferPtr(), DKServerCore::PacketLibHeaderSize + header.Len);
 
-		//unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(packet_buffer->GetBufferPtr(), LIBHEADERSIZE + header.Len);
-
-		//if (receive_dequeue_packet_size != header.Len + LIBHEADERSIZE)
-		//{
-		//	wprintf(L"## ReceiveQDequeuePacketSize != Header.BySize : %d \n", receive_dequeue_packet_size);
-		//	DebugBreak();
-		//	break;
-		//}
-		////지금 여기엔 인코딩 된 상태로 들어가 있음. 페이로드만. 
-		////얘를 디코딩 해야해 
-
-		//if (packet_buffer->Decode(packet_buffer->GetReadPosition() - 1, header.Len + 1, header.RandKey) == false)
-		//{
-		//	Disconnect(target->session_id);
-		//	InterlockedIncrement(&DCDecodeError);
-		//	CPacket::Free(packet_buffer);
-		//	break;
-		//}
-		//packet_buffer->IncreaseRefCount();
-		//packet_buffer->MoveWritePosition(receive_dequeue_packet_size - LIBHEADERSIZE);
-		//InterlockedIncrement(&recv_message_count);
-		
-		unsigned int receive_dequeue_packet_size = target->recv_buffer.Dequeue(decodeBuffer->GetBufferPtr(), LIBHEADERSIZE + header.Len);
-
-		if (receive_dequeue_packet_size != header.Len + LIBHEADERSIZE)
+		if (receive_dequeue_packet_size != header.Len + DKServerCore::PacketLibHeaderSize)
 		{
 			wprintf(L"## ReceiveQDequeuePacketSize != Header.BySize : %d \n", receive_dequeue_packet_size);
 			//DebugBreak();
@@ -969,7 +945,7 @@ void ContentsNetLibrary::RecvProc(Session* target)
 			break;
 		}
 		//decodeBuffer->IncreaseRefCount();
-		decodeBuffer->MoveWritePosition(receive_dequeue_packet_size - LIBHEADERSIZE);
+		decodeBuffer->MoveWritePosition(receive_dequeue_packet_size - DKServerCore::PacketLibHeaderSize);
 
 
 		*packet_buffer << decodeBuffer->GetDataSize();
@@ -1060,7 +1036,7 @@ void ContentsNetLibrary::NetAddHeader(CPacket* packet_buffer)
 	NetHeader.RandKey = rand()%256;
 
 	NetHeader.CheckSum = packet_buffer->Encode(packet_buffer->GetReadPosition(), NetHeader.Len, NetHeader.RandKey);
-	memcpy_s(temp, LIBHEADERSIZE, &NetHeader, LIBHEADERSIZE);
+	memcpy_s(temp, DKServerCore::PacketLibHeaderSize, &NetHeader, DKServerCore::PacketLibHeaderSize);
 
 }
 
