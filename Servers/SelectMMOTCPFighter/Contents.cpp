@@ -1,96 +1,102 @@
 #include "Contents.h"
 #include "Character.h"
 #include "Session.h"
-#include "Sector.h"
-#include "GameDefine.h"
-#include "PacketDefine.h"
+
+
 #include "Network.h"
+#include "CPacket.h"
+
+#include "GameDefine.h"
 
 #include "NetworkProxy.h"
 #include "NetworkStub.h"
-#include "CPacket.h"
-#include <unordered_map>
-#include "RingBuffer.h"
-#include <list>
 #include "ObjectFreeList.h"
-#include "Windows.h"
+#include "PacketDefine.h"
+#include "RingBuffer.h"
+#include "Sector.h"
 
-std::list<Character*> Sector[SectorMaxY][SectorMaxX];
-std::list<unsigned int> DeleteList;
 
-std::unordered_map<unsigned int, Character*> CharacterMap;
+#include <Windows.h>
+
+#include <list>
+#include <unordered_map>
+
+std::list<Character*> sector[SectorMaxY][SectorMaxX];
+std::list<unsigned int> deleteList;
+
+std::unordered_map<unsigned int, Character*> characterMap;
 
 //td::unordered_map<unsigned int, unsigned int> whydelete;
 
-ObjectFreeList<Character> CharacterFreeList(10000);
+ObjectFreeList<Character> characterFreeList(10000);
 
 
 
-CPacket* GlobalCPacket = CPacket::Alloc();
+CPacket* globalCPacket = CPacket::Alloc();
 
-void CreateCharater(Session* NewSession)
+void CreateCharacter(Session* newSession)
 {
 
-	Character* NewPlayer = CharacterFreeList.Alloc();
-	NewPlayer->characterSession_ = NewSession;
-	NewPlayer->sessionId_ = NewSession->sessionId_;
+	Character* newPlayer = characterFreeList.Alloc();
+	newPlayer->characterSession_ = newSession;
+	newPlayer->sessionId_ = newSession->sessionId_;
 
-	NewPlayer->direction_ = PacketMoveDirectionRR;
-	NewPlayer->action_ = PacketMoveDirectionRR;
+	newPlayer->direction_ = PacketMoveDirectionRR;
+	newPlayer->action_ = PacketMoveDirectionRR;
 
-	NewPlayer->x_ = rand() % 6399;
-	NewPlayer->y_ = rand() % 6399;
-
-
-
-	NewPlayer->hp_ = DefaultHp;
-
-	NewPlayer->characterSectorPos_.x_ = NewPlayer->x_ / SectorXSize;
-	NewPlayer->characterSectorPos_.y_ = NewPlayer->y_ / SectorYSize;
-	NewPlayer->oldSectorPos_.x_ = SectorMaxX;
-	NewPlayer->oldSectorPos_.y_ = SectorMaxY;
-
-	NewPlayer->isMove_ = false;
-
-	Sector[NewPlayer->characterSectorPos_.y_][NewPlayer->characterSectorPos_.x_].push_back(NewPlayer);
-	CharacterMap.insert(std::unordered_map<unsigned int, Character*>::value_type(NewPlayer->sessionId_, NewPlayer));
+	newPlayer->x_ = rand() % 6399;
+	newPlayer->y_ = rand() % 6399;
 
 
 
-	GlobalCPacket->Clear();
+	newPlayer->hp_ = DefaultHp;
 
-	MakePacketCreateMyCharacter(NewPlayer->characterSession_, GlobalCPacket, NewPlayer->sessionId_, NewPlayer->direction_, NewPlayer->x_, NewPlayer->y_, NewPlayer->hp_);
+	newPlayer->characterSectorPos_.x_ = newPlayer->x_ / SectorXSize;
+	newPlayer->characterSectorPos_.y_ = newPlayer->y_ / SectorYSize;
+	newPlayer->oldSectorPos_.x_ = SectorMaxX;
+	newPlayer->oldSectorPos_.y_ = SectorMaxY;
+
+	newPlayer->isMove_ = false;
+
+	sector[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
+	characterMap.insert(std::unordered_map<unsigned int, Character*>::value_type(newPlayer->sessionId_, newPlayer));
 
 
-	GlobalCPacket->Clear();
-	MakePacketCreateOtherCharacter(NewPlayer->characterSession_, GlobalCPacket, NewPlayer->sessionId_, NewPlayer->direction_, NewPlayer->x_, NewPlayer->y_, NewPlayer->hp_);
+
+	globalCPacket->Clear();
+
+	MakePacketCreateMyCharacter(newPlayer->characterSession_, globalCPacket, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+
+
+	globalCPacket->Clear();
+	MakePacketCreateOtherCharacter(newPlayer->characterSession_, globalCPacket, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
 	//나를 남에게.
 
-	SectorAround CreateForMe;
-	GetSectorAround(NewPlayer->characterSectorPos_.x_, NewPlayer->characterSectorPos_.y_, &CreateForMe);
+	SectorAround createForMe;
+	GetSectorAround(newPlayer->characterSectorPos_.x_, newPlayer->characterSectorPos_.y_, &createForMe);
 
 
-	for (unsigned int i = 0; i < CreateForMe.count_; i++)
+	for (unsigned int i = 0; i < createForMe.count_; i++)
 	{
-		std::list<Character*>::iterator Iter;
-		for (Iter = Sector[CreateForMe.around_[i].y_][CreateForMe.around_[i].x_].begin();
-			Iter != Sector[CreateForMe.around_[i].y_][CreateForMe.around_[i].x_].end(); ++Iter)
+		std::list<Character*>::iterator iter;
+		for (iter = sector[createForMe.around_[i].y_][createForMe.around_[i].x_].begin();
+			iter != sector[createForMe.around_[i].y_][createForMe.around_[i].x_].end(); ++iter)
 		{
-			Character* Target = *Iter;
-			if ((Target->sessionId_ == NewPlayer->sessionId_) || (Target->characterSession_->isDelete_ == 1))
+			Character* target = *iter;
+			if ((target->sessionId_ == newPlayer->sessionId_) || (target->characterSession_->isDelete_ == 1))
 			{
 				continue;
 			}
 
 			//CPacket OtherCharacter;
-			GlobalCPacket->Clear();
-			MakePacketCreateOtherCharacterForMe(NewPlayer->characterSession_, GlobalCPacket, Target->sessionId_, Target->direction_, Target->x_, Target->y_, Target->hp_);
+			globalCPacket->Clear();
+			MakePacketCreateOtherCharacterForMe(newPlayer->characterSession_, globalCPacket, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
 
-			if (Target->isMove_ == true)
+			if (target->isMove_ == true)
 			{
 				///CPacket Packet_SC_MOVE_START;
-				GlobalCPacket->Clear();
-				MakePacketMoveStartForMe(NewPlayer->characterSession_, GlobalCPacket, Target->sessionId_, Target->action_, Target->x_, Target->y_);
+				globalCPacket->Clear();
+				MakePacketMoveStartForMe(newPlayer->characterSession_, globalCPacket, target->sessionId_, target->action_, target->x_, target->y_);
 			}
 
 		}
@@ -99,187 +105,187 @@ void CreateCharater(Session* NewSession)
 
 }
 
-unsigned int OldTick = timeGetTime();
-static unsigned int OldTickforCheck = timeGetTime();
-int GlobalLoop;
+unsigned int oldTick = timeGetTime();
+static unsigned int oldTickForCheck = timeGetTime();
+int globalLoop;
 
 void Update()
 {
 
-	unsigned int Tick = timeGetTime();
+	unsigned int tick = timeGetTime();
 
-	unsigned int Frame;
-	
-	GlobalLoop++;
-	Frame = Tick - OldTick;
+	unsigned int frame;
 
-	static int Count = 0;
+	globalLoop++;
+	frame = tick - oldTick;
+
+	static int count = 0;
 
 	//얘가 그냥 프레임. 
 	//
-	
 
-	if (Frame >= 40)
+
+	if (frame >= 40)
 	{
-		int FixUpdate = (Frame / 40);
-		std::unordered_map<unsigned int, Character*>::iterator Iter;
-		for (Iter = CharacterMap.begin(); Iter != CharacterMap.end(); ++Iter)
+		int fixUpdate = (frame / 40);
+		std::unordered_map<unsigned int, Character*>::iterator iter;
+		for (iter = characterMap.begin(); iter != characterMap.end(); ++iter)
 		{
-			Character* Target = Iter->second;
+			Character* target = iter->second;
 
-			if (Tick - Target->characterSession_->lastRecvTime_ > NetworkPacketRecvTimeout)
+			if (tick - target->characterSession_->lastRecvTime_ > NetworkPacketRecvTimeout)
 			{
-				//printf("타임 웨잇으로 인한 종료당하기. %d %d \n\n", Target->CharacterSession->SessionID , Tick - Target->CharacterSession->LastRecvTime);
-				//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(Target->CharacterSession->SessionID, TIMEOUT));
+				//printf("타임 웨잇으로 인한 종료당하기. %d %d \n\n", target->CharacterSession->Sessionid , tick - target->CharacterSession->LastRecvtime);
+				//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(target->CharacterSession->Sessionid, TIMEOUT));
 
 
-				Disconnect(Target->characterSession_);
+				Disconnect(target->characterSession_);
 				continue;
 			}
-			
-			if (Target->isMove_ && (Target->characterSession_->isDelete_ == 0))
+
+			if (target->isMove_ && (target->characterSession_->isDelete_ == 0))
 			{
-				for(int i = 0 ; i < FixUpdate; ++i)
+				for (int i = 0; i < fixUpdate; ++i)
 				{
-					GameRun(Target);
+					GameRun(target);
 				}
-				
+
 			}
 
 		}
-		Count += (Frame / 40);
-		OldTick += (40 * (Frame / 40));
+		count += (frame / 40);
+		oldTick += (40 * (frame / 40));
 
-		if (Tick - OldTickforCheck >= 1000)
+		if (tick - oldTickForCheck >= 1000)
 		{
-			if (Count > 25)
+			if (count > 25)
 			{
-				wprintf(L"FixedUpdate : %d   Loop : %d \n", FixUpdate, GlobalLoop);
-				
+				wprintf(L"FixedUpdate : %d   Loop : %d \n", fixUpdate, globalLoop);
+
 			}
-			Count = 0;
-			OldTickforCheck += 1000;
-			GlobalLoop = 0;
+			count = 0;
+			oldTickForCheck += 1000;
+			globalLoop = 0;
 		}
 	}
 
 	DeleteDisconnect();
 }
 
-void GameRun(Character* Target)
+void GameRun(Character* target)
 {
 
-	switch (Target->action_)
+	switch (target->action_)
 	{
 	case PacketMoveDirectionLL:
-		if (Target->x_ - 6 < RangeMoveLeft)
+		if (target->x_ - 6 < RangeMoveLeft)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->x_ -= 6;
+		target->x_ -= 6;
 
 		break;
 
 	case PacketMoveDirectionLU:
-		if (Target->y_ - 4 < RangeMoveTop || Target->x_ - 6 < RangeMoveLeft)
+		if (target->y_ - 4 < RangeMoveTop || target->x_ - 6 < RangeMoveLeft)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->x_ -= 6 ;
-		Target->y_ -= 4 ;
+		target->x_ -= 6;
+		target->y_ -= 4;
 
 		break;
 
 
 
 	case PacketMoveDirectionUU:
-		if (Target->y_ - 4 < RangeMoveTop)
+		if (target->y_ - 4 < RangeMoveTop)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
 
-		Target->y_ -= 4 ;
+		target->y_ -= 4;
 
 		break;
 
 
 	case PacketMoveDirectionRU:
 
-		if ((Target->y_ - 4 < RangeMoveTop) || (Target->x_ + 6 >= RangeMoveRight))
+		if ((target->y_ - 4 < RangeMoveTop) || (target->x_ + 6 >= RangeMoveRight))
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->x_ += 6;
-		Target->y_ -= 4;
+		target->x_ += 6;
+		target->y_ -= 4;
 
 		break;
 
 
 	case PacketMoveDirectionRR:
 
-		if (Target->x_ + 6 >= RangeMoveRight)
+		if (target->x_ + 6 >= RangeMoveRight)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
-		Target->x_ += 6 ;
+		target->x_ += 6;
 
 		break;
 
 
 	case PacketMoveDirectionRD:
 
-		if (Target->y_ + 4 >= RangeMoveBottom || Target->x_ + 6 >= RangeMoveRight)
+		if (target->y_ + 4 >= RangeMoveBottom || target->x_ + 6 >= RangeMoveRight)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
 
-		Target->x_ += 6 ;
-		Target->y_ += 4 ;
+		target->x_ += 6;
+		target->y_ += 4;
 
 		break;
 
 
 
 	case PacketMoveDirectionDD:
-		if (Target->y_ + 4 >= RangeMoveBottom)
+		if (target->y_ + 4 >= RangeMoveBottom)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->y_ += 4 ;
+		target->y_ += 4;
 
 		break;
 
 	case PacketMoveDirectionLD:
-		if (Target->y_ + 4 >= RangeMoveBottom || Target->x_ - 6 < RangeMoveLeft)
+		if (target->y_ + 4 >= RangeMoveBottom || target->x_ - 6 < RangeMoveLeft)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->x_ -= 6 ;
-		Target->y_ += 4 ;
+		target->x_ -= 6;
+		target->y_ += 4;
 
 		break;
 	}
 
 
-	if (SectorUpdateCharacter(Target))
+	if (SectorUpdateCharacter(target))
 	{
 
-		SectorUpdate(Target);
+		SectorUpdate(target);
 
 	}
 
@@ -287,35 +293,35 @@ void GameRun(Character* Target)
 
 
 
-void HitCheck(Character* AttackCharacter, int AttackNumber)
+void HitCheck(Character* attackCharacter, int attackNumber)
 {
 
-	int BoundaryX = 0;
-	int BoundaryY = 0;
+	int boundaryX = 0;
+	int boundaryY = 0;
 
-	int Damage = 0;
+	int damage = 0;
 
 
 
-	switch (AttackNumber)
+	switch (attackNumber)
 	{
 
 	case 1:
-		BoundaryX = Attack1RangeX;
-		BoundaryY = Attack1RangeY;
-		Damage = Attack1Damage;
+		boundaryX = Attack1RangeX;
+		boundaryY = Attack1RangeY;
+		damage = Attack1Damage;
 		break;
 
 	case 2:
-		BoundaryX = Attack2RangeX;
-		BoundaryY = Attack2RangeY;
-		Damage = Attack2Damage;
+		boundaryX = Attack2RangeX;
+		boundaryY = Attack2RangeY;
+		damage = Attack2Damage;
 		break;
 
 	case 3:
-		BoundaryX = Attack3RangeX;
-		BoundaryY = Attack3RangeY;
-		Damage = Attack3Damage;
+		boundaryX = Attack3RangeX;
+		boundaryY = Attack3RangeY;
+		damage = Attack3Damage;
 		break;
 
 	default:
@@ -325,47 +331,47 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 	//섹터기준 처리로 바꾸기. 
 
 
-	SectorAround HitCheckSector;
+	SectorAround hitCheckSector;
 
-	if (AttackCharacter->direction_ == PacketMoveDirectionLL)
+	if (attackCharacter->direction_ == PacketMoveDirectionLL)
 	{
-		GetSectorAroundForHitLeft(AttackCharacter, BoundaryX, BoundaryY, &HitCheckSector);
+		GetSectorAroundForHitLeft(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
 
-		//PrintHitCheckSector(&HitCheckSector);
+		//PrintHitCheckSector(&hitCheckSector);
 
-		for (unsigned int i = 0; i < HitCheckSector.count_; ++i)
+		for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
 		{
-			std::list<Character*>::iterator Iter;
-			for (Iter = Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].begin(); Iter != Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].end(); ++Iter)
+			std::list<Character*>::iterator iter;
+			for (iter = sector[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sector[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
 			{
-				Character* Target = *Iter;
+				Character* target = *iter;
 
-				if ((AttackCharacter == Target) || (Target->characterSession_->isDelete_ == 1) || (AttackCharacter->x_ < Target->x_))
+				if ((attackCharacter == target) || (target->characterSession_->isDelete_ == 1) || (attackCharacter->x_ < target->x_))
 				{
 					continue;
 				}
 
 
-				if (abs(AttackCharacter->y_ - Target->y_) <= BoundaryY && abs(AttackCharacter->x_ - Target->x_) <= BoundaryX)
+				if (abs(attackCharacter->y_ - target->y_) <= boundaryY && abs(attackCharacter->x_ - target->x_) <= boundaryX)
 				{
 
-					if (Damage >= Target->hp_)
+					if (damage >= target->hp_)
 					{
-						Target->hp_ = 0;
+						target->hp_ = 0;
 					}
 					else
 					{
-						Target->hp_ -= Damage;
+						target->hp_ -= damage;
 					}
 
-					GlobalCPacket->Clear();
+					globalCPacket->Clear();
 
-					MakePacketDamage(Target->characterSession_, GlobalCPacket, AttackCharacter->sessionId_, Target->sessionId_, Target->hp_);
+					MakePacketDamage(target->characterSession_, globalCPacket, attackCharacter->sessionId_, target->sessionId_, target->hp_);
 
-					if (Target->hp_ == 0)
+					if (target->hp_ == 0)
 					{
-						Disconnect(Target->characterSession_);
-						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(Target->CharacterSession->SessionID, HP));
+						Disconnect(target->characterSession_);
+						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(target->CharacterSession->Sessionid, HP));
 
 					}
 
@@ -379,46 +385,46 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 	}
 	else
 	{
-		GetSectorAroundForHitRight(AttackCharacter, BoundaryX, BoundaryY, &HitCheckSector);
-		//PrintHitCheckSector(&HitCheckSector);
-		for (unsigned int i = 0; i < HitCheckSector.count_; ++i)
+		GetSectorAroundForHitRight(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
+		//PrintHitCheckSector(&hitCheckSector);
+		for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
 		{
-			std::list<Character*>::iterator Iter;
-			for (Iter = Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].begin(); Iter != Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].end(); ++Iter)
+			std::list<Character*>::iterator iter;
+			for (iter = sector[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sector[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
 			{
-				Character* Target = *Iter;
+				Character* target = *iter;
 
-				if ((AttackCharacter == Target) || (Target->characterSession_->isDelete_ == 1) || (AttackCharacter->x_ > Target->x_))
+				if ((attackCharacter == target) || (target->characterSession_->isDelete_ == 1) || (attackCharacter->x_ > target->x_))
 				{
 					continue;
 				}
 
 
-				if (abs(AttackCharacter->y_ - Target->y_) <= BoundaryY && abs(AttackCharacter->x_ - Target->x_) <= BoundaryX)
+				if (abs(attackCharacter->y_ - target->y_) <= boundaryY && abs(attackCharacter->x_ - target->x_) <= boundaryX)
 				{
 
-					if (Damage >= Target->hp_)
+					if (damage >= target->hp_)
 					{
-						Target->hp_ = 0;
+						target->hp_ = 0;
 					}
 					else
 					{
-						Target->hp_ -= Damage;
+						target->hp_ -= damage;
 					}
 
-					GlobalCPacket->Clear();
+					globalCPacket->Clear();
 
-					//wprintf(L"## SendDamage Packet : AttackID : %d TargetID %d  \n", AttackCharacter->SessionID, Target->SessionID);
+					//wprintf(L"## Senddamage Packet : Attackid : %d targetid %d  \n", attackCharacter->Sessionid, target->Sessionid);
 
-					MakePacketDamage(Target->characterSession_, GlobalCPacket, AttackCharacter->sessionId_, Target->sessionId_, Target->hp_);
+					MakePacketDamage(target->characterSession_, globalCPacket, attackCharacter->sessionId_, target->sessionId_, target->hp_);
 					//SendPacketBroadcast(NULL, &Pakcet_SC_DAMAGE);
 
-					if (Target->hp_ == 0)
+					if (target->hp_ == 0)
 					{
-						//printf(" HP가 0 이라 종료 당하는 녀석 : %d \n\n", Target->SessionID);
-						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(Target->CharacterSession->SessionID, TIMEOUT));
+						//printf(" HP가 0 이라 종료 당하는 녀석 : %d \n\n", target->Sessionid);
+						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(target->CharacterSession->Sessionid, TIMEOUT));
 
-						Disconnect(Target->characterSession_);
+						Disconnect(target->characterSession_);
 					}
 
 					return;
@@ -431,12 +437,12 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 	}
 
 
-	//std::unordered_map<unsigned int, CHARACTER*>::iterator Iter;
-	//for (Iter = CharacterMap.begin(); Iter != CharacterMap.end(); ++Iter)
+	//std::unordered_map<unsigned int, CHARACTER*>::iterator iter;
+	//for (iter = characterMap.begin(); iter != characterMap.end(); ++iter)
 	//{
-	//	CHARACTER* Target = Iter->second;
+	//	CHARACTER* target = iter->second;
 
-	//	if ((AttackCharacter == Target) || Target->CharacterSession->IsDelete == 1)
+	//	if ((attackCharacter == target) || target->CharacterSession->IsDelete == 1)
 	//	{
 	//		continue;
 	//	}
@@ -447,34 +453,34 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 }
 
 
-bool NetPacketProcMoveStart(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcMoveStart(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Character* Target = CharacterMap.at(TargetSession->sessionId_);
-	unsigned int ID;
+	Character* target = characterMap.at(targetSession->sessionId_);
+	unsigned int id;
 
-	ID = Target->sessionId_;
+	id = target->sessionId_;
 
-	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
+	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
-		//Disconnect(Target->CharacterSession);
+		//Disconnect(target->CharacterSession);
 
 
-		GlobalCPacket->Clear();
+		globalCPacket->Clear();
 
-		MakePacketSync(Target->characterSession_, GlobalCPacket, Target->sessionId_, Target->x_, Target->y_);
+		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 	}
 	else
 	{
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); // 지연처리 해주자.. 
+			SectorUpdate(target); // 지연처리 해주자.. 
 		}
 
 		//섹터 업데이트 지연처리 해줘야함.,.
@@ -482,122 +488,122 @@ bool NetPacketProcMoveStart(Session* TargetSession, unsigned char Direction, uns
 
 
 
-	Target->isMove_ = true;
-	Target->action_ = Direction;
+	target->isMove_ = true;
+	target->action_ = direction;
 
-	switch (Direction)
+	switch (direction)
 	{
 	case PacketMoveDirectionRR:
 	case PacketMoveDirectionRU:
 	case PacketMoveDirectionRD:
-		Target->direction_ = PacketMoveDirectionRR;
+		target->direction_ = PacketMoveDirectionRR;
 		break;
 
 	case PacketMoveDirectionLU:
 	case PacketMoveDirectionLL:
 	case PacketMoveDirectionLD:
-		Target->direction_ = PacketMoveDirectionLL;
+		target->direction_ = PacketMoveDirectionLL;
 		break;
 
 	}
 
 
-	GlobalCPacket->Clear();
-	MakePacketMoveStart(Target->characterSession_, GlobalCPacket, Target->sessionId_, Direction, Target->x_, Target->y_);
+	globalCPacket->Clear();
+	MakePacketMoveStart(target->characterSession_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
 
 	return true;
 }
 
-bool NetPacketProcMoveStop(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcMoveStop(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Character* Target = CharacterMap.at(TargetSession->sessionId_);
-	unsigned int ID;
+	Character* target = characterMap.at(targetSession->sessionId_);
+	unsigned int id;
 
-	ID = Target->sessionId_;
+	id = target->sessionId_;
 	//여기서 처리. 클라의 좌표를 인정해준다.64
 
 	//여기서 한번 돌려줘야함. run을.. 
 
-	if ((abs(Target->x_ - X) > ErrorRange) || (abs(Target->y_ - Y) > ErrorRange))
+	if ((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange))
 	{
-		//Disconnect(Target->CharacterSession);
-		//wprintf(L"MoveStop OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
-		GlobalCPacket->Clear();
-		MakePacketSync(Target->characterSession_, GlobalCPacket, Target->sessionId_, Target->x_, Target->y_);
+		//Disconnect(target->CharacterSession);
+		//wprintf(L"MoveStop OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
+		globalCPacket->Clear();
+		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 	}
 	else
 	{
 
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); // 지연처리 해주자.. 
+			SectorUpdate(target); // 지연처리 해주자.. 
 		}
 
 
 	}
 
-	//wprintf(L"## StopPacket : X  %d   Y  %d  \n", X, Y);
+	//wprintf(L"## StopPacket : x  %d   y  %d  \n", x, y);
 
-	Target->isMove_ = false;
+	target->isMove_ = false;
 
 
-	Target->action_ = Direction;
+	target->action_ = direction;
 
-	switch (Direction)
+	switch (direction)
 	{
 	case PacketMoveDirectionRR:
 	case PacketMoveDirectionRU:
 	case PacketMoveDirectionRD:
-		Target->direction_ = PacketMoveDirectionRR;
+		target->direction_ = PacketMoveDirectionRR;
 		break;
 
 	case PacketMoveDirectionLU:
 	case PacketMoveDirectionLL:
 	case PacketMoveDirectionLD:
-		Target->direction_ = PacketMoveDirectionLL;
+		target->direction_ = PacketMoveDirectionLL;
 		break;
 
 	}
 
 
-	GlobalCPacket->Clear();
+	globalCPacket->Clear();
 
-	MakePacketMoveStop(Target->characterSession_, GlobalCPacket, Target->sessionId_, Target->direction_, Target->x_, Target->y_);
+	MakePacketMoveStop(target->characterSession_, globalCPacket, target->sessionId_, target->direction_, target->x_, target->y_);
 
 	return true;
 }
 
-bool NetPacketProcAttack1(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcAttack1(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Character* Target = CharacterMap.at(TargetSession->sessionId_);
-	unsigned int ID;
+	Character* target = characterMap.at(targetSession->sessionId_);
+	unsigned int id;
 
-	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
+	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
-		//Disconnect(Target->CharacterSession);
+		//Disconnect(target->CharacterSession);
 
 
-		GlobalCPacket->Clear();
+		globalCPacket->Clear();
 
-		MakePacketSync(Target->characterSession_, GlobalCPacket, Target->sessionId_, Target->x_, Target->y_);
+		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 	}
 	else
 	{
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); // 지연처리 해주자.. 
+			SectorUpdate(target); // 지연처리 해주자.. 
 		}
 
 		//섹터 업데이트 지연처리 해줘야함.,.
@@ -605,457 +611,457 @@ bool NetPacketProcAttack1(Session* TargetSession, unsigned char Direction, unsig
 
 
 
-	ID = Target->sessionId_;
-	Target->direction_ = Direction;
+	id = target->sessionId_;
+	target->direction_ = direction;
 
-	GlobalCPacket->Clear();
+	globalCPacket->Clear();
 
-	//wprintf(L"## SendAttack1 Packet : ID :  %d , TargetDir  : %d  \n", ID, Direction);
-	MakePacketAttack1(Target->characterSession_, GlobalCPacket, ID, Direction, Target->x_, Target->y_);
-	HitCheck(Target, 1);
+	//wprintf(L"## SendAttack1 Packet : id :  %d , targetDir  : %d  \n", id, direction);
+	MakePacketAttack1(target->characterSession_, globalCPacket, id, direction, target->x_, target->y_);
+	HitCheck(target, 1);
 
 	return true;
 }
 
-bool NetPacketProcAttack2(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcAttack2(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Character* Target = CharacterMap.at(TargetSession->sessionId_);
-	unsigned int ID;
+	Character* target = characterMap.at(targetSession->sessionId_);
+	unsigned int id;
 
-	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
+	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
-		//Disconnect(Target->CharacterSession);
+		//Disconnect(target->CharacterSession);
 
 
-		GlobalCPacket->Clear();
+		globalCPacket->Clear();
 
-		MakePacketSync(Target->characterSession_, GlobalCPacket, Target->sessionId_, Target->x_, Target->y_);
+		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 	}
 	else
 	{
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); // 지연처리 해주자.. 
+			SectorUpdate(target); // 지연처리 해주자.. 
 		}
 
 		//섹터 업데이트 지연처리 해줘야함.,.
 	}
 
 
-	ID = Target->sessionId_;
-	Target->direction_ = Direction;
+	id = target->sessionId_;
+	target->direction_ = direction;
 
-	GlobalCPacket->Clear();
+	globalCPacket->Clear();
 
-	//wprintf(L"## SendAttack2 Packet : ID :  %d , TargetDir  : %d  \n", ID, Direction);
-	MakePacketAttack2(Target->characterSession_, GlobalCPacket, ID, Direction, Target->x_, Target->y_);
-	HitCheck(Target, 2);
+	//wprintf(L"## SendAttack2 Packet : id :  %d , targetDir  : %d  \n", id, direction);
+	MakePacketAttack2(target->characterSession_, globalCPacket, id, direction, target->x_, target->y_);
+	HitCheck(target, 2);
 
 	return true;
 }
 
-bool NetPacketProcAttack3(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcAttack3(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
 {
 
-	Character* Target = CharacterMap.at(TargetSession->sessionId_);
+	Character* target = characterMap.at(targetSession->sessionId_);
 
-	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
+	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
-		//Disconnect(Target->CharacterSession);
+		//Disconnect(target->CharacterSession);
 
 
-		GlobalCPacket->Clear();
+		globalCPacket->Clear();
 
-		MakePacketSync(Target->characterSession_, GlobalCPacket, Target->sessionId_, Target->x_, Target->y_);
+		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 	}
 	else
 	{
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); // 지연처리 해주자.. 
+			SectorUpdate(target); // 지연처리 해주자.. 
 		}
 
 		//섹터 업데이트 지연처리 해줘야함.,.
 	}
 
 
-	unsigned int ID;
-	ID = Target->sessionId_;
+	unsigned int id;
+	id = target->sessionId_;
 
-	Target->direction_ = Direction;
+	target->direction_ = direction;
 
-	GlobalCPacket->Clear();
+	globalCPacket->Clear();
 
-	//wprintf(L"## SendAttack3 Packet : ID :  %d , TargetDir  : %d  \n", ID, Direction);
-	MakePacketAttack3(Target->characterSession_, GlobalCPacket, ID, Direction, Target->x_, Target->y_);
-	HitCheck(Target, 3);
+	//wprintf(L"## SendAttack3 Packet : id :  %d , targetDir  : %d  \n", id, direction);
+	MakePacketAttack3(target->characterSession_, globalCPacket, id, direction, target->x_, target->y_);
+	HitCheck(target, 3);
 	return true;
 }
 
 
-bool NetPacketProcEcho(Session* Target, unsigned int Time)
+bool NetPacketProcEcho(Session* target, unsigned int time)
 {
 
 	//CPacket Packet_SC_Echo;
-	GlobalCPacket->Clear();
+	globalCPacket->Clear();
 
-	MakePacketEcho(Target, GlobalCPacket, Time);
+	MakePacketEcho(target, globalCPacket, time);
 
 	return true;
 }
 
-void Disconnect(Session* TargetSession)
+void Disconnect(Session* targetSession)
 {
-	if (TargetSession->isDelete_ == 1)
+	if (targetSession->isDelete_ == 1)
 	{
 		return;
 	}
 
-	DeleteList.push_back(TargetSession->sessionId_);
-	TargetSession->isDelete_ = 1;
+	deleteList.push_back(targetSession->sessionId_);
+	targetSession->isDelete_ = 1;
 
-	Character* Target = CharacterMap.at(TargetSession->sessionId_);
+	Character* target = characterMap.at(targetSession->sessionId_);
 
-	Sector[Target->characterSectorPos_.y_][Target->characterSectorPos_.x_].remove(Target);
+	sector[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
 
-	GlobalCPacket->Clear();
-	MakePacketDeleteCharacter(TargetSession, GlobalCPacket, TargetSession->sessionId_);
-	//wprintf(L"## Disconnect ID : %d \n", TargetSession->SessionID);
+	globalCPacket->Clear();
+	MakePacketDeleteCharacter(targetSession, globalCPacket, targetSession->sessionId_);
+	//wprintf(L"## Disconnect id : %d \n", targetSession->Sessionid);
 
 }
 
 
-void GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector)
+void GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector)
 {
-	//if(SectorX - 1)
-	AroundSector->count_ = 0;
+	//if(sectorX - 1)
+	aroundSector->count_ = 0;
 
-	AroundSector->around_[AroundSector->count_].x_ = SectorX;
-	AroundSector->around_[AroundSector->count_].y_ = SectorY;
-	AroundSector->count_++;
+	aroundSector->around_[aroundSector->count_].x_ = sectorX;
+	aroundSector->around_[aroundSector->count_].y_ = sectorY;
+	aroundSector->count_++;
 
 
 
-	if (SectorX + 1 < SectorMaxX)
+	if (sectorX + 1 < SectorMaxX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY;
+		aroundSector->count_++;
 
 	}
-	if (SectorX - 1 >= 0)
+	if (sectorX - 1 >= 0)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY;
+		aroundSector->count_++;
 	}
 
 
-	if (SectorY + 1 < SectorMaxY)
+	if (sectorY + 1 < SectorMaxY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0)
+	if (sectorY - 1 >= 0)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && SectorX + 1 < SectorMaxX)
+	if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < SectorMaxX)
+	if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && SectorX - 1 >= 0)
+	if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
-	if (SectorY - 1 >= 0 && SectorX - 1 >= 0)
+	if (sectorY - 1 >= 0 && sectorX - 1 >= 0)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
 }
 
-void GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, SectorAround* AroundSector)
+void GetSectorAroundForHitLeft(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
 {
-	int SectorX = Target->characterSectorPos_.x_;
-	int SectorY = Target->characterSectorPos_.y_;
+	int sectorX = target->characterSectorPos_.x_;
+	int sectorY = target->characterSectorPos_.y_;
 
-	
 
-	AroundSector->count_ = 0;
 
-	AroundSector->around_[AroundSector->count_].x_ = SectorX;
-	AroundSector->around_[AroundSector->count_].y_ = SectorY;
-	AroundSector->count_++;
+	aroundSector->count_ = 0;
 
-	int TargetValidPosX = ((Target->x_ - BoundaryX) / SectorXSize);
-	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SectorYSize);
-	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SectorYSize);
-	
+	aroundSector->around_[aroundSector->count_].x_ = sectorX;
+	aroundSector->around_[aroundSector->count_].y_ = sectorY;
+	aroundSector->count_++;
 
-	
-	if (SectorX - 1 >= 0 && TargetValidPosX != SectorX)
+	int targetValidPosX = ((target->x_ - boundaryX) / SectorXSize);
+	int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
+	int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
+
+
+
+	if (sectorX - 1 >= 0 && targetValidPosX != sectorX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY;
-		AroundSector->count_++;
-	}
-	
-	if (SectorY + 1 < SectorMaxY && TargetValidPosYBelow != SectorY)
-	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && TargetValidPosYAbove != SectorY)
+	if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
+	if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
-	if (SectorY - 1 >= 0 && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYAbove != SectorY)
+
+	if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
+	}
+	if (sectorY - 1 >= 0 && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
+	{
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
 }
 
-void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY, SectorAround* AroundSector)
+void GetSectorAroundForHitRight(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
 {
-	int SectorX = Target->characterSectorPos_.x_;
-	int SectorY = Target->characterSectorPos_.y_;
+	int sectorX = target->characterSectorPos_.x_;
+	int sectorY = target->characterSectorPos_.y_;
 
-	AroundSector->count_ = 0;
+	aroundSector->count_ = 0;
 
-	AroundSector->around_[AroundSector->count_].x_ = SectorX;
-	AroundSector->around_[AroundSector->count_].y_ = SectorY;
-	AroundSector->count_++;
+	aroundSector->around_[aroundSector->count_].x_ = sectorX;
+	aroundSector->around_[aroundSector->count_].y_ = sectorY;
+	aroundSector->count_++;
 
-	int TargetValidPosX = ((Target->x_ + BoundaryX) / SectorXSize);
-	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SectorYSize);
-	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SectorYSize);
+	int targetValidPosX = ((target->x_ + boundaryX) / SectorXSize);
+	int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
+	int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
 
-	if (SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX )
+	if (sectorX + 1 < SectorMaxX && targetValidPosX != sectorX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && TargetValidPosYBelow != SectorY)
+	if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && TargetValidPosYAbove != SectorY)
+	if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
+	if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX  && TargetValidPosYAbove != SectorY)
+	if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
 }
 
 
-void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, SectorAround* AddSector)
+void GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector)
 {
 	//나중에 뺄 생각.
 
 
 
-	RemoveSector->count_ = 0;
-	AddSector->count_ = 0;
+	removeSector->count_ = 0;
+	addSector->count_ = 0;
 
 	// ->
-	if ( (Target->characterSectorPos_.y_ == Target->oldSectorPos_.y_) && (Target->characterSectorPos_.x_ > Target->oldSectorPos_.x_))
+	if ((target->characterSectorPos_.y_ == target->oldSectorPos_.y_) && (target->characterSectorPos_.x_ > target->oldSectorPos_.x_))
 	{
-		
-		if (Target->characterSectorPos_.y_ == 0)
+
+		if (target->characterSectorPos_.y_ == 0)
 		{
-			if (Target->oldSectorPos_.x_ != 0)
+			if (target->oldSectorPos_.x_ != 0)
 			{
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+				removeSector->count_++;
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+				removeSector->count_++;
 			}
-			
 
-			if (Target->characterSectorPos_.x_ + 1 != SectorMaxX)
+
+			if (target->characterSectorPos_.x_ + 1 != SectorMaxX)
 			{
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+				addSector->count_++;
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+				addSector->count_++;
 			}
 
 			return;
 
 		}
 
-		if(Target->characterSectorPos_.y_ == SectorMaxY - 1)
+		if (target->characterSectorPos_.y_ == SectorMaxY - 1)
 		{
-			if (Target->oldSectorPos_.x_ != 0)
+			if (target->oldSectorPos_.x_ != 0)
 			{
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+				removeSector->count_++;
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+				removeSector->count_++;
 			}
-			
 
-			if (Target->characterSectorPos_.x_ + 1 != SectorMaxX)
+
+			if (target->characterSectorPos_.x_ + 1 != SectorMaxX)
 			{
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+				addSector->count_++;
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+				addSector->count_++;
 
 			}
-			
+
 			return;
 
 		}
 
-		if (Target->oldSectorPos_.x_ != 0)
+		if (target->oldSectorPos_.x_ != 0)
 		{
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+			removeSector->count_++;
 
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+			removeSector->count_++;
 
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+			removeSector->count_++;
 
 		}
 
 
-		if (Target->characterSectorPos_.x_ + 1 != SectorMaxX)
+		if (target->characterSectorPos_.x_ + 1 != SectorMaxX)
 		{
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+			addSector->count_++;
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+			addSector->count_++;
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+			addSector->count_++;
 		}
 
 		return;
 
 	}
-	
 
-	
+
+
 
 	//<-
 
 
-	if ((Target->characterSectorPos_.y_ == Target->oldSectorPos_.y_) && (Target->characterSectorPos_.x_ < Target->oldSectorPos_.x_))
+	if ((target->characterSectorPos_.y_ == target->oldSectorPos_.y_) && (target->characterSectorPos_.x_ < target->oldSectorPos_.x_))
 	{
 
-		if (Target->characterSectorPos_.y_ == 0)
+		if (target->characterSectorPos_.y_ == 0)
 		{
-			if (Target->characterSectorPos_.x_ != 0)
+			if (target->characterSectorPos_.x_ != 0)
 			{
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+				addSector->count_++;
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+				addSector->count_++;
 			}
 
 
-			if (Target->oldSectorPos_.x_ + 1 != SectorMaxX)
+			if (target->oldSectorPos_.x_ + 1 != SectorMaxX)
 			{
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+				removeSector->count_++;
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+				removeSector->count_++;
 			}
 
 
@@ -1063,65 +1069,65 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 		}
 
-		if (Target->characterSectorPos_.y_ == SectorMaxY - 1)
+		if (target->characterSectorPos_.y_ == SectorMaxY - 1)
 		{
-			if (Target->characterSectorPos_.x_ != 0)
+			if (target->characterSectorPos_.x_ != 0)
 			{
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+				addSector->count_++;
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+				addSector->count_++;
 			}
 
 
-			if (Target->oldSectorPos_.x_ + 1 != SectorMaxX)
+			if (target->oldSectorPos_.x_ + 1 != SectorMaxX)
 			{
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+				removeSector->count_++;
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+				removeSector->count_++;
 			}
 
 			return;
 
 		}
 
-		if (Target->characterSectorPos_.x_ != 0)
+		if (target->characterSectorPos_.x_ != 0)
 		{
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+			addSector->count_++;
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+			addSector->count_++;
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+			addSector->count_++;
 
 		}
 
 
-		if (Target->oldSectorPos_.x_ + 1 != SectorMaxX)
+		if (target->oldSectorPos_.x_ + 1 != SectorMaxX)
 		{
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+			removeSector->count_++;
 
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+			removeSector->count_++;
 
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+			removeSector->count_++;
 		}
 
 		return;
@@ -1130,32 +1136,32 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 
 	//위..
-	if ((Target->characterSectorPos_.y_ < Target->oldSectorPos_.y_) && (Target->characterSectorPos_.x_ == Target->oldSectorPos_.x_))
+	if ((target->characterSectorPos_.y_ < target->oldSectorPos_.y_) && (target->characterSectorPos_.x_ == target->oldSectorPos_.x_))
 	{
 
-		if (Target->characterSectorPos_.x_ == 0)
+		if (target->characterSectorPos_.x_ == 0)
 		{
-			if (Target->characterSectorPos_.y_ != 0)
+			if (target->characterSectorPos_.y_ != 0)
 			{
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+				addSector->count_++;
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
+				addSector->count_++;
 			}
 
 
-			if (Target->oldSectorPos_.y_ + 1 != SectorMaxY)
+			if (target->oldSectorPos_.y_ + 1 != SectorMaxY)
 			{
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
+				removeSector->count_++;
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+				removeSector->count_++;
 			}
 
 
@@ -1164,65 +1170,65 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->characterSectorPos_.x_ == SectorMaxX - 1)
+		if (target->characterSectorPos_.x_ == SectorMaxX - 1)
 		{
-			if (Target->characterSectorPos_.y_ != 0)
+			if (target->characterSectorPos_.y_ != 0)
 			{
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+				addSector->count_++;
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ ;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
+				addSector->count_++;
 			}
 
 
-			if (Target->oldSectorPos_.y_ + 1 != SectorMaxY)
+			if (target->oldSectorPos_.y_ + 1 != SectorMaxY)
 			{
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+				removeSector->count_++;
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ ;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
+				removeSector->count_++;
 			}
 
 			return;
 
 		}
 
-		if (Target->characterSectorPos_.y_ != 0)
+		if (target->characterSectorPos_.y_ != 0)
 		{
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+			addSector->count_++;
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ ;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
+			addSector->count_++;
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+			addSector->count_++;
 
 		}
 
 
-		if (Target->oldSectorPos_.y_ + 1 != SectorMaxY)
+		if (target->oldSectorPos_.y_ + 1 != SectorMaxY)
 		{
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+			removeSector->count_++;
 
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+			removeSector->count_++;
 
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
+			removeSector->count_++;
 		}
 
 		return;
@@ -1231,35 +1237,35 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 
 	//아래..
-	if ((Target->characterSectorPos_.y_ > Target->oldSectorPos_.y_) && (Target->characterSectorPos_.x_ == Target->oldSectorPos_.x_))
+	if ((target->characterSectorPos_.y_ > target->oldSectorPos_.y_) && (target->characterSectorPos_.x_ == target->oldSectorPos_.x_))
 	{
 
-		if (Target->characterSectorPos_.x_ == 0)
+		if (target->characterSectorPos_.x_ == 0)
 		{
-			if (Target->oldSectorPos_.y_ != 0)
+			if (target->oldSectorPos_.y_ != 0)
 			{
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
+				removeSector->count_++;
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+				removeSector->count_++;
 
 			}
 
 
-			if (Target->characterSectorPos_.y_ + 1 != SectorMaxY)
+			if (target->characterSectorPos_.y_ + 1 != SectorMaxY)
 			{
-				
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-				AddSector->count_++;
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+				addSector->count_++;
+
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
+				addSector->count_++;
 			}
 
 
@@ -1268,119 +1274,119 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->characterSectorPos_.x_ == SectorMaxX - 1)
+		if (target->characterSectorPos_.x_ == SectorMaxX - 1)
 		{
-			if (Target->oldSectorPos_.y_ != 0)
+			if (target->oldSectorPos_.y_ != 0)
 			{
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+				removeSector->count_++;
 
-				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
-				RemoveSector->count_++;
+				removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+				removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
+				removeSector->count_++;
 
 			}
 
 
-			if (Target->characterSectorPos_.y_ + 1 != SectorMaxY)
+			if (target->characterSectorPos_.y_ + 1 != SectorMaxY)
 			{
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+				addSector->count_++;
 
-				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_;
-				AddSector->count_++;
+				addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+				addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
+				addSector->count_++;
 			}
 
 			return;
 
 		}
 
-		if (Target->oldSectorPos_.y_ != 0)
+		if (target->oldSectorPos_.y_ != 0)
 		{
-			
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
-			RemoveSector->count_++;
 
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
+			removeSector->count_++;
 
-			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
-			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
+			removeSector->count_++;
+
+			removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
+			removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
+			removeSector->count_++;
 		}
 
 
-		if (Target->characterSectorPos_.y_ + 1 != SectorMaxY)
+		if (target->characterSectorPos_.y_ + 1 != SectorMaxY)
 		{
-			
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
-			AddSector->count_++;
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
+			addSector->count_++;
 
-			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
-			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
+			addSector->count_++;
+
+			addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
+			addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
+			addSector->count_++;
 		}
 
 		return;
 
 	}
 
-			
-	
-
-	SectorAround Old;
-	SectorAround Cur;
-
-	GetSectorAround(Target->oldSectorPos_.x_, Target->oldSectorPos_.y_, &Old);
-	GetSectorAround(Target->characterSectorPos_.x_, Target->characterSectorPos_.y_, &Cur);
 
 
-	unsigned int RemoveIndex;
-	for (unsigned int i = 0; i < Old.count_; i++)
+
+	SectorAround oldSectorAround;
+	SectorAround curSectorAround;
+
+	GetSectorAround(target->oldSectorPos_.x_, target->oldSectorPos_.y_, &oldSectorAround);
+	GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &curSectorAround);
+
+
+	unsigned int removeIndex;
+	for (unsigned int i = 0; i < oldSectorAround.count_; i++)
 	{
-		for (RemoveIndex = 0; RemoveIndex < Cur.count_; RemoveIndex++)
+		for (removeIndex = 0; removeIndex < curSectorAround.count_; removeIndex++)
 		{
-			if (Old.around_[i].x_ == Cur.around_[RemoveIndex].x_ && Old.around_[i].y_ == Cur.around_[RemoveIndex].y_)
+			if (oldSectorAround.around_[i].x_ == curSectorAround.around_[removeIndex].x_ && oldSectorAround.around_[i].y_ == curSectorAround.around_[removeIndex].y_)
 			{
 				break;
 			}
 		}
-		if (RemoveIndex == Cur.count_)
+		if (removeIndex == curSectorAround.count_)
 		{
-			RemoveSector->around_[RemoveSector->count_].x_ = Old.around_[i].x_;
-			RemoveSector->around_[RemoveSector->count_].y_ = Old.around_[i].y_;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].x_ = oldSectorAround.around_[i].x_;
+			removeSector->around_[removeSector->count_].y_ = oldSectorAround.around_[i].y_;
+			removeSector->count_++;
 		}
 	}
 
-	AddSector->count_ = 0;
+	addSector->count_ = 0;
 	unsigned int j;
-	for (unsigned int i = 0; i < Cur.count_; i++)
+	for (unsigned int i = 0; i < curSectorAround.count_; i++)
 	{
-		for (j = 0; j < Old.count_; j++)
+		for (j = 0; j < oldSectorAround.count_; j++)
 		{
-			if (Old.around_[j].x_ == Cur.around_[i].x_ && Old.around_[j].y_ == Cur.around_[i].y_)
+			if (oldSectorAround.around_[j].x_ == curSectorAround.around_[i].x_ && oldSectorAround.around_[j].y_ == curSectorAround.around_[i].y_)
 			{
 				break;
 			}
 		}
-		if (j == Old.count_)
+		if (j == oldSectorAround.count_)
 		{
-			AddSector->around_[AddSector->count_].x_ = Cur.around_[i].x_;
-			AddSector->around_[AddSector->count_].y_ = Cur.around_[i].y_;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].x_ = curSectorAround.around_[i].x_;
+			addSector->around_[addSector->count_].y_ = curSectorAround.around_[i].y_;
+			addSector->count_++;
 		}
 	}
 
@@ -1388,22 +1394,22 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 
 
-bool SectorUpdateCharacter(Character* Target)
+bool SectorUpdateCharacter(Character* target)
 {
-	int TargetCurPosX = (Target->x_ / SectorXSize);
-	int TargetCurPosY = (Target->y_ / SectorYSize);
+	int targetcurSectorAroundPosX = (target->x_ / SectorXSize);
+	int targetcurSectorAroundPosY = (target->y_ / SectorYSize);
 
-	if ((Target->characterSectorPos_.x_ != TargetCurPosX) || (Target->characterSectorPos_.y_ != TargetCurPosY))
+	if ((target->characterSectorPos_.x_ != targetcurSectorAroundPosX) || (target->characterSectorPos_.y_ != targetcurSectorAroundPosY))
 	{
 
-		Target->oldSectorPos_.x_ = Target->characterSectorPos_.x_;
-		Target->oldSectorPos_.y_ = Target->characterSectorPos_.y_;
-		Target->characterSectorPos_.x_ = TargetCurPosX;
-		Target->characterSectorPos_.y_ = TargetCurPosY;
+		target->oldSectorPos_.x_ = target->characterSectorPos_.x_;
+		target->oldSectorPos_.y_ = target->characterSectorPos_.y_;
+		target->characterSectorPos_.x_ = targetcurSectorAroundPosX;
+		target->characterSectorPos_.y_ = targetcurSectorAroundPosY;
 
-		Sector[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_].remove(Target);
-		Sector[Target->characterSectorPos_.y_][Target->characterSectorPos_.x_].push_back(Target);
-		//printf("섹터 변경 \nOld : %d  %d Cur  : %d  %d \n" , Target->OldSectorPos.X, Target->OldSectorPos.Y,TargetCurPosX, TargetCurPosY);
+		sector[target->oldSectorPos_.y_][target->oldSectorPos_.x_].remove(target);
+		sector[target->characterSectorPos_.y_][target->characterSectorPos_.x_].push_back(target);
+		//printf("섹터 변경 \noldSectorAround : %d  %d curSectorAround  : %d  %d \n" , target->oldSectorAroundSectorPos.x, target->oldSectorAroundSectorPos.y,targetcurSectorAroundPosX, targetcurSectorAroundPosY);
 
 
 
@@ -1412,73 +1418,73 @@ bool SectorUpdateCharacter(Character* Target)
 
 	return false;
 }
-void SectorUpdate(Character* Target)
+void SectorUpdate(Character* target)
 {
 
-	SectorAround Remove;
-	SectorAround Add;
+	SectorAround removeSector;
+	SectorAround addSector;
 
-	GetUpdateSectorAround(Target, &Remove, &Add);
+	GetUpdateSectorAround(target, &removeSector, &addSector);
 
-	//PrintUpdateSector(&Remove, &Add);
-
-
-
-
-	GlobalCPacket->Clear();
-
-	MakePacketDeleteCharacterRemoveSector(Target->characterSession_, GlobalCPacket, &Remove, Target->sessionId_); //패킷 만들어서 Remove 시켜줘야하는데.. 
+	//PrintUpdateSector(&removeSector, &addSector);
 
 
 
-	//Remove에 있는 애들의 삭제를 나에게 보냄. 
-	for (unsigned int i = 0; i < Remove.count_; i++)
+
+	globalCPacket->Clear();
+
+	MakePacketDeleteCharacterRemoveSector(target->characterSession_, globalCPacket, &removeSector, target->sessionId_); //패킷 만들어서 removeSector 시켜줘야하는데.. 
+
+
+
+	//removeSector에 있는 애들의 삭제를 나에게 보냄. 
+	for (unsigned int i = 0; i < removeSector.count_; i++)
 	{
-		std::list<Character*>::iterator Iter;
-		for (Iter = Sector[Remove.around_[i].y_][Remove.around_[i].x_].begin(); Iter != Sector[Remove.around_[i].y_][Remove.around_[i].x_].end(); ++Iter)
+		std::list<Character*>::iterator iter;
+		for (iter = sector[removeSector.around_[i].y_][removeSector.around_[i].x_].begin(); iter != sector[removeSector.around_[i].y_][removeSector.around_[i].x_].end(); ++iter)
 		{
-			GlobalCPacket->Clear();
-			MakePacketDeleteCharacterForMe(Target->characterSession_, GlobalCPacket, (*Iter)->sessionId_);
+			globalCPacket->Clear();
+			MakePacketDeleteCharacterForMe(target->characterSession_, globalCPacket, (*iter)->sessionId_);
 
 
-			//printf("Remove에 있는 애들의 삭제를 나에게 보냄. 지움 당하는 아이디 %d  : 받는 아이디 %d \n\n", Target->CharacterSession->SessionID, (*Iter)->SessionID);
+			//printf("removeSector에 있는 애들의 삭제를 나에게 보냄. 지움 당하는 아이디 %d  : 받는 아이디 %d \n\n", target->CharacterSession->Sessionid, (*iter)->Sessionid);
 
 		}
 	}
 
 
 	//add에 있는 애들에게 나의 생성을 보냄. 
-	GlobalCPacket->Clear();
-	MakePacketCreateCharacterAddSector(Target->characterSession_, GlobalCPacket, &Add, Target->sessionId_, Target->direction_, Target->x_, Target->y_, Target->hp_);
+	globalCPacket->Clear();
+	MakePacketCreateCharacterAddSector(target->characterSession_, globalCPacket, &addSector, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
 	//이동 정보도 보내줘야함. 
 	// 
 	// 
-	GlobalCPacket->Clear();
-	MakePacketMoveStartAddSector(Target->characterSession_, GlobalCPacket, &Add, Target->sessionId_, Target->action_, Target->x_, Target->y_);
+	globalCPacket->Clear();
+	MakePacketMoveStartAddSector(target->characterSession_, globalCPacket, &addSector, target->sessionId_, target->action_, target->x_, target->y_);
 
 
 
-	for (unsigned int i = 0; i < Add.count_; i++)
+	for (unsigned int i = 0; i < addSector.count_; i++)
 	{
-		std::list<Character*>::iterator IterCreate;
-		for (IterCreate = Sector[Add.around_[i].y_][Add.around_[i].x_].begin();
-			IterCreate != Sector[Add.around_[i].y_][Add.around_[i].x_].end(); ++IterCreate)
+		std::list<Character*>::iterator iterCreate;
+		for (iterCreate = sector[addSector.around_[i].y_][addSector.around_[i].x_].begin();
+			iterCreate != sector[addSector.around_[i].y_][addSector.around_[i].x_].end(); ++iterCreate)
 		{
-			Character* CreateCharacter = *IterCreate;
-			if ((CreateCharacter->sessionId_ == Target->sessionId_) || (CreateCharacter->characterSession_->isDelete_ == 1))
+			Character* createCharacter = *iterCreate;
+			if ((createCharacter->sessionId_ == target->sessionId_) || (createCharacter->characterSession_->isDelete_ == 1))
 			{
 				continue;
 			}
 
-			GlobalCPacket->Clear();
+			globalCPacket->Clear();
 
-			MakePacketCreateOtherCharacterForMe(Target->characterSession_, GlobalCPacket, CreateCharacter->sessionId_, CreateCharacter->direction_, CreateCharacter->x_, CreateCharacter->y_, CreateCharacter->hp_);
+			MakePacketCreateOtherCharacterForMe(target->characterSession_, globalCPacket, createCharacter->sessionId_, createCharacter->direction_, createCharacter->x_, createCharacter->y_, createCharacter->hp_);
 
-			if (CreateCharacter->isMove_ == true)
+			if (createCharacter->isMove_ == true)
 			{
 
-				GlobalCPacket->Clear();
-				MakePacketMoveStartForMe(Target->characterSession_, GlobalCPacket, CreateCharacter->sessionId_, CreateCharacter->action_, CreateCharacter->x_, CreateCharacter->y_);
+				globalCPacket->Clear();
+				MakePacketMoveStartForMe(target->characterSession_, globalCPacket, createCharacter->sessionId_, createCharacter->action_, createCharacter->x_, createCharacter->y_);
 			}
 
 		}
@@ -1487,36 +1493,36 @@ void SectorUpdate(Character* Target)
 
 
 }
-void FreeCharacter(Character* Target)
+void FreeCharacter(Character* target)
 {
-	CharacterFreeList.Free(Target);
+	characterFreeList.Free(target);
 }
-void PrintUpdateSector(SectorAround* RemoveSector, SectorAround* AddSector)
+void PrintUpdateSector(SectorAround* removeSector, SectorAround* addSector)
 {
-	wprintf(L"Add : ");
-	for (unsigned int i = 0; i < AddSector->count_; i++)
+	wprintf(L"addSector : ");
+	for (unsigned int i = 0; i < addSector->count_; i++)
 	{
-		wprintf(L"%d %d    ", AddSector->around_[i].x_, AddSector->around_[i].y_);
+		wprintf(L"%d %d    ", addSector->around_[i].x_, addSector->around_[i].y_);
 
 	}
-	wprintf(L"\nRem : "); 
+	wprintf(L"\nRem : ");
 
-	for (unsigned int i = 0; i < RemoveSector->count_; i++)
+	for (unsigned int i = 0; i < removeSector->count_; i++)
 	{
-		wprintf(L"%d %d    ", RemoveSector->around_[i].x_, RemoveSector->around_[i].y_);
+		wprintf(L"%d %d    ", removeSector->around_[i].x_, removeSector->around_[i].y_);
 
 	}
 	wprintf(L"\n\n");
 
 }
-void PrintHitCheckSector(SectorAround* HitCheckSector)
+void PrintHitCheckSector(SectorAround* hitCheckSector)
 {
 
-	wprintf(L"\nHitCheckSector : ");
+	wprintf(L"\nhitCheckSector : ");
 
-	for (unsigned int i = 0; i < HitCheckSector->count_; i++)
+	for (unsigned int i = 0; i < hitCheckSector->count_; i++)
 	{
-		wprintf(L"%d %d    ", HitCheckSector->around_[i].x_, HitCheckSector->around_[i].y_);
+		wprintf(L"%d %d    ", hitCheckSector->around_[i].x_, hitCheckSector->around_[i].y_);
 
 	}
 	wprintf(L"\n\n");
@@ -1524,7 +1530,7 @@ void PrintHitCheckSector(SectorAround* HitCheckSector)
 
 }
 //
-//void SectorUpdate(CHARACTER* Target)
+//void SectorUpdate(CHARACTER* target)
 //{
 //
 //}

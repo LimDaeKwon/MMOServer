@@ -30,9 +30,9 @@ SOCKET listenSocket = INVALID_SOCKET;
 std::unordered_map<unsigned int, Session*> sessions;
 ObjectFreeList<Session> sessionFreeList(10000);
 
-extern std::list<unsigned int> DeleteList;
-extern std::unordered_map<unsigned int, Character*> CharacterMap;
-extern std::list<Character*> Sector[SectorMaxY][SectorMaxX];
+extern std::list<unsigned int> deleteList;
+extern std::unordered_map<unsigned int, Character*> characterMap;
+extern std::list<Character*> sector[SectorMaxY][SectorMaxX];
 
 CPacket* cPacketBuffer = CPacket::Alloc();
 
@@ -233,7 +233,7 @@ void AcceptClient()
 
     sessions.insert(std::unordered_map<unsigned int, Session*>::value_type(newSession->sessionId_, newSession));
 
-    CreateCharater(newSession);
+    CreateCharacter(newSession);
 }
 
 void SendPacketUnicast(Session* target, CPacket* packet)
@@ -257,7 +257,7 @@ void SendPacketSectorOne(int sectorX, int sectorY, Session* except, CPacket* pac
     Character* target;
     std::list<Character*>::iterator iter;
 
-    for (iter = Sector[sectorY][sectorX].begin(); iter != Sector[sectorY][sectorX].end(); ++iter)
+    for (iter = sector[sectorY][sectorX].begin(); iter != sector[sectorY][sectorX].end(); ++iter)
     {
         target = *iter;
 
@@ -295,7 +295,7 @@ void SendPacketAroundAddSector(Session* target, CPacket* packet, SectorAround* a
 
 void SendPacketAround(Session* session, CPacket* packet, bool sendMe)
 {
-    Character* target = CharacterMap.at(session->sessionId_);
+    Character* target = characterMap.at(session->sessionId_);
     SectorAround around;
 
     GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &around);
@@ -425,7 +425,7 @@ void ServerControl()
 
 void DeleteDisconnect()
 {
-    if (DeleteList.size() > 0)
+    if (deleteList.size() > 0)
     {
         Session* session;
         Character* deleteTarget;
@@ -433,15 +433,15 @@ void DeleteDisconnect()
 
         std::list<unsigned int>::iterator iter;
 
-        for (iter = DeleteList.begin(); iter != DeleteList.end(); ++iter)
+        for (iter = deleteList.begin(); iter != deleteList.end(); ++iter)
         {
             sessionId = *iter;
             session = sessions.at(sessionId);
-            deleteTarget = CharacterMap.at(sessionId);
+            deleteTarget = characterMap.at(sessionId);
 
             FreeCharacter(deleteTarget);
 
-            CharacterMap.erase(sessionId);
+            characterMap.erase(sessionId);
 
             closesocket(session->socket_);
             session->receiveQueue_.ClearBuffer();
@@ -451,7 +451,7 @@ void DeleteDisconnect()
             sessions.erase(sessionId);
         }
 
-        DeleteList.clear();
+        deleteList.clear();
     }
 }
 

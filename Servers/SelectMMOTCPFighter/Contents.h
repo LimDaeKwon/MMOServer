@@ -8,7 +8,7 @@ class CPacket;
 
 void GameRun(Character* Target);
 
-void CreateCharater(Session* NewSession);
+void CreateCharacter(Session* NewSession);
 
 void Update();
 
