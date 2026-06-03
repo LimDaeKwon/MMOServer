@@ -299,9 +299,9 @@ void SendPacketSectorOne(int SectorX, int SectorY, Session* Except, CPacket* Pac
 void SendPacketAroundRemoveSector(Session* Target, CPacket* Packet, SectorAround* Around)
 {
 
-	for (unsigned int Index = 0; Index < Around->Count; Index++)
+	for (unsigned int Index = 0; Index < Around->count_; Index++)
 	{
-		SendPacketSectorOne(Around->Around[Index].X, Around->Around[Index].Y, NULL, Packet);
+		SendPacketSectorOne(Around->around_[Index].x_, Around->around_[Index].y_, NULL, Packet);
 	}
 
 
@@ -309,9 +309,9 @@ void SendPacketAroundRemoveSector(Session* Target, CPacket* Packet, SectorAround
 
 void SendPacketAroundAddSector(Session* Target, CPacket* Packet, SectorAround* Around)
 {
-	for (unsigned int Index = 0; Index < Around->Count; Index++)
+	for (unsigned int Index = 0; Index < Around->count_; Index++)
 	{
-		SendPacketSectorOne(Around->Around[Index].X, Around->Around[Index].Y, NULL, Packet);
+		SendPacketSectorOne(Around->around_[Index].x_, Around->around_[Index].y_, NULL, Packet);
 	}
 }
 
@@ -321,21 +321,21 @@ void SendPacketAround(Session* Session, CPacket* Packet, bool SendMe)
 	Character* Target = CharacterMap.at(Session->sessionId_);
 	SectorAround Around;
 
-	GetSectorAround(Target->characterSectorPos_.X, Target->characterSectorPos_.Y, &Around);
+	GetSectorAround(Target->characterSectorPos_.x_, Target->characterSectorPos_.y_, &Around);
 
 
 	if (SendMe)
 	{
-		for (unsigned int Index = 0; Index < Around.Count; Index++)
+		for (unsigned int Index = 0; Index < Around.count_; Index++)
 		{
-			SendPacketSectorOne(Around.Around[Index].X, Around.Around[Index].Y, NULL, Packet);
+			SendPacketSectorOne(Around.around_[Index].x_, Around.around_[Index].y_, NULL, Packet);
 		}
 	}
 	else
 	{
-		for (unsigned int Index = 0; Index < Around.Count; Index++)
+		for (unsigned int Index = 0; Index < Around.count_; Index++)
 		{
-			SendPacketSectorOne(Around.Around[Index].X, Around.Around[Index].Y, Session, Packet);
+			SendPacketSectorOne(Around.around_[Index].x_, Around.around_[Index].y_, Session, Packet);
 		}
 	}
 

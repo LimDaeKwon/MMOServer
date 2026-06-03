@@ -45,14 +45,14 @@ void CreateCharater(Session* NewSession)
 
 	NewPlayer->hp_ = DEFAULTHP;
 
-	NewPlayer->characterSectorPos_.X = NewPlayer->x_ / SECTORXSIZE;
-	NewPlayer->characterSectorPos_.Y = NewPlayer->y_ / SECTORYSIZE;
-	NewPlayer->oldSectorPos_.X = SECTORMAXX;
-	NewPlayer->oldSectorPos_.Y = SECTORMAXY;
+	NewPlayer->characterSectorPos_.x_ = NewPlayer->x_ / SECTORXSIZE;
+	NewPlayer->characterSectorPos_.y_ = NewPlayer->y_ / SECTORYSIZE;
+	NewPlayer->oldSectorPos_.x_ = SECTORMAXX;
+	NewPlayer->oldSectorPos_.y_ = SECTORMAXY;
 
 	NewPlayer->isMove_ = false;
 
-	Sector[NewPlayer->characterSectorPos_.Y][NewPlayer->characterSectorPos_.X].push_back(NewPlayer);
+	Sector[NewPlayer->characterSectorPos_.y_][NewPlayer->characterSectorPos_.x_].push_back(NewPlayer);
 	CharacterMap.insert(std::unordered_map<unsigned int, Character*>::value_type(NewPlayer->sessionId_, NewPlayer));
 
 
@@ -67,14 +67,14 @@ void CreateCharater(Session* NewSession)
 	//나를 남에게.
 
 	SectorAround CreateForMe;
-	GetSectorAround(NewPlayer->characterSectorPos_.X, NewPlayer->characterSectorPos_.Y, &CreateForMe);
+	GetSectorAround(NewPlayer->characterSectorPos_.x_, NewPlayer->characterSectorPos_.y_, &CreateForMe);
 
 
-	for (unsigned int i = 0; i < CreateForMe.Count; i++)
+	for (unsigned int i = 0; i < CreateForMe.count_; i++)
 	{
 		std::list<Character*>::iterator Iter;
-		for (Iter = Sector[CreateForMe.Around[i].Y][CreateForMe.Around[i].X].begin();
-			Iter != Sector[CreateForMe.Around[i].Y][CreateForMe.Around[i].X].end(); ++Iter)
+		for (Iter = Sector[CreateForMe.around_[i].y_][CreateForMe.around_[i].x_].begin();
+			Iter != Sector[CreateForMe.around_[i].y_][CreateForMe.around_[i].x_].end(); ++Iter)
 		{
 			Character* Target = *Iter;
 			if ((Target->sessionId_ == NewPlayer->sessionId_) || (Target->characterSession_->isDelete_ == 1))
@@ -333,10 +333,10 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 
 		//PrintHitCheckSector(&HitCheckSector);
 
-		for (unsigned int i = 0; i < HitCheckSector.Count; ++i)
+		for (unsigned int i = 0; i < HitCheckSector.count_; ++i)
 		{
 			std::list<Character*>::iterator Iter;
-			for (Iter = Sector[HitCheckSector.Around[i].Y][HitCheckSector.Around[i].X].begin(); Iter != Sector[HitCheckSector.Around[i].Y][HitCheckSector.Around[i].X].end(); ++Iter)
+			for (Iter = Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].begin(); Iter != Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].end(); ++Iter)
 			{
 				Character* Target = *Iter;
 
@@ -381,10 +381,10 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 	{
 		GetSectorAroundForHitRight(AttackCharacter, BoundaryX, BoundaryY, &HitCheckSector);
 		//PrintHitCheckSector(&HitCheckSector);
-		for (unsigned int i = 0; i < HitCheckSector.Count; ++i)
+		for (unsigned int i = 0; i < HitCheckSector.count_; ++i)
 		{
 			std::list<Character*>::iterator Iter;
-			for (Iter = Sector[HitCheckSector.Around[i].Y][HitCheckSector.Around[i].X].begin(); Iter != Sector[HitCheckSector.Around[i].Y][HitCheckSector.Around[i].X].end(); ++Iter)
+			for (Iter = Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].begin(); Iter != Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].end(); ++Iter)
 			{
 				Character* Target = *Iter;
 
@@ -730,7 +730,7 @@ void Disconnect(Session* TargetSession)
 
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 
-	Sector[Target->characterSectorPos_.Y][Target->characterSectorPos_.X].remove(Target);
+	Sector[Target->characterSectorPos_.y_][Target->characterSectorPos_.x_].remove(Target);
 
 	GlobalCPacket->Clear();
 	MakePacketDeleteCharacter(TargetSession, GlobalCPacket, TargetSession->sessionId_);
@@ -742,84 +742,84 @@ void Disconnect(Session* TargetSession)
 void GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector)
 {
 	//if(SectorX - 1)
-	AroundSector->Count = 0;
+	AroundSector->count_ = 0;
 
-	AroundSector->Around[AroundSector->Count].X = SectorX;
-	AroundSector->Around[AroundSector->Count].Y = SectorY;
-	AroundSector->Count++;
+	AroundSector->around_[AroundSector->count_].x_ = SectorX;
+	AroundSector->around_[AroundSector->count_].y_ = SectorY;
+	AroundSector->count_++;
 
 
 
 	if (SectorX + 1 < SECTORMAXX)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY;
+		AroundSector->count_++;
 
 	}
 	if (SectorX - 1 >= 0)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY;
+		AroundSector->count_++;
 	}
 
 
 	if (SectorY + 1 < SECTORMAXY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX;
-		AroundSector->Around[AroundSector->Count].Y = SectorY + 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY - 1 >= 0)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX;
-		AroundSector->Around[AroundSector->Count].Y = SectorY - 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY + 1 < SECTORMAXY && SectorX + 1 < SECTORMAXX)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY + 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY - 1 >= 0 && SectorX + 1 < SECTORMAXX)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY - 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY + 1 < SECTORMAXY && SectorX - 1 >= 0)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY + 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
+		AroundSector->count_++;
 	}
 	if (SectorY - 1 >= 0 && SectorX - 1 >= 0)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY - 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
+		AroundSector->count_++;
 	}
 
 }
 
 void GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, SectorAround* AroundSector)
 {
-	int SectorX = Target->characterSectorPos_.X;
-	int SectorY = Target->characterSectorPos_.Y;
+	int SectorX = Target->characterSectorPos_.x_;
+	int SectorY = Target->characterSectorPos_.y_;
 
 	
 
-	AroundSector->Count = 0;
+	AroundSector->count_ = 0;
 
-	AroundSector->Around[AroundSector->Count].X = SectorX;
-	AroundSector->Around[AroundSector->Count].Y = SectorY;
-	AroundSector->Count++;
+	AroundSector->around_[AroundSector->count_].x_ = SectorX;
+	AroundSector->around_[AroundSector->count_].y_ = SectorY;
+	AroundSector->count_++;
 
 	int TargetValidPosX = ((Target->x_ - BoundaryX) / SECTORXSIZE);
 	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SECTORYSIZE);
@@ -829,50 +829,50 @@ void GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, 
 	
 	if (SectorX - 1 >= 0 && TargetValidPosX != SectorX)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY;
+		AroundSector->count_++;
 	}
 	
 	if (SectorY + 1 < SECTORMAXY && TargetValidPosYBelow != SectorY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX;
-		AroundSector->Around[AroundSector->Count].Y = SectorY + 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY - 1 >= 0 && TargetValidPosYAbove != SectorY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX;
-		AroundSector->Around[AroundSector->Count].Y = SectorY - 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY + 1 < SECTORMAXY && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY + 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
+		AroundSector->count_++;
 	}
 	if (SectorY - 1 >= 0 && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYAbove != SectorY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY - 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
+		AroundSector->count_++;
 	}
 
 }
 
 void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY, SectorAround* AroundSector)
 {
-	int SectorX = Target->characterSectorPos_.X;
-	int SectorY = Target->characterSectorPos_.Y;
+	int SectorX = Target->characterSectorPos_.x_;
+	int SectorY = Target->characterSectorPos_.y_;
 
-	AroundSector->Count = 0;
+	AroundSector->count_ = 0;
 
-	AroundSector->Around[AroundSector->Count].X = SectorX;
-	AroundSector->Around[AroundSector->Count].Y = SectorY;
-	AroundSector->Count++;
+	AroundSector->around_[AroundSector->count_].x_ = SectorX;
+	AroundSector->around_[AroundSector->count_].y_ = SectorY;
+	AroundSector->count_++;
 
 	int TargetValidPosX = ((Target->x_ + BoundaryX) / SECTORXSIZE);
 	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SECTORYSIZE);
@@ -880,37 +880,37 @@ void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY,
 
 	if (SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX )
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY;
+		AroundSector->count_++;
 	}
 
 	if (SectorY + 1 < SECTORMAXY && TargetValidPosYBelow != SectorY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX;
-		AroundSector->Around[AroundSector->Count].Y = SectorY + 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY - 1 >= 0 && TargetValidPosYAbove != SectorY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX;
-		AroundSector->Around[AroundSector->Count].Y = SectorY - 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY + 1 < SECTORMAXY && SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY + 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
+		AroundSector->count_++;
 	}
 
 	if (SectorY - 1 >= 0 && SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX  && TargetValidPosYAbove != SectorY)
 	{
-		AroundSector->Around[AroundSector->Count].X = SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = SectorY - 1;
-		AroundSector->Count++;
+		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
+		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
+		AroundSector->count_++;
 	}
 
 }
@@ -922,65 +922,65 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 
 
-	RemoveSector->Count = 0;
-	AddSector->Count = 0;
+	RemoveSector->count_ = 0;
+	AddSector->count_ = 0;
 
 	// ->
-	if ( (Target->characterSectorPos_.Y == Target->oldSectorPos_.Y) && (Target->characterSectorPos_.X > Target->oldSectorPos_.X))
+	if ( (Target->characterSectorPos_.y_ == Target->oldSectorPos_.y_) && (Target->characterSectorPos_.x_ > Target->oldSectorPos_.x_))
 	{
 		
-		if (Target->characterSectorPos_.Y == 0)
+		if (Target->characterSectorPos_.y_ == 0)
 		{
-			if (Target->oldSectorPos_.X != 0)
+			if (Target->oldSectorPos_.x_ != 0)
 			{
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+				RemoveSector->count_++;
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+				RemoveSector->count_++;
 			}
 			
 
-			if (Target->characterSectorPos_.X + 1 != SECTORMAXX)
+			if (Target->characterSectorPos_.x_ + 1 != SECTORMAXX)
 			{
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+				AddSector->count_++;
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+				AddSector->count_++;
 			}
 
 			return;
 
 		}
 
-		if(Target->characterSectorPos_.Y == SECTORMAXY - 1)
+		if(Target->characterSectorPos_.y_ == SECTORMAXY - 1)
 		{
-			if (Target->oldSectorPos_.X != 0)
+			if (Target->oldSectorPos_.x_ != 0)
 			{
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+				RemoveSector->count_++;
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+				RemoveSector->count_++;
 			}
 			
 
-			if (Target->characterSectorPos_.X + 1 != SECTORMAXX)
+			if (Target->characterSectorPos_.x_ + 1 != SECTORMAXX)
 			{
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+				AddSector->count_++;
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+				AddSector->count_++;
 
 			}
 			
@@ -988,36 +988,36 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 		}
 
-		if (Target->oldSectorPos_.X != 0)
+		if (Target->oldSectorPos_.x_ != 0)
 		{
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+			RemoveSector->count_++;
 
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+			RemoveSector->count_++;
 
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+			RemoveSector->count_++;
 
 		}
 
 
-		if (Target->characterSectorPos_.X + 1 != SECTORMAXX)
+		if (Target->characterSectorPos_.x_ + 1 != SECTORMAXX)
 		{
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+			AddSector->count_++;
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+			AddSector->count_++;
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+			AddSector->count_++;
 		}
 
 		return;
@@ -1030,32 +1030,32 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 	//<-
 
 
-	if ((Target->characterSectorPos_.Y == Target->oldSectorPos_.Y) && (Target->characterSectorPos_.X < Target->oldSectorPos_.X))
+	if ((Target->characterSectorPos_.y_ == Target->oldSectorPos_.y_) && (Target->characterSectorPos_.x_ < Target->oldSectorPos_.x_))
 	{
 
-		if (Target->characterSectorPos_.Y == 0)
+		if (Target->characterSectorPos_.y_ == 0)
 		{
-			if (Target->characterSectorPos_.X != 0)
+			if (Target->characterSectorPos_.x_ != 0)
 			{
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+				AddSector->count_++;
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+				AddSector->count_++;
 			}
 
 
-			if (Target->oldSectorPos_.X + 1 != SECTORMAXX)
+			if (Target->oldSectorPos_.x_ + 1 != SECTORMAXX)
 			{
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+				RemoveSector->count_++;
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+				RemoveSector->count_++;
 			}
 
 
@@ -1063,65 +1063,65 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 		}
 
-		if (Target->characterSectorPos_.Y == SECTORMAXY - 1)
+		if (Target->characterSectorPos_.y_ == SECTORMAXY - 1)
 		{
-			if (Target->characterSectorPos_.X != 0)
+			if (Target->characterSectorPos_.x_ != 0)
 			{
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+				AddSector->count_++;
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+				AddSector->count_++;
 			}
 
 
-			if (Target->oldSectorPos_.X + 1 != SECTORMAXX)
+			if (Target->oldSectorPos_.x_ + 1 != SECTORMAXX)
 			{
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+				RemoveSector->count_++;
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+				RemoveSector->count_++;
 			}
 
 			return;
 
 		}
 
-		if (Target->characterSectorPos_.X != 0)
+		if (Target->characterSectorPos_.x_ != 0)
 		{
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+			AddSector->count_++;
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+			AddSector->count_++;
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+			AddSector->count_++;
 
 		}
 
 
-		if (Target->oldSectorPos_.X + 1 != SECTORMAXX)
+		if (Target->oldSectorPos_.x_ + 1 != SECTORMAXX)
 		{
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+			RemoveSector->count_++;
 
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+			RemoveSector->count_++;
 
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+			RemoveSector->count_++;
 		}
 
 		return;
@@ -1130,32 +1130,32 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 
 	//위..
-	if ((Target->characterSectorPos_.Y < Target->oldSectorPos_.Y) && (Target->characterSectorPos_.X == Target->oldSectorPos_.X))
+	if ((Target->characterSectorPos_.y_ < Target->oldSectorPos_.y_) && (Target->characterSectorPos_.x_ == Target->oldSectorPos_.x_))
 	{
 
-		if (Target->characterSectorPos_.X == 0)
+		if (Target->characterSectorPos_.x_ == 0)
 		{
-			if (Target->characterSectorPos_.Y != 0)
+			if (Target->characterSectorPos_.y_ != 0)
 			{
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+				AddSector->count_++;
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_;
+				AddSector->count_++;
 			}
 
 
-			if (Target->oldSectorPos_.Y + 1 != SECTORMAXY)
+			if (Target->oldSectorPos_.y_ + 1 != SECTORMAXY)
 			{
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
+				RemoveSector->count_++;
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+				RemoveSector->count_++;
 			}
 
 
@@ -1164,65 +1164,65 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->characterSectorPos_.X == SECTORMAXX - 1)
+		if (Target->characterSectorPos_.x_ == SECTORMAXX - 1)
 		{
-			if (Target->characterSectorPos_.Y != 0)
+			if (Target->characterSectorPos_.y_ != 0)
 			{
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+				AddSector->count_++;
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X ;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ ;
+				AddSector->count_++;
 			}
 
 
-			if (Target->oldSectorPos_.Y + 1 != SECTORMAXY)
+			if (Target->oldSectorPos_.y_ + 1 != SECTORMAXY)
 			{
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+				RemoveSector->count_++;
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X ;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ ;
+				RemoveSector->count_++;
 			}
 
 			return;
 
 		}
 
-		if (Target->characterSectorPos_.Y != 0)
+		if (Target->characterSectorPos_.y_ != 0)
 		{
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+			AddSector->count_++;
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X ;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ ;
+			AddSector->count_++;
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y - 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ - 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+			AddSector->count_++;
 
 		}
 
 
-		if (Target->oldSectorPos_.Y + 1 != SECTORMAXY)
+		if (Target->oldSectorPos_.y_ + 1 != SECTORMAXY)
 		{
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+			RemoveSector->count_++;
 
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+			RemoveSector->count_++;
 
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y + 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
+			RemoveSector->count_++;
 		}
 
 		return;
@@ -1231,35 +1231,35 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 
 	//아래..
-	if ((Target->characterSectorPos_.Y > Target->oldSectorPos_.Y) && (Target->characterSectorPos_.X == Target->oldSectorPos_.X))
+	if ((Target->characterSectorPos_.y_ > Target->oldSectorPos_.y_) && (Target->characterSectorPos_.x_ == Target->oldSectorPos_.x_))
 	{
 
-		if (Target->characterSectorPos_.X == 0)
+		if (Target->characterSectorPos_.x_ == 0)
 		{
-			if (Target->oldSectorPos_.Y != 0)
+			if (Target->oldSectorPos_.y_ != 0)
 			{
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
+				RemoveSector->count_++;
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+				RemoveSector->count_++;
 
 			}
 
 
-			if (Target->characterSectorPos_.Y + 1 != SECTORMAXY)
+			if (Target->characterSectorPos_.y_ + 1 != SECTORMAXY)
 			{
 				
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+				AddSector->count_++;
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_;
+				AddSector->count_++;
 			}
 
 
@@ -1268,69 +1268,69 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->characterSectorPos_.X == SECTORMAXX - 1)
+		if (Target->characterSectorPos_.x_ == SECTORMAXX - 1)
 		{
-			if (Target->oldSectorPos_.Y != 0)
+			if (Target->oldSectorPos_.y_ != 0)
 			{
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+				RemoveSector->count_++;
 
-				RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-				RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X;
-				RemoveSector->Count++;
+				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
+				RemoveSector->count_++;
 
 			}
 
 
-			if (Target->characterSectorPos_.Y + 1 != SECTORMAXY)
+			if (Target->characterSectorPos_.y_ + 1 != SECTORMAXY)
 			{
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+				AddSector->count_++;
 
-				AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-				AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X;
-				AddSector->Count++;
+				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_;
+				AddSector->count_++;
 			}
 
 			return;
 
 		}
 
-		if (Target->oldSectorPos_.Y != 0)
+		if (Target->oldSectorPos_.y_ != 0)
 		{
 			
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X - 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
+			RemoveSector->count_++;
 
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X + 1;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
+			RemoveSector->count_++;
 
-			RemoveSector->Around[RemoveSector->Count].Y = Target->oldSectorPos_.Y - 1;
-			RemoveSector->Around[RemoveSector->Count].X = Target->oldSectorPos_.X;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ - 1;
+			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
+			RemoveSector->count_++;
 		}
 
 
-		if (Target->characterSectorPos_.Y + 1 != SECTORMAXY)
+		if (Target->characterSectorPos_.y_ + 1 != SECTORMAXY)
 		{
 			
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X + 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
+			AddSector->count_++;
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_;
+			AddSector->count_++;
 
-			AddSector->Around[AddSector->Count].Y = Target->characterSectorPos_.Y + 1;
-			AddSector->Around[AddSector->Count].X = Target->characterSectorPos_.X - 1;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
+			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
+			AddSector->count_++;
 		}
 
 		return;
@@ -1343,44 +1343,44 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 	SectorAround Old;
 	SectorAround Cur;
 
-	GetSectorAround(Target->oldSectorPos_.X, Target->oldSectorPos_.Y, &Old);
-	GetSectorAround(Target->characterSectorPos_.X, Target->characterSectorPos_.Y, &Cur);
+	GetSectorAround(Target->oldSectorPos_.x_, Target->oldSectorPos_.y_, &Old);
+	GetSectorAround(Target->characterSectorPos_.x_, Target->characterSectorPos_.y_, &Cur);
 
 
 	unsigned int RemoveIndex;
-	for (unsigned int i = 0; i < Old.Count; i++)
+	for (unsigned int i = 0; i < Old.count_; i++)
 	{
-		for (RemoveIndex = 0; RemoveIndex < Cur.Count; RemoveIndex++)
+		for (RemoveIndex = 0; RemoveIndex < Cur.count_; RemoveIndex++)
 		{
-			if (Old.Around[i].X == Cur.Around[RemoveIndex].X && Old.Around[i].Y == Cur.Around[RemoveIndex].Y)
+			if (Old.around_[i].x_ == Cur.around_[RemoveIndex].x_ && Old.around_[i].y_ == Cur.around_[RemoveIndex].y_)
 			{
 				break;
 			}
 		}
-		if (RemoveIndex == Cur.Count)
+		if (RemoveIndex == Cur.count_)
 		{
-			RemoveSector->Around[RemoveSector->Count].X = Old.Around[i].X;
-			RemoveSector->Around[RemoveSector->Count].Y = Old.Around[i].Y;
-			RemoveSector->Count++;
+			RemoveSector->around_[RemoveSector->count_].x_ = Old.around_[i].x_;
+			RemoveSector->around_[RemoveSector->count_].y_ = Old.around_[i].y_;
+			RemoveSector->count_++;
 		}
 	}
 
-	AddSector->Count = 0;
+	AddSector->count_ = 0;
 	unsigned int j;
-	for (unsigned int i = 0; i < Cur.Count; i++)
+	for (unsigned int i = 0; i < Cur.count_; i++)
 	{
-		for (j = 0; j < Old.Count; j++)
+		for (j = 0; j < Old.count_; j++)
 		{
-			if (Old.Around[j].X == Cur.Around[i].X && Old.Around[j].Y == Cur.Around[i].Y)
+			if (Old.around_[j].x_ == Cur.around_[i].x_ && Old.around_[j].y_ == Cur.around_[i].y_)
 			{
 				break;
 			}
 		}
-		if (j == Old.Count)
+		if (j == Old.count_)
 		{
-			AddSector->Around[AddSector->Count].X = Cur.Around[i].X;
-			AddSector->Around[AddSector->Count].Y = Cur.Around[i].Y;
-			AddSector->Count++;
+			AddSector->around_[AddSector->count_].x_ = Cur.around_[i].x_;
+			AddSector->around_[AddSector->count_].y_ = Cur.around_[i].y_;
+			AddSector->count_++;
 		}
 	}
 
@@ -1393,16 +1393,16 @@ bool SectorUpdateCharacter(Character* Target)
 	int TargetCurPosX = (Target->x_ / SECTORXSIZE);
 	int TargetCurPosY = (Target->y_ / SECTORYSIZE);
 
-	if ((Target->characterSectorPos_.X != TargetCurPosX) || (Target->characterSectorPos_.Y != TargetCurPosY))
+	if ((Target->characterSectorPos_.x_ != TargetCurPosX) || (Target->characterSectorPos_.y_ != TargetCurPosY))
 	{
 
-		Target->oldSectorPos_.X = Target->characterSectorPos_.X;
-		Target->oldSectorPos_.Y = Target->characterSectorPos_.Y;
-		Target->characterSectorPos_.X = TargetCurPosX;
-		Target->characterSectorPos_.Y = TargetCurPosY;
+		Target->oldSectorPos_.x_ = Target->characterSectorPos_.x_;
+		Target->oldSectorPos_.y_ = Target->characterSectorPos_.y_;
+		Target->characterSectorPos_.x_ = TargetCurPosX;
+		Target->characterSectorPos_.y_ = TargetCurPosY;
 
-		Sector[Target->oldSectorPos_.Y][Target->oldSectorPos_.X].remove(Target);
-		Sector[Target->characterSectorPos_.Y][Target->characterSectorPos_.X].push_back(Target);
+		Sector[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_].remove(Target);
+		Sector[Target->characterSectorPos_.y_][Target->characterSectorPos_.x_].push_back(Target);
 		//printf("섹터 변경 \nOld : %d  %d Cur  : %d  %d \n" , Target->OldSectorPos.X, Target->OldSectorPos.Y,TargetCurPosX, TargetCurPosY);
 
 
@@ -1432,10 +1432,10 @@ void SectorUpdate(Character* Target)
 
 
 	//Remove에 있는 애들의 삭제를 나에게 보냄. 
-	for (unsigned int i = 0; i < Remove.Count; i++)
+	for (unsigned int i = 0; i < Remove.count_; i++)
 	{
 		std::list<Character*>::iterator Iter;
-		for (Iter = Sector[Remove.Around[i].Y][Remove.Around[i].X].begin(); Iter != Sector[Remove.Around[i].Y][Remove.Around[i].X].end(); ++Iter)
+		for (Iter = Sector[Remove.around_[i].y_][Remove.around_[i].x_].begin(); Iter != Sector[Remove.around_[i].y_][Remove.around_[i].x_].end(); ++Iter)
 		{
 			GlobalCPacket->Clear();
 			MakePacketDeleteCharacterForMe(Target->characterSession_, GlobalCPacket, (*Iter)->sessionId_);
@@ -1458,11 +1458,11 @@ void SectorUpdate(Character* Target)
 
 
 
-	for (unsigned int i = 0; i < Add.Count; i++)
+	for (unsigned int i = 0; i < Add.count_; i++)
 	{
 		std::list<Character*>::iterator IterCreate;
-		for (IterCreate = Sector[Add.Around[i].Y][Add.Around[i].X].begin();
-			IterCreate != Sector[Add.Around[i].Y][Add.Around[i].X].end(); ++IterCreate)
+		for (IterCreate = Sector[Add.around_[i].y_][Add.around_[i].x_].begin();
+			IterCreate != Sector[Add.around_[i].y_][Add.around_[i].x_].end(); ++IterCreate)
 		{
 			Character* CreateCharacter = *IterCreate;
 			if ((CreateCharacter->sessionId_ == Target->sessionId_) || (CreateCharacter->characterSession_->isDelete_ == 1))
@@ -1494,16 +1494,16 @@ void FreeCharacter(Character* Target)
 void PrintUpdateSector(SectorAround* RemoveSector, SectorAround* AddSector)
 {
 	wprintf(L"Add : ");
-	for (unsigned int i = 0; i < AddSector->Count; i++)
+	for (unsigned int i = 0; i < AddSector->count_; i++)
 	{
-		wprintf(L"%d %d    ", AddSector->Around[i].X, AddSector->Around[i].Y);
+		wprintf(L"%d %d    ", AddSector->around_[i].x_, AddSector->around_[i].y_);
 
 	}
 	wprintf(L"\nRem : "); 
 
-	for (unsigned int i = 0; i < RemoveSector->Count; i++)
+	for (unsigned int i = 0; i < RemoveSector->count_; i++)
 	{
-		wprintf(L"%d %d    ", RemoveSector->Around[i].X, RemoveSector->Around[i].Y);
+		wprintf(L"%d %d    ", RemoveSector->around_[i].x_, RemoveSector->around_[i].y_);
 
 	}
 	wprintf(L"\n\n");
@@ -1514,9 +1514,9 @@ void PrintHitCheckSector(SectorAround* HitCheckSector)
 
 	wprintf(L"\nHitCheckSector : ");
 
-	for (unsigned int i = 0; i < HitCheckSector->Count; i++)
+	for (unsigned int i = 0; i < HitCheckSector->count_; i++)
 	{
-		wprintf(L"%d %d    ", HitCheckSector->Around[i].X, HitCheckSector->Around[i].Y);
+		wprintf(L"%d %d    ", HitCheckSector->around_[i].x_, HitCheckSector->around_[i].y_);
 
 	}
 	wprintf(L"\n\n");

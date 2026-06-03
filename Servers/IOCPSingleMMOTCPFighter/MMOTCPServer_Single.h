@@ -26,15 +26,15 @@ struct MessageData
 
 struct SectorPos
 {
-	unsigned int X;
-	unsigned int Y;
+	unsigned int x_;
+	unsigned int y_;
 
 };
 
 struct SectorAround
 {
-	unsigned int Count;
-	SectorPos Around[9];
+	unsigned int count_;
+	SectorPos around_[9];
 	BYTE Flag = 0;
 };
 
