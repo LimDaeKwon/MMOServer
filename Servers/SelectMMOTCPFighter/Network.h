@@ -2,10 +2,6 @@
 
 
 
-#define SERVERPORT 20511
-#define PACKETCODE 0x89
-#define DEFAULTHP 100
-
 struct fd_set;
 struct Session;
 struct SectorAround;

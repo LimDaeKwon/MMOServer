@@ -31,58 +31,58 @@
 	BYTE	bySize;			// 패킷 사이즈.
 	BYTE	byType;			// 패킷타입.
 */
-#define dfRANGE_MOVE_TOP	0
-#define dfRANGE_MOVE_LEFT	0
-#define dfRANGE_MOVE_RIGHT	6400
-#define dfRANGE_MOVE_BOTTOM	6400
+#define RangeMoveTop	0
+#define RangeMoveLeft	0
+#define RangeMoveRight	6400
+#define RangeMoveBottom	6400
 
-#define dfERROR_RANGE		50
+#define ErrorRange		50
 
-#define dfNETWORK_PACKET_RECV_TIMEOUT	30000
+#define NetworkPacketRecvTimeout	30000
 
-#define dfATTACK1_RANGE_X		80
-#define dfATTACK2_RANGE_X		90
-#define dfATTACK3_RANGE_X		100
-#define dfATTACK1_RANGE_Y		10
-#define dfATTACK2_RANGE_Y		10
-#define dfATTACK3_RANGE_Y		20
+#define Attack1RangeX		80
+#define Attack2RangeX		90
+#define Attack3RangeX		100
+#define Attack1RangeY		10
+#define Attack2RangeY		10
+#define Attack3RangeY		20
 
-#define dfATTACK1_DAMAGE		1
-#define dfATTACK2_DAMAGE		2
-#define dfATTACK3_DAMAGE		3
+#define Attack1Damage		1
+#define Attack2Damage		2
+#define Attack3Damage		3
 
-#define SECTORMAXX 40
-#define SECTORMAXY 40
-#define SECTORXSIZE 160
-#define SECTORYSIZE 160
+#define SectorMaxX 40
+#define SectorMaxY 40
+#define SectorXSize 160
+#define SectorYSize 160
 
 
 #define SERVERPORT 20511
-#define PACKETCODE 0x89
-#define DEFAULTHP 100
+#define PacketCode 0x89
+#define DefaultHp 100
 
 
-#define dfNETWORK_PACKET_HEADER_SIZE 3
+#define NetworkPacketHeaderSize 3
 
-#define dfPACKET_MOVE_DIR_LL					0
-#define dfPACKET_MOVE_DIR_LU					1
-#define dfPACKET_MOVE_DIR_UU					2
-#define dfPACKET_MOVE_DIR_RU					3
-#define dfPACKET_MOVE_DIR_RR					4
-#define dfPACKET_MOVE_DIR_RD					5
-#define dfPACKET_MOVE_DIR_DD					6
-#define dfPACKET_MOVE_DIR_LD					7
+#define PacketMoveDirectionLL					0
+#define PacketMoveDirectionLU					1
+#define PacketMoveDirectionUU					2
+#define PacketMoveDirectionRU					3
+#define PacketMoveDirectionRR					4
+#define PacketMoveDirectionRD					5
+#define PacketMoveDirectionDD					6
+#define PacketMoveDirectionLD					7
 
 
 struct PacketHeader
 {
-	unsigned char	ByCode;			// 패킷코드 0x89 고정.
-	unsigned char	BySize;			// 패킷 사이즈.
-	unsigned char	ByType;			// 패킷타입.
+	unsigned char	byCode_;			// 패킷코드 0x89 고정.
+	unsigned char	bySize_;			// 패킷 사이즈.
+	unsigned char	byType_;			// 패킷타입.
 };
 
 
-#define	dfPACKET_SC_CREATE_MY_CHARACTER			0
+#define	PacketScCreateMyCharacter			0
 //---------------------------------------------------------------
 // 클라이언트 자신의 캐릭터 할당		Server -> Client
 //
@@ -113,7 +113,7 @@ struct PACKET_SC_CREATE_MY_CHARACTER
 
 
 
-#define	dfPACKET_SC_CREATE_OTHER_CHARACTER		1
+#define	PacketScCreateOtherCharacter		1
 //---------------------------------------------------------------
 // 다른 클라이언트의 캐릭터 생성 패킷		Server -> Client
 //
@@ -142,7 +142,7 @@ struct PACKET_SC_CREATE_OTHER_CHARACTER
 
 
 
-#define	dfPACKET_SC_DELETE_CHARACTER			2
+#define	PacketScDeleteCharacter			2
 //---------------------------------------------------------------
 // 캐릭터 삭제 패킷						Server -> Client
 //
@@ -158,7 +158,7 @@ struct PACKET_SC_DELETE_CHARACTER
 };
 
 
-#define	dfPACKET_CS_MOVE_START					10
+#define	PacketCsMoveStart					10
 //---------------------------------------------------------------
 // 캐릭터 이동시작 패킷						Client -> Server
 //
@@ -184,7 +184,7 @@ struct PACKET_CS_MOVE_START
 
 
 
-#define	dfPACKET_SC_MOVE_START					11
+#define	PacketScMoveStart					11
 //---------------------------------------------------------------
 // 캐릭터 이동시작 패킷						Server -> Client
 //
@@ -212,7 +212,7 @@ struct PACKET_SC_MOVE_START
 
 
 
-#define	dfPACKET_CS_MOVE_STOP					12
+#define	PacketCsMoveStop					12
 //---------------------------------------------------------------
 // 캐릭터 이동중지 패킷						Client -> Server
 //
@@ -235,7 +235,7 @@ struct PACKET_CS_MOVE_STOP
 
 
 
-#define	dfPACKET_SC_MOVE_STOP					13
+#define	PacketScMoveStop					13
 //---------------------------------------------------------------
 // 캐릭터 이동중지 패킷						Server -> Client
 //
@@ -259,7 +259,7 @@ struct PACKET_SC_MOVE_STOP
 
 
 
-#define	dfPACKET_CS_ATTACK1						20
+#define	PacketCsAttack1						20
 //---------------------------------------------------------------
 // 캐릭터 공격 패킷							Client -> Server
 //
@@ -282,7 +282,7 @@ struct PACKET_CS_ATTACK1
 };
 
 
-#define	dfPACKET_SC_ATTACK1						21
+#define	PacketScAttack1						21
 //---------------------------------------------------------------
 // 캐릭터 공격 패킷							Server -> Client
 //
@@ -306,7 +306,7 @@ struct PACKET_SC_ATTACK1
 
 
 
-#define	dfPACKET_CS_ATTACK2						22
+#define	PacketCsAttack2						22
 //---------------------------------------------------------------
 // 캐릭터 공격 패킷							Client -> Server
 //
@@ -331,7 +331,7 @@ struct PACKET_CS_ATTACK2
 
 
 
-#define	dfPACKET_SC_ATTACK2						23
+#define	PacketScAttack2						23
 //---------------------------------------------------------------
 // 캐릭터 공격 패킷							Server -> Client
 //
@@ -345,7 +345,7 @@ struct PACKET_CS_ATTACK2
 //
 //---------------------------------------------------------------
 
-struct PACKET_SC_ATTACK2
+struct PacketCsAttack3
 {
 	unsigned int ID;
 	unsigned char Direction;
@@ -370,7 +370,7 @@ struct PACKET_SC_ATTACK2
 //---------------------------------------------------------------
 
 
-struct PACKET_CS_ATTACK3
+struct PacketScAttack3
 {
 	unsigned char Direction;
 	unsigned short X;
@@ -403,7 +403,7 @@ struct PACKET_SC_ATTACK3
 
 
 
-#define	dfPACKET_SC_DAMAGE						30
+#define	PacketScDamage						30
 //---------------------------------------------------------------
 // 캐릭터 데미지 패킷							Server -> Client
 //
@@ -430,7 +430,7 @@ struct PACKET_SC_DAMAGE
 
 
 // 아직은 사용안함...
-#define	dfPACKET_CS_SYNC						250
+#define	PacketCsSync						250
 //---------------------------------------------------------------
 // 동기화를 위한 패킷					Client -> Server
 //
@@ -448,7 +448,7 @@ struct PACKET_CS_SYNC
 
 
 
-#define	dfPACKET_SC_SYNC						251
+#define	PacketScSync						251
 //---------------------------------------------------------------
 // 동기화를 위한 패킷					Server -> Client
 //
@@ -469,7 +469,7 @@ struct PACKET_SC_SYNC
 
 
 
-#define	dfPACKET_CS_ECHO						252
+#define	PacketCsEcho						252
 //---------------------------------------------------------------
 // Echo 용 패킷					Client -> Server
 //
@@ -477,7 +477,7 @@ struct PACKET_SC_SYNC
 //
 //---------------------------------------------------------------
 
-#define	dfPACKET_SC_ECHO						253
+#define	PacketScEcho						253
 //---------------------------------------------------------------
 // Echo 응답 패킷				Server -> Client
 //

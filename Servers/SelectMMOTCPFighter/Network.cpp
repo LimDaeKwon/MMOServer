@@ -9,6 +9,7 @@
 #include "winsock2.h"
 #include "ws2tcpip.h"
 #include "PacketDefine.h"
+#include "GameDefine.h"
 #include "CPacket.h"
 #include "NetworkProxy.h"
 #include "NetworkStub.h"
@@ -29,7 +30,7 @@ ObjectFreeList<Session> SessionFreeList(10000);
 
 extern std::list<unsigned int> DeleteList;
 extern std::unordered_map<unsigned int, Character*> CharacterMap;
-extern std::list<Character*> Sector[SECTORMAXY][SECTORMAXX];
+extern std::list<Character*> Sector[SectorMaxY][SectorMaxX];
 //extern std::unordered_map<unsigned int, unsigned int> whydelete;
 //extern bool Shutdown = false;
 
@@ -402,7 +403,7 @@ void Receive(Session* Target)
 				break;
 			}
 
-			if (Header.ByCode != 0x89)
+			if (Header.byCode_ != 0x89)
 			{
 				wprintf(L"Header.ByCode != 0x89\n");
 				//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(Target->SessionID, CODE));
@@ -411,7 +412,7 @@ void Receive(Session* Target)
 				break;
 			}
 
-			if (ReceiveQSize < sizeof(Header) + Header.BySize)
+			if (ReceiveQSize < sizeof(Header) + Header.bySize_)
 			{
 				break;
 			}
@@ -422,9 +423,9 @@ void Receive(Session* Target)
 
 			cPacketBuffer->Clear();
 
-			unsigned int ReceiveQDequeuePacketSize = Target->receiveQueue_.Dequeue(cPacketBuffer->GetBufferPtr(), Header.BySize);
+			unsigned int ReceiveQDequeuePacketSize = Target->receiveQueue_.Dequeue(cPacketBuffer->GetBufferPtr(), Header.bySize_);
 
-			if (ReceiveQDequeuePacketSize != Header.BySize)
+			if (ReceiveQDequeuePacketSize != Header.bySize_)
 			{
 				wprintf(L"## ReceiveQDequeuePacketSize != Header.BySize : %d \n", ReceiveQDequeuePacketSize);
 				//DebugBreak();
@@ -438,7 +439,7 @@ void Receive(Session* Target)
 
 			Target->lastRecvTime_ = timeGetTime();
 
-			PacketProc(Target, Header.ByType, cPacketBuffer);
+			PacketProc(Target, Header.byType_, cPacketBuffer);
 
 		}
 	}
@@ -569,7 +570,7 @@ void Initialize()
 	ZeroMemory(&ServerAddr, sizeof(ServerAddr));
 	ServerAddr.sin_family = AF_INET;
 	ServerAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	ServerAddr.sin_port = htons(SERVERPORT);
+	ServerAddr.sin_port = htons(ServerPort);
 
 	int BindReturn = bind(ListenSocket, (const sockaddr*)&ServerAddr, sizeof(ServerAddr));
 	if (BindReturn == SOCKET_ERROR)

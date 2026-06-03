@@ -142,6 +142,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Contents.h" />
+    <ClInclude Include="GameDefine.h" />
     <ClInclude Include="Network.h" />
     <ClInclude Include="NetworkProxy.h" />
     <ClInclude Include="NetworkStub.h" />

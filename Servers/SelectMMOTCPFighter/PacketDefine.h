@@ -1,493 +1,300 @@
-/////////////////////////////////////////////////////////////////////
-// www.gamecodi.com						이주행 master@gamecodi.com
+#pragma once
+
+
+
+// ---------------------------------------------------------------
+// 패킷 헤더
 //
-//
-/////////////////////////////////////////////////////////////////////
-/*---------------------------------------------------------------
+// BYTE byCode;  // 패킷 코드
+// BYTE bySize;  // 패킷 사이즈
+// BYTE byType;  // 패킷 타입
+// ---------------------------------------------------------------
 
-패킷데이터 정의.
-
-
-자신의 캐릭터에 대한 패킷을 서버에게 보낼 때, 모두 자신이 먼저
-액션을 취함과 동시에 패킷을 서버로 보내주도록 한다.
-
-- 이동 키 입력 시 이동동작을 취함과 동시에 이동 패킷을 보내도록 한다.
-- 공격키 입력 시 공격 동작을 취하면서 패킷을 보낸다.
-- 충돌 처리 및 데미지에 대한 정보는 서버에서 처리 후 통보하게 된다.
-
-
----------------------------------------------------------------*/
-
-#ifndef __PACKET_DEFINE__
-#define __PACKET_DEFINE__
-
-#pragma pack(push,1)
-//---------------------------------------------------------------
-// 패킷헤더.
-//
-//---------------------------------------------------------------
-/*
-	BYTE	byCode;			// 패킷코드 0x89 고정.
-	BYTE	bySize;			// 패킷 사이즈.
-	BYTE	byType;			// 패킷타입.
-*/
-#define dfRANGE_MOVE_TOP	0
-#define dfRANGE_MOVE_LEFT	0
-#define dfRANGE_MOVE_RIGHT	6400
-#define dfRANGE_MOVE_BOTTOM	6400
-
-#define dfERROR_RANGE		50
-
-#define dfNETWORK_PACKET_RECV_TIMEOUT	30000
-
-#define dfATTACK1_RANGE_X		80
-#define dfATTACK2_RANGE_X		90
-#define dfATTACK3_RANGE_X		100
-#define dfATTACK1_RANGE_Y		10
-#define dfATTACK2_RANGE_Y		10
-#define dfATTACK3_RANGE_Y		20
-
-#define dfATTACK1_DAMAGE		1
-#define dfATTACK2_DAMAGE		2
-#define dfATTACK3_DAMAGE		3
-
-#define SECTORMAXX 40
-#define SECTORMAXY 40
-#define SECTORXSIZE 160
-#define SECTORYSIZE 160
-
-
-
-#define dfNETWORK_PACKET_HEADER_SIZE 3
-
-#define dfPACKET_MOVE_DIR_LL					0
-#define dfPACKET_MOVE_DIR_LU					1
-#define dfPACKET_MOVE_DIR_UU					2
-#define dfPACKET_MOVE_DIR_RU					3
-#define dfPACKET_MOVE_DIR_RR					4
-#define dfPACKET_MOVE_DIR_RD					5
-#define dfPACKET_MOVE_DIR_DD					6
-#define dfPACKET_MOVE_DIR_LD					7
-
+#pragma pack(push, 1)
 
 struct PacketHeader
 {
-	unsigned char	ByCode;			// 패킷코드 0x89 고정.
-	unsigned char	BySize;			// 패킷 사이즈.
-	unsigned char	ByType;			// 패킷타입.
+    unsigned char byCode_;
+    unsigned char bySize_;
+    unsigned char byType_;
 };
-
-
-#define	dfPACKET_SC_CREATE_MY_CHARACTER			0
-//---------------------------------------------------------------
-// 클라이언트 자신의 캐릭터 할당		Server -> Client
-//
-// 서버에 접속시 최초로 받게되는 패킷으로 자신이 할당받은 ID 와
-// 자신의 최초 위치, HP 를 받게 된다. (처음에 한번 받게 됨)
-// 
-// 이 패킷을 받으면 자신의 ID,X,Y,HP 를 저장하고 캐릭터를 생성시켜야 한다.
-// // 바이트만 적었는데 Unsigned라고 생각. 구조체로 만들어줘라 패킷.
-//모든 설명은 클라이언트 입장.서버 입장에서 생각해야함.
-//
-//	4	-	ID
-//	1	-	Direction	(LL / RR)
-//	2	-	X
-//	2	-	Y
-//	1	-	HP
-//
-//---------------------------------------------------------------
-struct PACKET_SC_CREATE_MY_CHARACTER
-{
-	unsigned int ID;
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-	unsigned char HP;
-};
-
-
-
-
-
-#define	dfPACKET_SC_CREATE_OTHER_CHARACTER		1
-//---------------------------------------------------------------
-// 다른 클라이언트의 캐릭터 생성 패킷		Server -> Client
-//
-// 처음 서버에 접속시 이미 접속되어 있던 캐릭터들의 정보
-// 또는 게임중에 접속된 클라이언트들의 생성용 정보.
-//
-//
-//	4	-	ID
-//	1	-	Direction	(LL / RR)
-//	2	-	X
-//	2	-	Y
-//	1	-	HP
-//
-//---------------------------------------------------------------
-//잠만 사이즈. 패딩 어쩌죠
-struct PACKET_SC_CREATE_OTHER_CHARACTER
-{
-	unsigned int ID;
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-	unsigned char HP;
-};
-
-
-
-
-
-#define	dfPACKET_SC_DELETE_CHARACTER			2
-//---------------------------------------------------------------
-// 캐릭터 삭제 패킷						Server -> Client
-//
-// 캐릭터의 접속해제 또는 캐릭터가 죽었을때 전송됨.
-//
-//	4	-	ID
-//
-//---------------------------------------------------------------
-
-struct PACKET_SC_DELETE_CHARACTER
-{
-	unsigned int ID;
-};
-
-
-#define	dfPACKET_CS_MOVE_START					10
-//---------------------------------------------------------------
-// 캐릭터 이동시작 패킷						Client -> Server
-//
-
-// 
-// 자신의 캐릭터 이동시작시 이 패킷을 보낸다.
-// 이동 중에는 본 패킷을 보내지 않으며, 키 입력이 변경되었을 경우에만
-// 보내줘야 한다.
-//
-// (왼쪽 이동중 위로 이동 / 왼쪽 이동중 왼쪽 위로 이동... 등등)
-//
-//	1	-	Direction	( 방향 디파인 값 8방향 사용 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-struct PACKET_CS_MOVE_START
-{
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-#define	dfPACKET_SC_MOVE_START					11
-//---------------------------------------------------------------
-// 캐릭터 이동시작 패킷						Server -> Client
-//
-// 다른 유저의 캐릭터 이동시 본 패킷을 받는다.
-// 패킷 수신시 해당 캐릭터를 찾아 이동처리를 해주도록 한다.
-// 
-// 패킷 수신 시 해당 키가 계속해서 눌린것으로 생각하고
-// 해당 방향으로 계속 이동을 하고 있어야만 한다.
-//
-//	4	-	ID
-//	1	-	Direction	( 방향 디파인 값 8방향 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-
-struct PACKET_SC_MOVE_START
-{
-	unsigned int ID;
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-
-#define	dfPACKET_CS_MOVE_STOP					12
-//---------------------------------------------------------------
-// 캐릭터 이동중지 패킷						Client -> Server
-//
-// 이동중 키보드 입력이 없어서 정지되었을 때, 이 패킷을 서버에 보내준다.
-// 이동중 방향 전환시에는 스탑을 보내지 않는다.
-//
-//	1	-	Direction	( 방향 디파인 값 좌/우만 사용 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-
-
-struct PACKET_CS_MOVE_STOP
-{
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-#define	dfPACKET_SC_MOVE_STOP					13
-//---------------------------------------------------------------
-// 캐릭터 이동중지 패킷						Server -> Client
-//
-// ID 에 해당하는 캐릭터가 이동을 멈춘것이므로 
-// 캐릭터를 찾아서 방향과, 좌표를 입력해주고 멈추도록 처리한다.
-//
-//	4	-	ID
-//	1	-	Direction	( 방향 디파인 값. 좌/우만 사용 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-struct PACKET_SC_MOVE_STOP
-{
-	unsigned int ID;
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-
-#define	dfPACKET_CS_ATTACK1						20
-//---------------------------------------------------------------
-// 캐릭터 공격 패킷							Client -> Server
-//
-// 공격 키 입력시 본 패킷을 서버에게 보낸다.
-// 충돌 및 데미지에 대한 결과는 서버에서 알려 줄 것이다.
-//
-// 공격 동작 시작시 한번만 서버에게 보내줘야 한다.
-//
-//	1	-	Direction	( 방향 디파인 값. 좌/우만 사용 )
-//	2	-	X
-//	2	-	Y	
-//
-//---------------------------------------------------------------
-
-struct PACKET_CS_ATTACK1
-{
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-#define	dfPACKET_SC_ATTACK1						21
-//---------------------------------------------------------------
-// 캐릭터 공격 패킷							Server -> Client
-//
-// 패킷 수신시 해당 캐릭터를 찾아서 공격1번 동작으로 액션을 취해준다.
-// 방향이 다를 경우에는 해당 방향으로 바꾼 후 해준다.
-//
-//	4	-	ID
-//	1	-	Direction	( 방향 디파인 값. 좌/우만 사용 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-
-struct PACKET_SC_ATTACK1
-{
-	unsigned int ID;
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-#define	dfPACKET_CS_ATTACK2						22
-//---------------------------------------------------------------
-// 캐릭터 공격 패킷							Client -> Server
-//
-// 공격 키 입력시 본 패킷을 서버에게 보낸다.
-// 충돌 및 데미지에 대한 결과는 서버에서 알려 줄 것이다.
-//
-// 공격 동작 시작시 한번만 서버에게 보내줘야 한다.
-//
-//	1	-	Direction	( 방향 디파인 값. 좌/우만 사용 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-
-
-struct PACKET_CS_ATTACK2
-{
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-#define	dfPACKET_SC_ATTACK2						23
-//---------------------------------------------------------------
-// 캐릭터 공격 패킷							Server -> Client
-//
-// 패킷 수신시 해당 캐릭터를 찾아서 공격2번 동작으로 액션을 취해준다.
-// 방향이 다를 경우에는 해당 방향으로 바꾼 후 해준다.
-//
-//	4	-	ID
-//	1	-	Direction	( 방향 디파인 값. 좌/우만 사용 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-
-struct PACKET_SC_ATTACK2
-{
-	unsigned int ID;
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-#define	dfPACKET_CS_ATTACK3						24
-//---------------------------------------------------------------
-// 캐릭터 공격 패킷							Client -> Server
-//
-// 공격 키 입력시 본 패킷을 서버에게 보낸다.
-// 충돌 및 데미지에 대한 결과는 서버에서 알려 줄 것이다.
-//
-// 공격 동작 시작시 한번만 서버에게 보내줘야 한다.
-//
-//	1	-	Direction	( 방향 디파인 값. 좌/우만 사용 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-
-
-struct PACKET_CS_ATTACK3
-{
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-#define	dfPACKET_SC_ATTACK3						25
-//---------------------------------------------------------------
-// 캐릭터 공격 패킷							Server -> Client
-//
-// 패킷 수신시 해당 캐릭터를 찾아서 공격3번 동작으로 액션을 취해준다.
-// 방향이 다를 경우에는 해당 방향으로 바꾼 후 해준다.
-//
-//	4	-	ID
-//	1	-	Direction	( 방향 디파인 값. 좌/우만 사용 )
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-
-struct PACKET_SC_ATTACK3
-{
-	unsigned int ID;
-	unsigned char Direction;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-
-#define	dfPACKET_SC_DAMAGE						30
-//---------------------------------------------------------------
-// 캐릭터 데미지 패킷							Server -> Client
-//
-// 공격에 맞은 캐릭터의 정보를 보냄.
-//
-//	4	-	AttackID	( 공격자 ID )
-//	4	-	DamageID	( 피해자 ID )
-//	1	-	DamageHP	( 피해자 HP )
-//
-//---------------------------------------------------------------
-
-
-struct PACKET_SC_DAMAGE
-{
-	unsigned int AttackID;
-	unsigned int DamageID;
-	unsigned char DamageHP;
-};
-
-
-
-
-
-
-
-// 아직은 사용안함...
-#define	dfPACKET_CS_SYNC						250
-//---------------------------------------------------------------
-// 동기화를 위한 패킷					Client -> Server
-//
-//
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-
-struct PACKET_CS_SYNC
-{
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-#define	dfPACKET_SC_SYNC						251
-//---------------------------------------------------------------
-// 동기화를 위한 패킷					Server -> Client
-//
-// 서버로부터 동기화 패킷을 받으면 해당 캐릭터를 찾아서
-// 캐릭터 좌표를 보정해준다.
-//
-//	4	-	ID
-//	2	-	X
-//	2	-	Y
-//
-//---------------------------------------------------------------
-struct PACKET_SC_SYNC
-{
-	unsigned int ID;
-	unsigned short X;
-	unsigned short Y;
-};
-
-
-
-#define	dfPACKET_CS_ECHO						252
-//---------------------------------------------------------------
-// Echo 용 패킷					Client -> Server
-//
-//	4	-	Time
-//
-//---------------------------------------------------------------
-
-#define	dfPACKET_SC_ECHO						253
-//---------------------------------------------------------------
-// Echo 응답 패킷				Server -> Client
-//
-//	4	-	Time
-//
-//---------------------------------------------------------------
-
-
-
-
-
-
-
 
 #pragma pack(pop)
-#endif
 
+// ---------------------------------------------------------------
+// Server -> Client
+// 클라이언트 자신의 캐릭터 할당
+//
+// 서버 접속 시 최초로 받는 패킷.
+// 클라이언트는 이 패킷을 통해 자신의 ID, 최초 위치, HP를 저장하고 캐릭터를 생성한다.
+//
+// Type: 0
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// 1 byte  - HP
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScCreateMyCharacter = 0;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 다른 클라이언트의 캐릭터 생성
+//
+// 처음 서버에 접속했을 때 이미 접속 중이던 캐릭터 정보,
+// 또는 게임 중 새로 접속한 클라이언트의 캐릭터 생성 정보.
+//
+// Type: 1
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// 1 byte  - HP
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScCreateOtherCharacter = 1;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 캐릭터 삭제
+//
+// 캐릭터 접속 해제 또는 캐릭터 사망 시 전송.
+//
+// Type: 2
+//
+// 4 bytes - ID
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScDeleteCharacter = 2;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 캐릭터 이동 시작
+//
+// 자신의 캐릭터가 이동을 시작할 때 전송.
+// 이동 중에는 계속 보내지 않고, 키 입력 방향이 변경되었을 때만 전송한다.
+//
+// Type: 10
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketCsMoveStart = 10;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 다른 캐릭터 이동 시작
+//
+// 다른 유저의 캐릭터 이동 시작을 알린다.
+// 수신 측은 해당 캐릭터를 찾아 방향과 좌표를 갱신하고 이동 상태로 처리한다.
+//
+// Type: 11
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScMoveStart = 11;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 캐릭터 이동 중지
+//
+// 이동 중 키 입력이 없어 정지되었을 때 전송.
+// 이동 중 방향 전환 시에는 Stop을 보내지 않는다.
+//
+// Type: 12
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketCsMoveStop = 12;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 다른 캐릭터 이동 중지
+//
+// ID에 해당하는 캐릭터가 이동을 멈췄음을 알린다.
+// 수신 측은 해당 캐릭터를 찾아 방향과 좌표를 갱신하고 정지 상태로 처리한다.
+//
+// Type: 13
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScMoveStop = 13;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 공격 1
+//
+// 공격 1 동작 시작 시 한 번만 전송.
+// 충돌 및 데미지 결과는 서버에서 처리 후 통보한다.
+//
+// Type: 20
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketCsAttack1 = 20;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 공격 1
+//
+// ID에 해당하는 캐릭터가 공격 1 동작을 했음을 알린다.
+//
+// Type: 21
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScAttack1 = 21;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 공격 2
+//
+// 공격 2 동작 시작 시 한 번만 전송.
+// 충돌 및 데미지 결과는 서버에서 처리 후 통보한다.
+//
+// Type: 22
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketCsAttack2 = 22;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 공격 2
+//
+// ID에 해당하는 캐릭터가 공격 2 동작을 했음을 알린다.
+//
+// Type: 23
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScAttack2 = 23;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 공격 3
+//
+// 공격 3 동작 시작 시 한 번만 전송.
+// 충돌 및 데미지 결과는 서버에서 처리 후 통보한다.
+//
+// Type: 24
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketCsAttack3 = 24;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 공격 3
+//
+// ID에 해당하는 캐릭터가 공격 3 동작을 했음을 알린다.
+//
+// Type: 25
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScAttack3 = 25;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 데미지
+//
+// 공격에 맞은 캐릭터의 데미지 결과를 알린다.
+//
+// Type: 30
+//
+// 4 bytes - AttackID
+// 4 bytes - DamageID
+// 1 byte  - DamageHP
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScDamage = 30;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 동기화 요청
+//
+// 현재는 사용하지 않음.
+//
+// Type: 250
+//
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketCsSync = 250;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 동기화 응답
+//
+// 서버 기준 좌표 보정용 패킷.
+// 수신 측은 ID에 해당하는 캐릭터를 찾아 좌표를 보정한다.
+//
+// Type: 251
+//
+// 4 bytes - ID
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScSync = 251;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// Echo 요청
+//
+// Type: 252
+//
+// 4 bytes - Time
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketCsEcho = 252;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// Echo 응답
+//
+// Type: 253
+//
+// 4 bytes - Time
+// ---------------------------------------------------------------
+
+constexpr unsigned char PacketScEcho = 253;

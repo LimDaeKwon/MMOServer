@@ -48,5 +48,6 @@
     <ClInclude Include="Session.h">
       <Filter>Contents</Filter>
     </ClInclude>
+    <ClInclude Include="GameDefine.h" />
   </ItemGroup>
 </Project>

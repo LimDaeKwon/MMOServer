@@ -2,7 +2,7 @@
 #include "Character.h"
 #include "Session.h"
 #include "Sector.h"
-
+#include "GameDefine.h"
 #include "PacketDefine.h"
 #include "Network.h"
 
@@ -15,7 +15,7 @@
 #include "ObjectFreeList.h"
 #include "Windows.h"
 
-std::list<Character*> Sector[SECTORMAXY][SECTORMAXX];
+std::list<Character*> Sector[SectorMaxY][SectorMaxX];
 std::list<unsigned int> DeleteList;
 
 std::unordered_map<unsigned int, Character*> CharacterMap;
@@ -35,20 +35,20 @@ void CreateCharater(Session* NewSession)
 	NewPlayer->characterSession_ = NewSession;
 	NewPlayer->sessionId_ = NewSession->sessionId_;
 
-	NewPlayer->direction_ = dfPACKET_MOVE_DIR_RR;
-	NewPlayer->action_ = dfPACKET_MOVE_DIR_RR;
+	NewPlayer->direction_ = PacketMoveDirectionRR;
+	NewPlayer->action_ = PacketMoveDirectionRR;
 
 	NewPlayer->x_ = rand() % 6399;
 	NewPlayer->y_ = rand() % 6399;
 
 
 
-	NewPlayer->hp_ = DEFAULTHP;
+	NewPlayer->hp_ = DefaultHp;
 
-	NewPlayer->characterSectorPos_.x_ = NewPlayer->x_ / SECTORXSIZE;
-	NewPlayer->characterSectorPos_.y_ = NewPlayer->y_ / SECTORYSIZE;
-	NewPlayer->oldSectorPos_.x_ = SECTORMAXX;
-	NewPlayer->oldSectorPos_.y_ = SECTORMAXY;
+	NewPlayer->characterSectorPos_.x_ = NewPlayer->x_ / SectorXSize;
+	NewPlayer->characterSectorPos_.y_ = NewPlayer->y_ / SectorYSize;
+	NewPlayer->oldSectorPos_.x_ = SectorMaxX;
+	NewPlayer->oldSectorPos_.y_ = SectorMaxY;
 
 	NewPlayer->isMove_ = false;
 
@@ -127,7 +127,7 @@ void Update()
 		{
 			Character* Target = Iter->second;
 
-			if (Tick - Target->characterSession_->lastRecvTime_ > dfNETWORK_PACKET_RECV_TIMEOUT)
+			if (Tick - Target->characterSession_->lastRecvTime_ > NetworkPacketRecvTimeout)
 			{
 				//printf("타임 웨잇으로 인한 종료당하기. %d %d \n\n", Target->CharacterSession->SessionID , Tick - Target->CharacterSession->LastRecvTime);
 				//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(Target->CharacterSession->SessionID, TIMEOUT));
@@ -171,8 +171,8 @@ void GameRun(Character* Target)
 
 	switch (Target->action_)
 	{
-	case dfPACKET_MOVE_DIR_LL:
-		if (Target->x_ - 6 < dfRANGE_MOVE_LEFT)
+	case PacketMoveDirectionLL:
+		if (Target->x_ - 6 < RangeMoveLeft)
 		{
 			Target->isMove_ = false;
 			return;
@@ -182,8 +182,8 @@ void GameRun(Character* Target)
 
 		break;
 
-	case dfPACKET_MOVE_DIR_LU:
-		if (Target->y_ - 4 < dfRANGE_MOVE_TOP || Target->x_ - 6 < dfRANGE_MOVE_LEFT)
+	case PacketMoveDirectionLU:
+		if (Target->y_ - 4 < RangeMoveTop || Target->x_ - 6 < RangeMoveLeft)
 		{
 			Target->isMove_ = false;
 			return;
@@ -196,8 +196,8 @@ void GameRun(Character* Target)
 
 
 
-	case dfPACKET_MOVE_DIR_UU:
-		if (Target->y_ - 4 < dfRANGE_MOVE_TOP)
+	case PacketMoveDirectionUU:
+		if (Target->y_ - 4 < RangeMoveTop)
 		{
 			Target->isMove_ = false;
 			return;
@@ -209,9 +209,9 @@ void GameRun(Character* Target)
 		break;
 
 
-	case dfPACKET_MOVE_DIR_RU:
+	case PacketMoveDirectionRU:
 
-		if ((Target->y_ - 4 < dfRANGE_MOVE_TOP) || (Target->x_ + 6 >= dfRANGE_MOVE_RIGHT))
+		if ((Target->y_ - 4 < RangeMoveTop) || (Target->x_ + 6 >= RangeMoveRight))
 		{
 			Target->isMove_ = false;
 			return;
@@ -223,9 +223,9 @@ void GameRun(Character* Target)
 		break;
 
 
-	case dfPACKET_MOVE_DIR_RR:
+	case PacketMoveDirectionRR:
 
-		if (Target->x_ + 6 >= dfRANGE_MOVE_RIGHT)
+		if (Target->x_ + 6 >= RangeMoveRight)
 		{
 			Target->isMove_ = false;
 			return;
@@ -235,9 +235,9 @@ void GameRun(Character* Target)
 		break;
 
 
-	case dfPACKET_MOVE_DIR_RD:
+	case PacketMoveDirectionRD:
 
-		if (Target->y_ + 4 >= dfRANGE_MOVE_BOTTOM || Target->x_ + 6 >= dfRANGE_MOVE_RIGHT)
+		if (Target->y_ + 4 >= RangeMoveBottom || Target->x_ + 6 >= RangeMoveRight)
 		{
 			Target->isMove_ = false;
 			return;
@@ -251,8 +251,8 @@ void GameRun(Character* Target)
 
 
 
-	case dfPACKET_MOVE_DIR_DD:
-		if (Target->y_ + 4 >= dfRANGE_MOVE_BOTTOM)
+	case PacketMoveDirectionDD:
+		if (Target->y_ + 4 >= RangeMoveBottom)
 		{
 			Target->isMove_ = false;
 			return;
@@ -262,8 +262,8 @@ void GameRun(Character* Target)
 
 		break;
 
-	case dfPACKET_MOVE_DIR_LD:
-		if (Target->y_ + 4 >= dfRANGE_MOVE_BOTTOM || Target->x_ - 6 < dfRANGE_MOVE_LEFT)
+	case PacketMoveDirectionLD:
+		if (Target->y_ + 4 >= RangeMoveBottom || Target->x_ - 6 < RangeMoveLeft)
 		{
 			Target->isMove_ = false;
 			return;
@@ -301,21 +301,21 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 	{
 
 	case 1:
-		BoundaryX = dfATTACK1_RANGE_X;
-		BoundaryY = dfATTACK1_RANGE_Y;
-		Damage = dfATTACK1_DAMAGE;
+		BoundaryX = Attack1RangeX;
+		BoundaryY = Attack1RangeY;
+		Damage = Attack1Damage;
 		break;
 
 	case 2:
-		BoundaryX = dfATTACK2_RANGE_X;
-		BoundaryY = dfATTACK2_RANGE_Y;
-		Damage = dfATTACK2_DAMAGE;
+		BoundaryX = Attack2RangeX;
+		BoundaryY = Attack2RangeY;
+		Damage = Attack2Damage;
 		break;
 
 	case 3:
-		BoundaryX = dfATTACK3_RANGE_X;
-		BoundaryY = dfATTACK3_RANGE_Y;
-		Damage = dfATTACK3_DAMAGE;
+		BoundaryX = Attack3RangeX;
+		BoundaryY = Attack3RangeY;
+		Damage = Attack3Damage;
 		break;
 
 	default:
@@ -327,7 +327,7 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 
 	SectorAround HitCheckSector;
 
-	if (AttackCharacter->direction_ == dfPACKET_MOVE_DIR_LL)
+	if (AttackCharacter->direction_ == PacketMoveDirectionLL)
 	{
 		GetSectorAroundForHitLeft(AttackCharacter, BoundaryX, BoundaryY, &HitCheckSector);
 
@@ -454,7 +454,7 @@ bool NetPacketProc_MoveStart(Session* TargetSession, unsigned char Direction, un
 
 	ID = Target->sessionId_;
 
-	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
+	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
 	{
 		//Disconnect(Target->CharacterSession);
 
@@ -487,16 +487,16 @@ bool NetPacketProc_MoveStart(Session* TargetSession, unsigned char Direction, un
 
 	switch (Direction)
 	{
-	case dfPACKET_MOVE_DIR_RR:
-	case dfPACKET_MOVE_DIR_RU:
-	case dfPACKET_MOVE_DIR_RD:
-		Target->direction_ = dfPACKET_MOVE_DIR_RR;
+	case PacketMoveDirectionRR:
+	case PacketMoveDirectionRU:
+	case PacketMoveDirectionRD:
+		Target->direction_ = PacketMoveDirectionRR;
 		break;
 
-	case dfPACKET_MOVE_DIR_LU:
-	case dfPACKET_MOVE_DIR_LL:
-	case dfPACKET_MOVE_DIR_LD:
-		Target->direction_ = dfPACKET_MOVE_DIR_LL;
+	case PacketMoveDirectionLU:
+	case PacketMoveDirectionLL:
+	case PacketMoveDirectionLD:
+		Target->direction_ = PacketMoveDirectionLL;
 		break;
 
 	}
@@ -518,7 +518,7 @@ bool NetPacketProc_MoveStop(Session* TargetSession, unsigned char Direction, uns
 
 	//여기서 한번 돌려줘야함. run을.. 
 
-	if ((abs(Target->x_ - X) > dfERROR_RANGE) || (abs(Target->y_ - Y) > dfERROR_RANGE))
+	if ((abs(Target->x_ - X) > ErrorRange) || (abs(Target->y_ - Y) > ErrorRange))
 	{
 		//Disconnect(Target->CharacterSession);
 		//wprintf(L"MoveStop OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
@@ -550,16 +550,16 @@ bool NetPacketProc_MoveStop(Session* TargetSession, unsigned char Direction, uns
 
 	switch (Direction)
 	{
-	case dfPACKET_MOVE_DIR_RR:
-	case dfPACKET_MOVE_DIR_RU:
-	case dfPACKET_MOVE_DIR_RD:
-		Target->direction_ = dfPACKET_MOVE_DIR_RR;
+	case PacketMoveDirectionRR:
+	case PacketMoveDirectionRU:
+	case PacketMoveDirectionRD:
+		Target->direction_ = PacketMoveDirectionRR;
 		break;
 
-	case dfPACKET_MOVE_DIR_LU:
-	case dfPACKET_MOVE_DIR_LL:
-	case dfPACKET_MOVE_DIR_LD:
-		Target->direction_ = dfPACKET_MOVE_DIR_LL;
+	case PacketMoveDirectionLU:
+	case PacketMoveDirectionLL:
+	case PacketMoveDirectionLD:
+		Target->direction_ = PacketMoveDirectionLL;
 		break;
 
 	}
@@ -577,7 +577,7 @@ bool NetPacketProc_Attack1(Session* TargetSession, unsigned char Direction, unsi
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
 
-	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
+	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
 	{
 		//Disconnect(Target->CharacterSession);
 
@@ -622,7 +622,7 @@ bool NetPacketProc_Attack2(Session* TargetSession, unsigned char Direction, unsi
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
 
-	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
+	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
 	{
 		//Disconnect(Target->CharacterSession);
 
@@ -666,7 +666,7 @@ bool NetPacketProc_Attack3(Session* TargetSession, unsigned char Direction, unsi
 
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 
-	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
+	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
 	{
 		//Disconnect(Target->CharacterSession);
 
@@ -750,7 +750,7 @@ void GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector)
 
 
 
-	if (SectorX + 1 < SECTORMAXX)
+	if (SectorX + 1 < SectorMaxX)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY;
@@ -765,7 +765,7 @@ void GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector)
 	}
 
 
-	if (SectorY + 1 < SECTORMAXY)
+	if (SectorY + 1 < SectorMaxY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -779,21 +779,21 @@ void GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector)
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && SectorX + 1 < SECTORMAXX)
+	if (SectorY + 1 < SectorMaxY && SectorX + 1 < SectorMaxX)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
 		AroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < SECTORMAXX)
+	if (SectorY - 1 >= 0 && SectorX + 1 < SectorMaxX)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && SectorX - 1 >= 0)
+	if (SectorY + 1 < SectorMaxY && SectorX - 1 >= 0)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -821,9 +821,9 @@ void GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, 
 	AroundSector->around_[AroundSector->count_].y_ = SectorY;
 	AroundSector->count_++;
 
-	int TargetValidPosX = ((Target->x_ - BoundaryX) / SECTORXSIZE);
-	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SECTORYSIZE);
-	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SECTORYSIZE);
+	int TargetValidPosX = ((Target->x_ - BoundaryX) / SectorXSize);
+	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SectorYSize);
+	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SectorYSize);
 	
 
 	
@@ -834,7 +834,7 @@ void GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, 
 		AroundSector->count_++;
 	}
 	
-	if (SectorY + 1 < SECTORMAXY && TargetValidPosYBelow != SectorY)
+	if (SectorY + 1 < SectorMaxY && TargetValidPosYBelow != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -848,7 +848,7 @@ void GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, 
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
+	if (SectorY + 1 < SectorMaxY && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -874,18 +874,18 @@ void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY,
 	AroundSector->around_[AroundSector->count_].y_ = SectorY;
 	AroundSector->count_++;
 
-	int TargetValidPosX = ((Target->x_ + BoundaryX) / SECTORXSIZE);
-	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SECTORYSIZE);
-	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SECTORYSIZE);
+	int TargetValidPosX = ((Target->x_ + BoundaryX) / SectorXSize);
+	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SectorYSize);
+	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SectorYSize);
 
-	if (SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX )
+	if (SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX )
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY;
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && TargetValidPosYBelow != SectorY)
+	if (SectorY + 1 < SectorMaxY && TargetValidPosYBelow != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -899,14 +899,14 @@ void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY,
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
+	if (SectorY + 1 < SectorMaxY && SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
 		AroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX  && TargetValidPosYAbove != SectorY)
+	if (SectorY - 1 >= 0 && SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX  && TargetValidPosYAbove != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
@@ -943,7 +943,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 			}
 			
 
-			if (Target->characterSectorPos_.x_ + 1 != SECTORMAXX)
+			if (Target->characterSectorPos_.x_ + 1 != SectorMaxX)
 			{
 				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
 				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
@@ -958,7 +958,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 		}
 
-		if(Target->characterSectorPos_.y_ == SECTORMAXY - 1)
+		if(Target->characterSectorPos_.y_ == SectorMaxY - 1)
 		{
 			if (Target->oldSectorPos_.x_ != 0)
 			{
@@ -972,7 +972,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 			}
 			
 
-			if (Target->characterSectorPos_.x_ + 1 != SECTORMAXX)
+			if (Target->characterSectorPos_.x_ + 1 != SectorMaxX)
 			{
 				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
 				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
@@ -1005,7 +1005,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->characterSectorPos_.x_ + 1 != SECTORMAXX)
+		if (Target->characterSectorPos_.x_ + 1 != SectorMaxX)
 		{
 			AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_;
 			AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ + 1;
@@ -1047,7 +1047,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 			}
 
 
-			if (Target->oldSectorPos_.x_ + 1 != SECTORMAXX)
+			if (Target->oldSectorPos_.x_ + 1 != SectorMaxX)
 			{
 				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
 				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
@@ -1063,7 +1063,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 		}
 
-		if (Target->characterSectorPos_.y_ == SECTORMAXY - 1)
+		if (Target->characterSectorPos_.y_ == SectorMaxY - 1)
 		{
 			if (Target->characterSectorPos_.x_ != 0)
 			{
@@ -1077,7 +1077,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 			}
 
 
-			if (Target->oldSectorPos_.x_ + 1 != SECTORMAXX)
+			if (Target->oldSectorPos_.x_ + 1 != SectorMaxX)
 			{
 				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
 				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
@@ -1109,7 +1109,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->oldSectorPos_.x_ + 1 != SECTORMAXX)
+		if (Target->oldSectorPos_.x_ + 1 != SectorMaxX)
 		{
 			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_;
 			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ + 1;
@@ -1147,7 +1147,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 			}
 
 
-			if (Target->oldSectorPos_.y_ + 1 != SECTORMAXY)
+			if (Target->oldSectorPos_.y_ + 1 != SectorMaxY)
 			{
 				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
 				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_;
@@ -1164,7 +1164,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->characterSectorPos_.x_ == SECTORMAXX - 1)
+		if (Target->characterSectorPos_.x_ == SectorMaxX - 1)
 		{
 			if (Target->characterSectorPos_.y_ != 0)
 			{
@@ -1178,7 +1178,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 			}
 
 
-			if (Target->oldSectorPos_.y_ + 1 != SECTORMAXY)
+			if (Target->oldSectorPos_.y_ + 1 != SectorMaxY)
 			{
 				RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
 				RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
@@ -1210,7 +1210,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->oldSectorPos_.y_ + 1 != SECTORMAXY)
+		if (Target->oldSectorPos_.y_ + 1 != SectorMaxY)
 		{
 			RemoveSector->around_[RemoveSector->count_].y_ = Target->oldSectorPos_.y_ + 1;
 			RemoveSector->around_[RemoveSector->count_].x_ = Target->oldSectorPos_.x_ - 1;
@@ -1249,7 +1249,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 			}
 
 
-			if (Target->characterSectorPos_.y_ + 1 != SECTORMAXY)
+			if (Target->characterSectorPos_.y_ + 1 != SectorMaxY)
 			{
 				
 
@@ -1268,7 +1268,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->characterSectorPos_.x_ == SECTORMAXX - 1)
+		if (Target->characterSectorPos_.x_ == SectorMaxX - 1)
 		{
 			if (Target->oldSectorPos_.y_ != 0)
 			{
@@ -1284,7 +1284,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 			}
 
 
-			if (Target->characterSectorPos_.y_ + 1 != SECTORMAXY)
+			if (Target->characterSectorPos_.y_ + 1 != SectorMaxY)
 			{
 				AddSector->around_[AddSector->count_].y_ = Target->characterSectorPos_.y_ + 1;
 				AddSector->around_[AddSector->count_].x_ = Target->characterSectorPos_.x_ - 1;
@@ -1316,7 +1316,7 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 		}
 
 
-		if (Target->characterSectorPos_.y_ + 1 != SECTORMAXY)
+		if (Target->characterSectorPos_.y_ + 1 != SectorMaxY)
 		{
 			
 
@@ -1390,8 +1390,8 @@ void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, Sector
 
 bool SectorUpdateCharacter(Character* Target)
 {
-	int TargetCurPosX = (Target->x_ / SECTORXSIZE);
-	int TargetCurPosY = (Target->y_ / SECTORYSIZE);
+	int TargetCurPosX = (Target->x_ / SectorXSize);
+	int TargetCurPosY = (Target->y_ / SectorYSize);
 
 	if ((Target->characterSectorPos_.x_ != TargetCurPosX) || (Target->characterSectorPos_.y_ != TargetCurPosY))
 	{

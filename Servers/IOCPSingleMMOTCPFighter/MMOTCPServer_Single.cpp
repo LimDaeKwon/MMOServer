@@ -177,7 +177,7 @@ bool MMOTCPServer_Single::PacketProc(MessageData* msg)
 
 	switch (ByType)
 	{
-	case dfPACKET_CS_MOVE_START:
+	case PacketCsMoveStart:
 	{
 		unsigned char Direction;
 		unsigned short X;
@@ -187,7 +187,7 @@ bool MMOTCPServer_Single::PacketProc(MessageData* msg)
 		break;
 	}
 
-	case dfPACKET_CS_MOVE_STOP:
+	case PacketCsMoveStop:
 	{
 		unsigned char Direction;
 		unsigned short X;
@@ -197,7 +197,7 @@ bool MMOTCPServer_Single::PacketProc(MessageData* msg)
 		break;
 	}
 
-	case dfPACKET_CS_ATTACK1:
+	case PacketCsAttack1:
 	{
 		unsigned char Direction;
 		unsigned short X;
@@ -207,7 +207,7 @@ bool MMOTCPServer_Single::PacketProc(MessageData* msg)
 		break;
 	}
 
-	case dfPACKET_CS_ATTACK2:
+	case PacketCsAttack2:
 	{
 		unsigned char Direction;
 		unsigned short X;
@@ -227,7 +227,7 @@ bool MMOTCPServer_Single::PacketProc(MessageData* msg)
 		break;
 	}
 
-	case dfPACKET_CS_ECHO:
+	case PacketCsEcho:
 	{
 		unsigned int Time;
 		*msg->contents_packet >> Time;
@@ -251,8 +251,8 @@ void MMOTCPServer_Single::CreateCharater(__int64 new_session)
 	Character* new_player = CharacterFreeList.Alloc();
 	new_player->sessionId_ = new_session;
 	new_player->SessionIDForContents = (unsigned int)new_session;
-	new_player->direction_ = dfPACKET_MOVE_DIR_RR;
-	new_player->action_ = dfPACKET_MOVE_DIR_RR;
+	new_player->direction_ = PacketMoveDirectionRR;
+	new_player->action_ = PacketMoveDirectionRR;
 	new_player->x_ = rand() % 6399;
 	new_player->y_ = rand() % 6399;
 
@@ -260,10 +260,10 @@ void MMOTCPServer_Single::CreateCharater(__int64 new_session)
 	//new_player->Y = 100;
 
 	new_player->hp_ = 100;
-	new_player->characterSectorPos_.x_ = new_player->x_ / SECTORXSIZE;
-	new_player->characterSectorPos_.y_ = new_player->y_ / SECTORYSIZE;
-	new_player->oldSectorPos_.x_ = SECTORMAXX;
-	new_player->oldSectorPos_.y_ = SECTORMAXY;
+	new_player->characterSectorPos_.x_ = new_player->x_ / SectorXSize;
+	new_player->characterSectorPos_.y_ = new_player->y_ / SectorYSize;
+	new_player->oldSectorPos_.x_ = SectorMaxX;
+	new_player->oldSectorPos_.y_ = SectorMaxY;
 	new_player->isMove_ = false;
 	new_player->IsDelete = false;
 
@@ -536,7 +536,7 @@ void MMOTCPServer_Single::SendPacketSectorOne(int SectorX, int SectorY, unsigned
 bool MMOTCPServer_Single::NetPacketProc_MoveStart(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
-	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
+	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
 	{
 		//Disconnect(Target->CharacterSession);
 		CPacket* SyncPacket = CPacket::Alloc();
@@ -565,16 +565,16 @@ bool MMOTCPServer_Single::NetPacketProc_MoveStart(Character* Target, unsigned ch
 
 	switch (Direction)
 	{
-	case dfPACKET_MOVE_DIR_RR:
-	case dfPACKET_MOVE_DIR_RU:
-	case dfPACKET_MOVE_DIR_RD:
-		Target->direction_ = dfPACKET_MOVE_DIR_RR;
+	case PacketMoveDirectionRR:
+	case PacketMoveDirectionRU:
+	case PacketMoveDirectionRD:
+		Target->direction_ = PacketMoveDirectionRR;
 		break;
 
-	case dfPACKET_MOVE_DIR_LU:
-	case dfPACKET_MOVE_DIR_LL:
-	case dfPACKET_MOVE_DIR_LD:
-		Target->direction_ = dfPACKET_MOVE_DIR_LL;
+	case PacketMoveDirectionLU:
+	case PacketMoveDirectionLL:
+	case PacketMoveDirectionLD:
+		Target->direction_ = PacketMoveDirectionLL;
 		break;
 
 	}
@@ -593,7 +593,7 @@ bool MMOTCPServer_Single::NetPacketProc_MoveStop(Character* Target, unsigned cha
 
 	//여기서 한번 돌려줘야함. run을.. 
 
-	if ((abs(Target->x_ - X) > dfERROR_RANGE) || (abs(Target->y_ - Y) > dfERROR_RANGE))
+	if ((abs(Target->x_ - X) > ErrorRange) || (abs(Target->y_ - Y) > ErrorRange))
 	{
 		//Disconnect(Target->CharacterSession);
 		//wprintf(L"MoveStop OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
@@ -629,16 +629,16 @@ bool MMOTCPServer_Single::NetPacketProc_MoveStop(Character* Target, unsigned cha
 
 	switch (Direction)
 	{
-	case dfPACKET_MOVE_DIR_RR:
-	case dfPACKET_MOVE_DIR_RU:
-	case dfPACKET_MOVE_DIR_RD:
-		Target->direction_ = dfPACKET_MOVE_DIR_RR;
+	case PacketMoveDirectionRR:
+	case PacketMoveDirectionRU:
+	case PacketMoveDirectionRD:
+		Target->direction_ = PacketMoveDirectionRR;
 		break;
 
-	case dfPACKET_MOVE_DIR_LU:
-	case dfPACKET_MOVE_DIR_LL:
-	case dfPACKET_MOVE_DIR_LD:
-		Target->direction_ = dfPACKET_MOVE_DIR_LL;
+	case PacketMoveDirectionLU:
+	case PacketMoveDirectionLL:
+	case PacketMoveDirectionLD:
+		Target->direction_ = PacketMoveDirectionLL;
 		break;
 
 	}
@@ -656,7 +656,7 @@ bool MMOTCPServer_Single::NetPacketProc_Attack1(Character* Target, unsigned char
 {
 	unsigned int ID;
 
-	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
+	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
 	{
 		//Disconnect(Target->CharacterSession);
 
@@ -701,7 +701,7 @@ bool MMOTCPServer_Single::NetPacketProc_Attack2(Character* Target, unsigned char
 {
 	unsigned int ID;
 
-	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
+	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
 	{
 		//Disconnect(Target->CharacterSession);
 
@@ -744,7 +744,7 @@ bool MMOTCPServer_Single::NetPacketProc_Attack2(Character* Target, unsigned char
 bool MMOTCPServer_Single::NetPacketProc_Attack3(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
-	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
+	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
 	{
 
 		CPacket* SyncPacket = CPacket::Alloc();
@@ -795,8 +795,8 @@ bool MMOTCPServer_Single::NetPacketProc_Echo(Character* Target, unsigned int Tim
 
 bool MMOTCPServer_Single::SectorUpdateCharacter(Character* Target)
 {
-	int TargetCurPosX = (Target->x_ / SECTORXSIZE);
-	int TargetCurPosY = (Target->y_ / SECTORYSIZE);
+	int TargetCurPosX = (Target->x_ / SectorXSize);
+	int TargetCurPosY = (Target->y_ / SectorYSize);
 
 	if ((Target->characterSectorPos_.x_ != TargetCurPosX) || (Target->characterSectorPos_.y_ != TargetCurPosY))
 	{
@@ -912,21 +912,21 @@ void MMOTCPServer_Single::HitCheck(Character* AttackCharacter, int AttackNumber)
 	{
 
 	case 1:
-		BoundaryX = dfATTACK1_RANGE_X;
-		BoundaryY = dfATTACK1_RANGE_Y;
-		Damage = dfATTACK1_DAMAGE;
+		BoundaryX = Attack1RangeX;
+		BoundaryY = Attack1RangeY;
+		Damage = Attack1Damage;
 		break;
 
 	case 2:
-		BoundaryX = dfATTACK2_RANGE_X;
-		BoundaryY = dfATTACK2_RANGE_Y;
-		Damage = dfATTACK2_DAMAGE;
+		BoundaryX = Attack2RangeX;
+		BoundaryY = Attack2RangeY;
+		Damage = Attack2Damage;
 		break;
 
 	case 3:
-		BoundaryX = dfATTACK3_RANGE_X;
-		BoundaryY = dfATTACK3_RANGE_Y;
-		Damage = dfATTACK3_DAMAGE;
+		BoundaryX = Attack3RangeX;
+		BoundaryY = Attack3RangeY;
+		Damage = Attack3Damage;
 		break;
 
 	default:
@@ -938,7 +938,7 @@ void MMOTCPServer_Single::HitCheck(Character* AttackCharacter, int AttackNumber)
 
 	SectorAround HitCheckSector;
 
-	if (AttackCharacter->direction_ == dfPACKET_MOVE_DIR_LL)
+	if (AttackCharacter->direction_ == PacketMoveDirectionLL)
 	{
 		GetSectorAroundForHitLeft(AttackCharacter, BoundaryX, BoundaryY, &HitCheckSector);
 
@@ -1072,9 +1072,9 @@ void MMOTCPServer_Single::GetSectorAroundForHitLeft(Character* Target, int Bound
 	AroundSector->around_[AroundSector->count_].y_ = SectorY;
 	AroundSector->count_++;
 
-	int TargetValidPosX = ((Target->x_ - BoundaryX) / SECTORXSIZE);
-	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SECTORYSIZE);
-	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SECTORYSIZE);
+	int TargetValidPosX = ((Target->x_ - BoundaryX) / SectorXSize);
+	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SectorYSize);
+	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SectorYSize);
 
 
 
@@ -1085,7 +1085,7 @@ void MMOTCPServer_Single::GetSectorAroundForHitLeft(Character* Target, int Bound
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && TargetValidPosYBelow != SectorY)
+	if (SectorY + 1 < SectorMaxY && TargetValidPosYBelow != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -1099,7 +1099,7 @@ void MMOTCPServer_Single::GetSectorAroundForHitLeft(Character* Target, int Bound
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
+	if (SectorY + 1 < SectorMaxY && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -1125,18 +1125,18 @@ void MMOTCPServer_Single::GetSectorAroundForHitRight(Character* Target, int Boun
 	AroundSector->around_[AroundSector->count_].y_ = SectorY;
 	AroundSector->count_++;
 
-	int TargetValidPosX = ((Target->x_ + BoundaryX) / SECTORXSIZE);
-	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SECTORYSIZE);
-	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SECTORYSIZE);
+	int TargetValidPosX = ((Target->x_ + BoundaryX) / SectorXSize);
+	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SectorYSize);
+	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SectorYSize);
 
-	if (SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX)
+	if (SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY;
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && TargetValidPosYBelow != SectorY)
+	if (SectorY + 1 < SectorMaxY && TargetValidPosYBelow != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -1150,14 +1150,14 @@ void MMOTCPServer_Single::GetSectorAroundForHitRight(Character* Target, int Boun
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
+	if (SectorY + 1 < SectorMaxY && SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
 		AroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < SECTORMAXX && TargetValidPosX != SectorX && TargetValidPosYAbove != SectorY)
+	if (SectorY - 1 >= 0 && SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX && TargetValidPosYAbove != SectorY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
@@ -1166,7 +1166,7 @@ void MMOTCPServer_Single::GetSectorAroundForHitRight(Character* Target, int Boun
 
 }
 
-SectorAround CacheAround[SECTORMAXY][SECTORMAXX];
+SectorAround CacheAround[SectorMaxY][SectorMaxX];
 
 
 void MMOTCPServer_Single::GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector)
@@ -1185,7 +1185,7 @@ void MMOTCPServer_Single::GetSectorAround(int SectorX, int SectorY, SectorAround
 
 
 
-	if (SectorX + 1 < SECTORMAXX)
+	if (SectorX + 1 < SectorMaxX)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY;
@@ -1200,7 +1200,7 @@ void MMOTCPServer_Single::GetSectorAround(int SectorX, int SectorY, SectorAround
 	}
 
 
-	if (SectorY + 1 < SECTORMAXY)
+	if (SectorY + 1 < SectorMaxY)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -1214,21 +1214,21 @@ void MMOTCPServer_Single::GetSectorAround(int SectorX, int SectorY, SectorAround
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && SectorX + 1 < SECTORMAXX)
+	if (SectorY + 1 < SectorMaxY && SectorX + 1 < SectorMaxX)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
 		AroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < SECTORMAXX)
+	if (SectorY - 1 >= 0 && SectorX + 1 < SectorMaxX)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
 		AroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SECTORMAXY && SectorX - 1 >= 0)
+	if (SectorY + 1 < SectorMaxY && SectorX - 1 >= 0)
 	{
 		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
 		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
@@ -1249,7 +1249,7 @@ void MMOTCPServer_Single::GetSectorAround(int SectorX, int SectorY, SectorAround
 
 ////메모리를  너무 많이 사용하는 것 같은데 이걸 최적화라고 할 수 있는가? 
 
-SectorAround CacheUpdateAround[SECTORMAXY][SECTORMAXX][SECTORMAXY][SECTORMAXX][2];
+SectorAround CacheUpdateAround[SectorMaxY][SectorMaxX][SectorMaxY][SectorMaxX][2];
 
 void MMOTCPServer_Single::GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, SectorAround* AddSector)
 {
@@ -1378,8 +1378,8 @@ void MMOTCPServer_Single::GameRun(Character* Target)
 {
 	switch (Target->action_)
 	{
-	case dfPACKET_MOVE_DIR_LL:
-		if (Target->x_ - 6 < dfRANGE_MOVE_LEFT)
+	case PacketMoveDirectionLL:
+		if (Target->x_ - 6 < RangeMoveLeft)
 		{
 			Target->isMove_ = false;
 			return;
@@ -1389,8 +1389,8 @@ void MMOTCPServer_Single::GameRun(Character* Target)
 
 		break;
 
-	case dfPACKET_MOVE_DIR_LU:
-		if (Target->y_ - 4 < dfRANGE_MOVE_TOP || Target->x_ - 6 < dfRANGE_MOVE_LEFT)
+	case PacketMoveDirectionLU:
+		if (Target->y_ - 4 < RangeMoveTop || Target->x_ - 6 < RangeMoveLeft)
 		{
 			Target->isMove_ = false;
 			return;
@@ -1403,8 +1403,8 @@ void MMOTCPServer_Single::GameRun(Character* Target)
 
 
 
-	case dfPACKET_MOVE_DIR_UU:
-		if (Target->y_ - 4 < dfRANGE_MOVE_TOP)
+	case PacketMoveDirectionUU:
+		if (Target->y_ - 4 < RangeMoveTop)
 		{
 			Target->isMove_ = false;
 			return;
@@ -1416,9 +1416,9 @@ void MMOTCPServer_Single::GameRun(Character* Target)
 		break;
 
 
-	case dfPACKET_MOVE_DIR_RU:
+	case PacketMoveDirectionRU:
 
-		if ((Target->y_ - 4 < dfRANGE_MOVE_TOP) || (Target->x_ + 6 >= dfRANGE_MOVE_RIGHT))
+		if ((Target->y_ - 4 < RangeMoveTop) || (Target->x_ + 6 >= RangeMoveRight))
 		{
 			Target->isMove_ = false;
 			return;
@@ -1430,9 +1430,9 @@ void MMOTCPServer_Single::GameRun(Character* Target)
 		break;
 
 
-	case dfPACKET_MOVE_DIR_RR:
+	case PacketMoveDirectionRR:
 
-		if (Target->x_ + 6 >= dfRANGE_MOVE_RIGHT)
+		if (Target->x_ + 6 >= RangeMoveRight)
 		{
 			Target->isMove_ = false;
 			return;
@@ -1442,9 +1442,9 @@ void MMOTCPServer_Single::GameRun(Character* Target)
 		break;
 
 
-	case dfPACKET_MOVE_DIR_RD:
+	case PacketMoveDirectionRD:
 
-		if (Target->y_ + 4 >= dfRANGE_MOVE_BOTTOM || Target->x_ + 6 >= dfRANGE_MOVE_RIGHT)
+		if (Target->y_ + 4 >= RangeMoveBottom || Target->x_ + 6 >= RangeMoveRight)
 		{
 			Target->isMove_ = false;
 			return;
@@ -1458,8 +1458,8 @@ void MMOTCPServer_Single::GameRun(Character* Target)
 
 
 
-	case dfPACKET_MOVE_DIR_DD:
-		if (Target->y_ + 4 >= dfRANGE_MOVE_BOTTOM)
+	case PacketMoveDirectionDD:
+		if (Target->y_ + 4 >= RangeMoveBottom)
 		{
 			Target->isMove_ = false;
 			return;
@@ -1469,8 +1469,8 @@ void MMOTCPServer_Single::GameRun(Character* Target)
 
 		break;
 
-	case dfPACKET_MOVE_DIR_LD:
-		if (Target->y_ + 4 >= dfRANGE_MOVE_BOTTOM || Target->x_ - 6 < dfRANGE_MOVE_LEFT)
+	case PacketMoveDirectionLD:
+		if (Target->y_ + 4 >= RangeMoveBottom || Target->x_ - 6 < RangeMoveLeft)
 		{
 			Target->isMove_ = false;
 			return;

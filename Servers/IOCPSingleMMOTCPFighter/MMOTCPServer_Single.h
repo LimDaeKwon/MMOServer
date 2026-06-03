@@ -100,7 +100,7 @@ public:
 
 	ObjectFreeList<Character> CharacterFreeList;
 
-	std::list<Character*> Sector[SECTORMAXY][SECTORMAXX];
+	std::list<Character*> Sector[SectorMaxY][SectorMaxX];
 	std::list<unsigned int> DeleteList;
 	std::unordered_map<__int64, Character*> CharacterMap;
 
