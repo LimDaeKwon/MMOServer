@@ -1,7 +1,11 @@
 #include "Contents.h"
+#include "Character.h"
+#include "Session.h"
+#include "Sector.h"
+
 #include "PacketDefine.h"
 #include "Network.h"
-#include "Windows.h"
+
 #include "NetworkProxy.h"
 #include "NetworkStub.h"
 #include "CPacket.h"
@@ -9,56 +13,7 @@
 #include "RingBuffer.h"
 #include <list>
 #include "ObjectFreeList.h"
-
-
-
-struct SectorPos
-{
-	unsigned int X;
-	unsigned int Y;
-
-};
-
-struct SectorAround
-{
-	unsigned int Count;
-	SectorPos Around[9];
-
-};
-
-struct SESSION
-{
-	unsigned int LastRecvTime;
-	unsigned int SessionID;
-
-	SOCKET Socket;
-	RingBuffer SendQ;
-	RingBuffer ReceiveQ;
-
-
-	unsigned int IsDelete;
-
-
-};
-
-
-struct CHARACTER
-{
-	unsigned int SessionID;
-	unsigned int Action;
-	SESSION* CharacterSession;
-	unsigned char Direction;
-
-	short X;
-	short Y;
-	unsigned char HP;
-	bool IsMove;
-
-	SectorPos OldSectorPos;
-	SectorPos CharacterSectorPos;
-
-
-};
+#include "Windows.h"
 
 std::list<CHARACTER*> Sector[SECTORMAXY][SECTORMAXX];
 std::list<unsigned int> DeleteList;
@@ -82,8 +37,6 @@ void CreateCharater(SESSION* NewSession)
 
 	NewPlayer->Direction = dfPACKET_MOVE_DIR_RR;
 	NewPlayer->Action = dfPACKET_MOVE_DIR_RR;
-	/*NewPlayer->X = rand() % dfRANGE_MOVE_RIGHT;
-	NewPlayer->Y = rand() % dfRANGE_MOVE_BOTTOM;*/
 
 	NewPlayer->X = rand() % 6399;
 	NewPlayer->Y = rand() % 6399;

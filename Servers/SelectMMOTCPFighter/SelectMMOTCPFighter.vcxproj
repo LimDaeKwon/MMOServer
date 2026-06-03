@@ -132,11 +132,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Character.h" />
     <ClCompile Include="Contents.cpp" />
     <ClCompile Include="MMOTCPFighterServer.cpp" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="NetworkProxy.cpp" />
     <ClCompile Include="NetworkStub.cpp" />
+    <ClCompile Include="Sector.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Contents.h" />
@@ -144,6 +146,7 @@
     <ClInclude Include="NetworkProxy.h" />
     <ClInclude Include="NetworkStub.h" />
     <ClInclude Include="PacketDefine.h" />
+    <ClInclude Include="Session.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Libs\DKServerCore\DKServerCore.vcxproj">

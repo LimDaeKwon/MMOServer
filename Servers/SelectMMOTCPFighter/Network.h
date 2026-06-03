@@ -1,14 +1,15 @@
 #pragma once
 
+
+
 #define SERVERPORT 20511
 #define PACKETCODE 0x89
 #define DEFAULTHP 100
 
-
 struct fd_set;
 struct SESSION;
-class CPacket;
 struct SectorAround;
+class CPacket;
 
 
 void Network();
@@ -27,19 +28,11 @@ void SendPacketAroundAddSector(SESSION* Target, CPacket* Packet, SectorAround* A
 
 void Receive(SESSION* Target);
 
-
 void ServerControl();
 
 void SendAll(SESSION* Target);
 
 void DeleteDisconnect();
 
-//void SetFrame();
-
 void Initialize();
-
-
-
-
-//void InitNewPlayer(Player* NewPlayer, SOCKET* NewPlayerSocket, SOCKADDR_IN* NewPlayerSockAddr);
 

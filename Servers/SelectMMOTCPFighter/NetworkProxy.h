@@ -2,8 +2,8 @@
 
 
 struct SESSION;
-class CPacket;
 struct SectorAround;
+class CPacket;
 
 void MakePacketMoveStart(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
 

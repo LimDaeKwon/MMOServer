@@ -22,6 +22,12 @@
     <ClCompile Include="Contents.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
+    <ClCompile Include="Character.h">
+      <Filter>Contents</Filter>
+    </ClCompile>
+    <ClCompile Include="Sector.h">
+      <Filter>Contents</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NetworkProxy.h">
@@ -37,6 +43,9 @@
       <Filter>Contents</Filter>
     </ClInclude>
     <ClInclude Include="Network.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="Session.h">
       <Filter>Contents</Filter>
     </ClInclude>
   </ItemGroup>

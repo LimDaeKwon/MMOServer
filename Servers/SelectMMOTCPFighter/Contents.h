@@ -1,9 +1,10 @@
 #pragma once
 
-
 struct SESSION;
 struct CHARACTER;
 struct SectorAround;
+class CPacket;
+
 
 void GameRun(CHARACTER* Target);
 

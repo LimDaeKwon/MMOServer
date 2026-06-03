@@ -1,4 +1,9 @@
 #include "Network.h"
+
+#include "Character.h"
+#include "Session.h"
+#include "Sector.h"
+
 #include <iostream>
 #include "RingBuffer.h"
 #include "winsock2.h"
@@ -14,52 +19,6 @@
 #pragma comment(lib,"Ws2_32.lib")
 
 
-struct SESSION
-{
-	
-	unsigned int LastRecvTime;
-	unsigned int SessionID;
-
-	SOCKET Socket;
-	RingBuffer SendQ;
-	RingBuffer ReceiveQ;
-
-	
-	unsigned int IsDelete;
-
-};
-
-struct SectorPos
-{
-	unsigned int X;
-	unsigned int Y;
-
-};
-
-struct SectorAround
-{
-	unsigned int Count;
-	SectorPos Around[9];
-
-};
-
-
-struct CHARACTER
-{
-	unsigned int SessionID;
-	unsigned int Action;
-	SESSION* CharacterSession;
-	unsigned char Direction;
-
-	short X;
-	short Y;
-	unsigned char HP;
-	bool IsMove;
-
-	SectorPos OldSectorPos;
-	SectorPos CharacterSectorPos;
-
-};
 
 
 unsigned int SessionID = 0;
@@ -82,8 +41,6 @@ void Network()
 
 	fd_set ReadSet;
 	fd_set WriteSet;
-
-
 
 
 	timeval t;
