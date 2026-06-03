@@ -1,70 +1,81 @@
 #include "NetworkStub.h"
-#include "CPacket.h" 
 
+#include "CPacket.h"
+#include "PacketDefine.h"
 
-bool PacketProc(Session* Target, unsigned char PacketType, CPacket* Packet)
+bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer)
 {
-	switch (PacketType)
-	{
+    switch (packetType)
+    {
+    case PacketCsMoveStart:
+    {
+        unsigned char direction;
+        unsigned short x;
+        unsigned short y;
 
-	case 10:
-	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*Packet >> Direction >> X >> Y;
-		return NetPacketProcMoveStart(Target, Direction, X, Y);
-		break;
-	}
+        *packetBuffer >> direction >> x >> y;
 
-	case 12:
-	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*Packet >> Direction >> X >> Y;
-		return NetPacketProcMoveStop(Target, Direction, X, Y);
-		break;
-	}
+        return NetPacketProcMoveStart(target, direction, x, y);
+    }
 
-	case 20:
-	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*Packet >> Direction >> X >> Y;
-		return NetPacketProcAttack1(Target, Direction, X, Y);
-		break;
-	}
+    case PacketCsMoveStop:
+    {
+        unsigned char direction;
+        unsigned short x;
+        unsigned short y;
 
-	case 22:
-	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*Packet >> Direction >> X >> Y;
-		return NetPacketProcAttack2(Target, Direction, X, Y);
-		break;
-	}
+        *packetBuffer >> direction >> x >> y;
 
-	case 24:
-	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*Packet >> Direction >> X >> Y;
-		return NetPacketProcAttack3(Target, Direction, X, Y);
-		break;
-	}
+        return NetPacketProcMoveStop(target, direction, x, y);
+    }
 
-	case 252:
-	{
-		unsigned int Time;
-		*Packet >> Time;
-		return NetPacketProcEcho(Target , Time);
-		break;
-	}
+    case PacketCsAttack1:
+    {
+        unsigned char direction;
+        unsigned short x;
+        unsigned short y;
 
-	}
-	return true;
+        *packetBuffer >> direction >> x >> y;
+
+        return NetPacketProcAttack1(target, direction, x, y);
+    }
+
+    case PacketCsAttack2:
+    {
+        unsigned char direction;
+        unsigned short x;
+        unsigned short y;
+
+        *packetBuffer >> direction >> x >> y;
+
+        return NetPacketProcAttack2(target, direction, x, y);
+    }
+
+    case PacketCsAttack3:
+    {
+        unsigned char direction;
+        unsigned short x;
+        unsigned short y;
+
+        *packetBuffer >> direction >> x >> y;
+
+        return NetPacketProcAttack3(target, direction, x, y);
+    }
+
+    case PacketCsEcho:
+    {
+        unsigned int time;
+
+        *packetBuffer >> time;
+
+        return NetPacketProcEcho(target, time);
+    }
+
+    default:
+    {
+        break;
+    }
+    }
+
+    return true;
 }

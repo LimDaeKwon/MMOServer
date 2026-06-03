@@ -1,162 +1,125 @@
 #include "NetworkProxy.h"
-#include "Network.h"
-#include "CPacket.h" 
+
+#include "CPacket.h"
 #include "GameDefine.h"
+#include "Network.h"
+#include "PacketDefine.h"
 
-void MakePacketMoveStart(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketMoveStart(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStart) << id << direction << x << y;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)9 << (unsigned char)11 << ID << Direction << X << Y;
-
-
-	SendPacketAround(Target, Packet);
+    SendPacketAround(target, packet);
 }
 
-
-void MakePacketMoveStartForMe(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketMoveStartForMe(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStart) << id << direction << x << y;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)9 << (unsigned char)11 << ID << Direction << X << Y;
-
-
-	SendPacketUnicast(Target, Packet);
+    SendPacketUnicast(target, packet);
 }
 
-
-void MakePacketMoveStop(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketMoveStop(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStop) << id << direction << x << y;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)9 << (unsigned char)13 << ID << Direction << X << Y;
-
-
-	SendPacketAround(Target, Packet);
+    SendPacketAround(target, packet);
 }
 
-
-void MakePacketCreateMyCharacter(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MakePacketCreateMyCharacter(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateMyCharacter) << id << direction << x << y << hp;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)10 << (unsigned char)0 << ID << Direction << X << Y << HP;
-
-
-	SendPacketUnicast(Target, Packet);
+    SendPacketUnicast(target, packet);
 }
 
-
-void MakePacketCreateOtherCharacterForMe(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MakePacketCreateOtherCharacterForMe(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateOtherCharacter) << id << direction << x << y << hp;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)10 << (unsigned char)1 << ID << Direction << X << Y << HP;
-
-
-	SendPacketUnicast(Target, Packet);
+    SendPacketUnicast(target, packet);
 }
 
-
-void MakePacketCreateOtherCharacter(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MakePacketCreateOtherCharacter(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateOtherCharacter) << id << direction << x << y << hp;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)10 << (unsigned char)1 << ID << Direction << X << Y << HP;
-
-
-	SendPacketAround(Target, Packet);
+    SendPacketAround(target, packet);
 }
 
-
-void MakePacketDeleteCharacter(Session* Target, CPacket* Packet, unsigned int ID)
+void MakePacketDeleteCharacter(Session* target, CPacket* packet, unsigned int id)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScDeleteCharacter) << id;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)4 << (unsigned char)2 << ID;
-
-
-	SendPacketAround(Target, Packet);
+    SendPacketAround(target, packet);
 }
 
-
-void MakePacketDamage(Session* Target, CPacket* Packet, unsigned int AttackID, unsigned int DamageID, unsigned char DamageHP)
+void MakePacketDamage(Session* target, CPacket* packet, unsigned int attackId, unsigned int damageId, unsigned char damageHp)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScDamage) << attackId << damageId << damageHp;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)9 << (unsigned char)30 << AttackID << DamageID << DamageHP;
-
-
-	SendPacketAround(Target, Packet,true);
+    SendPacketAround(target, packet, true);
 }
 
-
-void MakePacketAttack1(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketAttack1(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScAttack1) << id << direction << x << y;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)9 << (unsigned char)21 << ID << Direction << X << Y;
-
-
-	SendPacketAround(Target, Packet);
+    SendPacketAround(target, packet);
 }
 
-
-void MakePacketAttack2(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketAttack2(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScAttack2) << id << direction << x << y;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)9 << (unsigned char)23 << ID << Direction << X << Y;
-
-
-	SendPacketAround(Target, Packet);
+    SendPacketAround(target, packet);
 }
 
-
-void MakePacketAttack3(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketAttack3(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScAttack3) << id << direction << x << y;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)9 << (unsigned char)25 << ID << Direction << X << Y;
-
-
-	SendPacketAround(Target, Packet);
+    SendPacketAround(target, packet);
 }
 
-void MakePacketEcho(Session* Target, CPacket* Packet , unsigned int Time)
+void MakePacketEcho(Session* target, CPacket* packet, unsigned int time)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScEcho) << time;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)4 << (unsigned char)253 << Time ;
-
-
-	SendPacketUnicast(Target, Packet);
+    SendPacketUnicast(target, packet);
 }
 
-void MakePacketDeleteCharacterRemoveSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID)
+void MakePacketDeleteCharacterRemoveSector(Session* target, CPacket* packet, SectorAround* around, unsigned int id)
 {
-	*Packet << (unsigned char)PacketCode << (unsigned char)4 << (unsigned char)2 << ID;
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScDeleteCharacter) << id;
 
-	SendPacketAroundRemoveSector(Target, Packet, Around);
+    SendPacketAroundRemoveSector(target, packet, around);
 }
 
-void MakePacketCreateCharacterAddSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MakePacketCreateCharacterAddSector(Session* target, CPacket* packet, SectorAround* around, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
-	*Packet << (unsigned char)PacketCode << (unsigned char)10 << (unsigned char)1 << ID << Direction << X << Y << HP;
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateOtherCharacter) << id << direction << x << y << hp;
 
-	SendPacketAroundAddSector(Target, Packet, Around);
+    SendPacketAroundAddSector(target, packet, around);
 }
 
-void MakePacketMoveStartAddSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketMoveStartAddSector(Session* target, CPacket* packet, SectorAround* around, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)PacketCode << (unsigned char)9 << (unsigned char)11 << ID << Direction << X << Y;
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStart) << id << direction << x << y;
 
-
-	SendPacketAroundAddSector(Target, Packet, Around);
+    SendPacketAroundAddSector(target, packet, around);
 }
 
-void MakePacketDeleteCharacterForMe(Session* Target, CPacket* Packet, unsigned int ID)
+void MakePacketDeleteCharacterForMe(Session* target, CPacket* packet, unsigned int id)
 {
-	*Packet << (unsigned char)PacketCode << (unsigned char)4 << (unsigned char)2 << ID;
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScDeleteCharacter) << id;
 
-
-	SendPacketUnicast(Target, Packet);
-
+    SendPacketUnicast(target, packet);
 }
 
-void MakePacketSync(Session* Target, CPacket* Packet, unsigned int ID, unsigned short X, unsigned short Y)
+void MakePacketSync(Session* target, CPacket* packet, unsigned int id, unsigned short x, unsigned short y)
 {
+    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(8) << static_cast<unsigned char>(PacketScSync) << id << x << y;
 
-	*Packet << (unsigned char)PacketCode << (unsigned char)8 << (unsigned char)251 << ID << X << Y;
-
-
-	SendPacketAround(Target, Packet, true);
+    SendPacketAround(target, packet, true);
 }
