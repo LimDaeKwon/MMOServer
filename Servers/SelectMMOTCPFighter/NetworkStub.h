@@ -1,24 +1,18 @@
-#pragma once 
-
+#pragma once
 
 struct Session;
 class CPacket;
 
-bool PacketProc(Session* Target, unsigned char PacketType, CPacket* PacketBuffer);
+bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer);
 
-bool NetPacketProc_MoveStart(Session* Target, unsigned char Direction, unsigned short X, unsigned short Y);
+bool NetPacketProcMoveStart(Session* target, unsigned char direction, unsigned short x, unsigned short y);
 
+bool NetPacketProcMoveStop(Session* target, unsigned char direction, unsigned short x, unsigned short y);
 
-bool NetPacketProc_MoveStop(Session* Target, unsigned char Direction, unsigned short X, unsigned short Y);
+bool NetPacketProcAttack1(Session* target, unsigned char direction, unsigned short x, unsigned short y);
 
+bool NetPacketProcAttack2(Session* target, unsigned char direction, unsigned short x, unsigned short y);
 
-bool NetPacketProc_Attack1(Session* Target, unsigned char Direction, unsigned short X, unsigned short Y);
+bool NetPacketProcAttack3(Session* target, unsigned char direction, unsigned short x, unsigned short y);
 
-
-bool NetPacketProc_Attack2(Session* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-
-
-bool NetPacketProc_Attack3(Session* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-
-
-bool NetPacketProc_Echo(Session* Target, unsigned int Time);
+bool NetPacketProcEcho(Session* target, unsigned int time);

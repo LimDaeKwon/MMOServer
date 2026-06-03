@@ -1,49 +1,39 @@
-#pragma once 
-
+#pragma once
 
 struct Session;
 struct SectorAround;
 class CPacket;
 
-void MakePacketMoveStart(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+void MakePacketMoveStart(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
 
+void MakePacketMoveStartForMe(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
 
-void MakePacketMoveStartForMe(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+void MakePacketMoveStop(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
 
+void MakePacketCreateMyCharacter(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
 
-void MakePacketMoveStop(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+void MakePacketCreateOtherCharacterForMe(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
 
+void MakePacketCreateOtherCharacter(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
 
-void MakePacketCreateMyCharacter(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
+void MakePacketDeleteCharacter(Session* target, CPacket* packet, unsigned int id);
 
+void MakePacketDamage(Session* target, CPacket* packet, unsigned int attackId, unsigned int damageId, unsigned char damageHp);
 
-void MakePacketCreateOtherCharacterForMe(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
+void MakePacketAttack1(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
 
+void MakePacketAttack2(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
 
-void MakePacketCreateOtherCharacter(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
+void MakePacketAttack3(Session* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
 
+void MakePacketEcho(Session* target, CPacket* packet, unsigned int time);
 
-void MakePacketDeleteCharacter(Session* Target, CPacket* Packet, unsigned int ID);
+void MakePacketDeleteCharacterRemoveSector(Session* target, CPacket* packet, SectorAround* around, unsigned int id);
 
+void MakePacketDeleteCharacterForMe(Session* target, CPacket* packet, unsigned int id);
 
-void MakePacketDamage(Session* Target, CPacket* Packet, unsigned int AttackID, unsigned int DamageID, unsigned char DamageHP);
+void MakePacketCreateCharacterAddSector(Session* target, CPacket* packet, SectorAround* around, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
 
+void MakePacketMoveStartAddSector(Session* target, CPacket* packet, SectorAround* around, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
 
-void MakePacketAttack1(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-void MakePacketAttack2(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-void MakePacketAttack3(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-void MakePacketEcho(Session* Target, CPacket* Packet, unsigned int Time);
-
-void MakePacketDeleteCharacterRemoveSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID);
-
-void MakePacketDeleteCharacterForMe(Session* Target, CPacket* Packet, unsigned int ID);
-
-void MakePacketCreateCharacterAddSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
-
-void MakePacketMoveStartAddSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-void MakePacketSync(Session* Target, CPacket* Packet, unsigned int ID, unsigned short X, unsigned short Y);
-
+void MakePacketSync(Session* target, CPacket* packet, unsigned int id, unsigned short x, unsigned short y);

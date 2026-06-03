@@ -447,7 +447,7 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 }
 
 
-bool NetPacketProc_MoveStart(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcMoveStart(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
@@ -508,7 +508,7 @@ bool NetPacketProc_MoveStart(Session* TargetSession, unsigned char Direction, un
 	return true;
 }
 
-bool NetPacketProc_MoveStop(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcMoveStop(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
@@ -572,7 +572,7 @@ bool NetPacketProc_MoveStop(Session* TargetSession, unsigned char Direction, uns
 	return true;
 }
 
-bool NetPacketProc_Attack1(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcAttack1(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
@@ -617,7 +617,7 @@ bool NetPacketProc_Attack1(Session* TargetSession, unsigned char Direction, unsi
 	return true;
 }
 
-bool NetPacketProc_Attack2(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcAttack2(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
@@ -661,7 +661,7 @@ bool NetPacketProc_Attack2(Session* TargetSession, unsigned char Direction, unsi
 	return true;
 }
 
-bool NetPacketProc_Attack3(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
+bool NetPacketProcAttack3(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
 	Character* Target = CharacterMap.at(TargetSession->sessionId_);
@@ -707,7 +707,7 @@ bool NetPacketProc_Attack3(Session* TargetSession, unsigned char Direction, unsi
 }
 
 
-bool NetPacketProc_Echo(Session* Target, unsigned int Time)
+bool NetPacketProcEcho(Session* Target, unsigned int Time)
 {
 
 	//CPacket Packet_SC_Echo;

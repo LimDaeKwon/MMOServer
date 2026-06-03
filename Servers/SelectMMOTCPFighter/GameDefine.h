@@ -24,6 +24,8 @@ constexpr int SectorMaxY = 40;
 constexpr int SectorXSize = 160;
 constexpr int SectorYSize = 160;
 
+constexpr int DefaultHp = 100;
+
 
 constexpr unsigned char PacketMoveDirectionLL = 0;
 constexpr unsigned char PacketMoveDirectionLU = 1;

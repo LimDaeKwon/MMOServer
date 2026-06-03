@@ -13,7 +13,7 @@ bool PacketProc(Session* Target, unsigned char PacketType, CPacket* Packet)
 		unsigned short X;
 		unsigned short Y;
 		*Packet >> Direction >> X >> Y;
-		return NetPacketProc_MoveStart(Target, Direction, X, Y);
+		return NetPacketProcMoveStart(Target, Direction, X, Y);
 		break;
 	}
 
@@ -23,7 +23,7 @@ bool PacketProc(Session* Target, unsigned char PacketType, CPacket* Packet)
 		unsigned short X;
 		unsigned short Y;
 		*Packet >> Direction >> X >> Y;
-		return NetPacketProc_MoveStop(Target, Direction, X, Y);
+		return NetPacketProcMoveStop(Target, Direction, X, Y);
 		break;
 	}
 
@@ -33,7 +33,7 @@ bool PacketProc(Session* Target, unsigned char PacketType, CPacket* Packet)
 		unsigned short X;
 		unsigned short Y;
 		*Packet >> Direction >> X >> Y;
-		return NetPacketProc_Attack1(Target, Direction, X, Y);
+		return NetPacketProcAttack1(Target, Direction, X, Y);
 		break;
 	}
 
@@ -43,7 +43,7 @@ bool PacketProc(Session* Target, unsigned char PacketType, CPacket* Packet)
 		unsigned short X;
 		unsigned short Y;
 		*Packet >> Direction >> X >> Y;
-		return NetPacketProc_Attack2(Target, Direction, X, Y);
+		return NetPacketProcAttack2(Target, Direction, X, Y);
 		break;
 	}
 
@@ -53,7 +53,7 @@ bool PacketProc(Session* Target, unsigned char PacketType, CPacket* Packet)
 		unsigned short X;
 		unsigned short Y;
 		*Packet >> Direction >> X >> Y;
-		return NetPacketProc_Attack3(Target, Direction, X, Y);
+		return NetPacketProcAttack3(Target, Direction, X, Y);
 		break;
 	}
 
@@ -61,7 +61,7 @@ bool PacketProc(Session* Target, unsigned char PacketType, CPacket* Packet)
 	{
 		unsigned int Time;
 		*Packet >> Time;
-		return NetPacketProc_Echo(Target , Time);
+		return NetPacketProcEcho(Target , Time);
 		break;
 	}
 
