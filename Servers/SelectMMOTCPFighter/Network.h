@@ -1,7 +1,5 @@
 #pragma once
 
-
-
 struct fd_set;
 struct Session;
 struct SectorAround;
