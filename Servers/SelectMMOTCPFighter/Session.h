@@ -3,7 +3,7 @@
 #include <WinSock2.h>
 #include "RingBuffer.h"
 
-struct SESSION
+struct Session
 {
     unsigned int LastRecvTime;
     unsigned int SessionID;

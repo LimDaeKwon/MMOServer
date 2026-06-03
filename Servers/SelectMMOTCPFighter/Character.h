@@ -2,20 +2,33 @@
 
 #include "Sector.h"
 
-struct SESSION;
+struct Session;
 
-struct CHARACTER
+struct Character
 {
-    unsigned int SessionID;
-    unsigned int Action;
-    SESSION* CharacterSession;
-    unsigned char Direction;
+    unsigned int sessionId_;
+    unsigned int action_;
+    Session* characterSession_;
+    unsigned char direction_;
 
-    short X;
-    short Y;
-    unsigned char HP;
-    bool IsMove;
+    short x_;
+    short y_;
+    unsigned char hp_;
+    bool isMove_;
 
-    SectorPos OldSectorPos;
-    SectorPos CharacterSectorPos;
+    SectorPos oldSectorPos_;
+    SectorPos characterSectorPos_;
 };
+//
+//unsigned int sessionId_;
+//unsigned int action_;
+//Session* characterSession_;
+//unsigned char direction_;
+//
+//short x_;
+//short y_;
+//unsigned char hp_;
+//bool isMove_;
+//
+//SectorPos oldSectorPos_;
+//SectorPos characterSectorPos_;

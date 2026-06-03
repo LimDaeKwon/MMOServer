@@ -3,7 +3,7 @@
 #include "CPacket.h" 
 
 
-void MakePacketMoveStart(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketMoveStart(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)9 << (unsigned char)11 << ID << Direction << X << Y;
@@ -13,7 +13,7 @@ void MakePacketMoveStart(SESSION* Target, CPacket* Packet, unsigned int ID, unsi
 }
 
 
-void MakePacketMoveStartForMe(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketMoveStartForMe(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)9 << (unsigned char)11 << ID << Direction << X << Y;
@@ -23,7 +23,7 @@ void MakePacketMoveStartForMe(SESSION* Target, CPacket* Packet, unsigned int ID,
 }
 
 
-void MakePacketMoveStop(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketMoveStop(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)9 << (unsigned char)13 << ID << Direction << X << Y;
@@ -33,7 +33,7 @@ void MakePacketMoveStop(SESSION* Target, CPacket* Packet, unsigned int ID, unsig
 }
 
 
-void MakePacketCreateMyCharacter(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MakePacketCreateMyCharacter(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)10 << (unsigned char)0 << ID << Direction << X << Y << HP;
@@ -43,7 +43,7 @@ void MakePacketCreateMyCharacter(SESSION* Target, CPacket* Packet, unsigned int 
 }
 
 
-void MakePacketCreateOtherCharacterForMe(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MakePacketCreateOtherCharacterForMe(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)10 << (unsigned char)1 << ID << Direction << X << Y << HP;
@@ -53,7 +53,7 @@ void MakePacketCreateOtherCharacterForMe(SESSION* Target, CPacket* Packet, unsig
 }
 
 
-void MakePacketCreateOtherCharacter(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MakePacketCreateOtherCharacter(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)10 << (unsigned char)1 << ID << Direction << X << Y << HP;
@@ -63,7 +63,7 @@ void MakePacketCreateOtherCharacter(SESSION* Target, CPacket* Packet, unsigned i
 }
 
 
-void MakePacketDeleteCharacter(SESSION* Target, CPacket* Packet, unsigned int ID)
+void MakePacketDeleteCharacter(Session* Target, CPacket* Packet, unsigned int ID)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)4 << (unsigned char)2 << ID;
@@ -73,7 +73,7 @@ void MakePacketDeleteCharacter(SESSION* Target, CPacket* Packet, unsigned int ID
 }
 
 
-void MakePacketDamage(SESSION* Target, CPacket* Packet, unsigned int AttackID, unsigned int DamageID, unsigned char DamageHP)
+void MakePacketDamage(Session* Target, CPacket* Packet, unsigned int AttackID, unsigned int DamageID, unsigned char DamageHP)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)9 << (unsigned char)30 << AttackID << DamageID << DamageHP;
@@ -83,7 +83,7 @@ void MakePacketDamage(SESSION* Target, CPacket* Packet, unsigned int AttackID, u
 }
 
 
-void MakePacketAttack1(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketAttack1(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)9 << (unsigned char)21 << ID << Direction << X << Y;
@@ -93,7 +93,7 @@ void MakePacketAttack1(SESSION* Target, CPacket* Packet, unsigned int ID, unsign
 }
 
 
-void MakePacketAttack2(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketAttack2(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)9 << (unsigned char)23 << ID << Direction << X << Y;
@@ -103,7 +103,7 @@ void MakePacketAttack2(SESSION* Target, CPacket* Packet, unsigned int ID, unsign
 }
 
 
-void MakePacketAttack3(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketAttack3(Session* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)9 << (unsigned char)25 << ID << Direction << X << Y;
@@ -112,7 +112,7 @@ void MakePacketAttack3(SESSION* Target, CPacket* Packet, unsigned int ID, unsign
 	SendPacketAround(Target, Packet);
 }
 
-void MakePacketEcho(SESSION* Target, CPacket* Packet , unsigned int Time)
+void MakePacketEcho(Session* Target, CPacket* Packet , unsigned int Time)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)4 << (unsigned char)253 << Time ;
@@ -121,21 +121,21 @@ void MakePacketEcho(SESSION* Target, CPacket* Packet , unsigned int Time)
 	SendPacketUnicast(Target, Packet);
 }
 
-void MakePacketDeleteCharacterRemoveSector(SESSION* Target, CPacket* Packet, SectorAround* Around, unsigned int ID)
+void MakePacketDeleteCharacterRemoveSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID)
 {
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)4 << (unsigned char)2 << ID;
 
 	SendPacketAroundRemoveSector(Target, Packet, Around);
 }
 
-void MakePacketCreateCharacterAddSector(SESSION* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MakePacketCreateCharacterAddSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
 {
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)10 << (unsigned char)1 << ID << Direction << X << Y << HP;
 
 	SendPacketAroundAddSector(Target, Packet, Around);
 }
 
-void MakePacketMoveStartAddSector(SESSION* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MakePacketMoveStartAddSector(Session* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)9 << (unsigned char)11 << ID << Direction << X << Y;
 
@@ -143,7 +143,7 @@ void MakePacketMoveStartAddSector(SESSION* Target, CPacket* Packet, SectorAround
 	SendPacketAroundAddSector(Target, Packet, Around);
 }
 
-void MakePacketDeleteCharacterForMe(SESSION* Target, CPacket* Packet, unsigned int ID)
+void MakePacketDeleteCharacterForMe(Session* Target, CPacket* Packet, unsigned int ID)
 {
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)4 << (unsigned char)2 << ID;
 
@@ -152,7 +152,7 @@ void MakePacketDeleteCharacterForMe(SESSION* Target, CPacket* Packet, unsigned i
 
 }
 
-void MakePacketSync(SESSION* Target, CPacket* Packet, unsigned int ID, unsigned short X, unsigned short Y)
+void MakePacketSync(Session* Target, CPacket* Packet, unsigned int ID, unsigned short X, unsigned short Y)
 {
 
 	*Packet << (unsigned char)PACKETCODE << (unsigned char)8 << (unsigned char)251 << ID << X << Y;

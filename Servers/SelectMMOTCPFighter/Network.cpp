@@ -23,20 +23,20 @@
 
 unsigned int SessionID = 0;
 SOCKET ListenSocket = INVALID_SOCKET;
-std::unordered_map<unsigned int, SESSION*> Sessions;
-ObjectFreeList<SESSION> SessionFreeList(10000);
+std::unordered_map<unsigned int, Session*> Sessions;
+ObjectFreeList<Session> SessionFreeList(10000);
 
 
 extern std::list<unsigned int> DeleteList;
-extern std::unordered_map<unsigned int, CHARACTER*> CharacterMap;
-extern std::list<CHARACTER*> Sector[SECTORMAXY][SECTORMAXX];
+extern std::unordered_map<unsigned int, Character*> CharacterMap;
+extern std::list<Character*> Sector[SECTORMAXY][SECTORMAXX];
 //extern std::unordered_map<unsigned int, unsigned int> whydelete;
 //extern bool Shutdown = false;
 
 
 void Network()
 {
-	SESSION* Session;
+	
 
 
 	fd_set ReadSet;
@@ -60,27 +60,27 @@ void Network()
 
 
 
-	std::unordered_map<unsigned int, SESSION*>::iterator Iter;
+	std::unordered_map<unsigned int, Session*>::iterator Iter;
 	Iter = Sessions.begin();
 
 	FD_ZERO(&ReadSet);
 	FD_ZERO(&WriteSet);
 	FD_SET(ListenSocket, &ReadSet);
-
+	Session* target;
 	for (; Iter != Sessions.end(); ++Iter)
 	{
-		Session = Iter->second;
+		target = Iter->second;
 
 
 		if (Count == 0)
 		{
-			StartID = Session->SessionID;
+			StartID = target->SessionID;
 		}
 
-		FD_SET(Session->Socket, &ReadSet);
-		if (Session->SendQ.GetUseSize() > 0)
+		FD_SET(target->Socket, &ReadSet);
+		if (target->SendQ.GetUseSize() > 0)
 		{
-			FD_SET(Session->Socket, &WriteSet);
+			FD_SET(target->Socket, &WriteSet);
 		}
 
 		Count++;
@@ -109,7 +109,7 @@ void Network()
 				}
 
 
-				std::unordered_map<unsigned int, SESSION*>::iterator IterSession = Sessions.find(StartID);
+				std::unordered_map<unsigned int, Session*>::iterator IterSession = Sessions.find(StartID);
 				for (; IterSession != Sessions.end(); ++IterSession)
 				{
 					if ((SelectReturn == 0))
@@ -117,21 +117,21 @@ void Network()
 						break;
 					}
 
-					Session = IterSession->second;
-					if (Session->IsDelete == 1)
+					target = IterSession->second;
+					if (target->IsDelete == 1)
 					{
 						continue;
 					}
 
-					if (FD_ISSET(Session->Socket, &ReadSet))
+					if (FD_ISSET(target->Socket, &ReadSet))
 					{
-						Receive(Session);
+						Receive(target);
 						SelectReturn--;
 					}
 
-					if (FD_ISSET(Session->Socket, &WriteSet))
+					if (FD_ISSET(target->Socket, &WriteSet))
 					{
-						SendAll(Session);
+						SendAll(target);
 						SelectReturn--;
 					}
 				}
@@ -174,7 +174,7 @@ void Network()
 
 
 
-			std::unordered_map<unsigned int, SESSION*>::iterator IterSession = Sessions.find(StartID);
+			std::unordered_map<unsigned int, Session*>::iterator IterSession = Sessions.find(StartID);
 			for (; IterSession != Sessions.end(); ++IterSession)
 			{
 				if ((SelectReturn == 0))
@@ -182,21 +182,21 @@ void Network()
 					break;
 				}
 
-				Session = IterSession->second;
-				if (Session->IsDelete == 1)
+				target = IterSession->second;
+				if (target->IsDelete == 1)
 				{
 					continue;
 				}
 
-				if (FD_ISSET(Session->Socket, &ReadSet))
+				if (FD_ISSET(target->Socket, &ReadSet))
 				{
-					Receive(Session);
+					Receive(target);
 					SelectReturn--;
 				}
 
-				if (FD_ISSET(Session->Socket, &WriteSet))
+				if (FD_ISSET(target->Socket, &WriteSet))
 				{
-					SendAll(Session);
+					SendAll(target);
 					SelectReturn--;
 				}
 			}
@@ -239,14 +239,14 @@ void AcceptClient()
 
 	//wprintf(L"## Connect # IP : %s    /  SessionID : %d \n", ClientIP, SessionID);
 
-	SESSION* NewSession = SessionFreeList.Alloc();
+	Session* NewSession = SessionFreeList.Alloc();
 
 	NewSession->SessionID = SessionID++;
 	NewSession->Socket = ClientSocket;
 	NewSession->IsDelete = 0;
 	NewSession->LastRecvTime = timeGetTime();
 
-	Sessions.insert(std::unordered_map<unsigned int, SESSION*>::value_type(NewSession->SessionID, NewSession));
+	Sessions.insert(std::unordered_map<unsigned int, Session*>::value_type(NewSession->SessionID, NewSession));
 	CreateCharater(NewSession);
 
 
@@ -254,7 +254,7 @@ void AcceptClient()
 
 
 
-void SendPacketUnicast(SESSION* Target, CPacket* Packet)
+void SendPacketUnicast(Session* Target, CPacket* Packet)
 {
 	int DataSize = Packet->GetDataSize();
 	int EnqueueHeaderReturn = Target->SendQ.Enqueue(Packet->GetBufferPtr(), DataSize);
@@ -269,26 +269,26 @@ void SendPacketUnicast(SESSION* Target, CPacket* Packet)
 	}
 }
 
-void SendPacketSectorOne(int SectorX, int SectorY, SESSION* Except, CPacket* Packet)
+void SendPacketSectorOne(int SectorX, int SectorY, Session* Except, CPacket* Packet)
 {
 	int DataSize = Packet->GetDataSize();
 	int EnqueueHeaderReturn;
-	CHARACTER* Target;
-	std::list<CHARACTER*>::iterator Iter;
+	Character* Target;
+	std::list<Character*>::iterator Iter;
 	for (Iter = Sector[SectorY][SectorX].begin(); Iter != Sector[SectorY][SectorX].end(); ++Iter)
 	{
 		Target = *Iter;
-		if ((Target->CharacterSession == Except) || (Target->CharacterSession->IsDelete == 1))
+		if ((Target->characterSession_ == Except) || (Target->characterSession_->IsDelete == 1))
 		{
 			continue;
 		}
 
-		EnqueueHeaderReturn = Target->CharacterSession->SendQ.Enqueue(Packet->GetBufferPtr(), DataSize);
+		EnqueueHeaderReturn = Target->characterSession_->SendQ.Enqueue(Packet->GetBufferPtr(), DataSize);
 		if (EnqueueHeaderReturn != DataSize)
 		{
 			//인큐 불가 상태.
-			wprintf(L"EnqueueFail in SendPacketUnicast%d \n ", Target->SessionID);
-			Disconnect(Target->CharacterSession);
+			wprintf(L"EnqueueFail in SendPacketUnicast%d \n ", Target->sessionId_);
+			Disconnect(Target->characterSession_);
 
 
 			//DebugBreak();
@@ -296,7 +296,7 @@ void SendPacketSectorOne(int SectorX, int SectorY, SESSION* Except, CPacket* Pac
 	}
 }
 
-void SendPacketAroundRemoveSector(SESSION* Target, CPacket* Packet, SectorAround* Around)
+void SendPacketAroundRemoveSector(Session* Target, CPacket* Packet, SectorAround* Around)
 {
 
 	for (unsigned int Index = 0; Index < Around->Count; Index++)
@@ -307,7 +307,7 @@ void SendPacketAroundRemoveSector(SESSION* Target, CPacket* Packet, SectorAround
 
 }
 
-void SendPacketAroundAddSector(SESSION* Target, CPacket* Packet, SectorAround* Around)
+void SendPacketAroundAddSector(Session* Target, CPacket* Packet, SectorAround* Around)
 {
 	for (unsigned int Index = 0; Index < Around->Count; Index++)
 	{
@@ -316,12 +316,12 @@ void SendPacketAroundAddSector(SESSION* Target, CPacket* Packet, SectorAround* A
 }
 
 
-void SendPacketAround(SESSION* Session, CPacket* Packet, bool SendMe)
+void SendPacketAround(Session* Session, CPacket* Packet, bool SendMe)
 {
-	CHARACTER* Target = CharacterMap.at(Session->SessionID);
+	Character* Target = CharacterMap.at(Session->SessionID);
 	SectorAround Around;
 
-	GetSectorAround(Target->CharacterSectorPos.X, Target->CharacterSectorPos.Y, &Around);
+	GetSectorAround(Target->characterSectorPos_.X, Target->characterSectorPos_.Y, &Around);
 
 
 	if (SendMe)
@@ -343,7 +343,7 @@ void SendPacketAround(SESSION* Session, CPacket* Packet, bool SendMe)
 }
 CPacket* cPacketBuffer = CPacket::Alloc();
 
-void Receive(SESSION* Target)
+void Receive(Session* Target)
 {
 
 	int DirectEnqueueSize = Target->ReceiveQ.DirectEnqueueSize();
@@ -477,8 +477,8 @@ void DeleteDisconnect()
 	if (DeleteList.size() > 0)
 	{
 
-		SESSION* Session;
-		CHARACTER* DeleteTarget;
+		Session* Session;
+		Character* DeleteTarget;
 		unsigned int Session_ID;
 		std::list<unsigned int>::iterator Iter;
 		for (Iter = DeleteList.begin(); Iter != DeleteList.end();++Iter)
@@ -506,7 +506,7 @@ void DeleteDisconnect()
 
 
 
-void SendAll(SESSION* Target)
+void SendAll(Session* Target)
 {
 
 	int DirectDequeueSize = Target->SendQ.DirectDequeueSize();

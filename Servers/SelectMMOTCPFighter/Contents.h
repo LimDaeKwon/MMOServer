@@ -1,34 +1,34 @@
 #pragma once
 
-struct SESSION;
-struct CHARACTER;
+struct Session;
+struct Character;
 struct SectorAround;
 class CPacket;
 
 
-void GameRun(CHARACTER* Target);
+void GameRun(Character* Target);
 
-void CreateCharater(SESSION* NewSession);
+void CreateCharater(Session* NewSession);
 
 void Update();
 
-void HitCheck(CHARACTER* TargetSession, int AttackNumber);
+void HitCheck(Character* TargetSession, int AttackNumber);
 
-void Disconnect(SESSION* TargetSession);
+void Disconnect(Session* TargetSession);
 
 void GetSectorAround(int SectorX, int SectorY, SectorAround* Around);
 
-void GetSectorAroundForHitLeft(CHARACTER* Target , int BoundaryX, int BoundaryY, SectorAround* Around);
+void GetSectorAroundForHitLeft(Character* Target , int BoundaryX, int BoundaryY, SectorAround* Around);
 
-void GetSectorAroundForHitRight(CHARACTER* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
+void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
 
-void GetUpdateSectorAround(CHARACTER* Target, SectorAround* RemoveSector, SectorAround* AddSector);
+void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, SectorAround* AddSector);
 
-bool SectorUpdateCharacter(CHARACTER* Target);
+bool SectorUpdateCharacter(Character* Target);
 
-void SectorUpdate(CHARACTER* Target);
+void SectorUpdate(Character* Target);
 
-void FreeCharacter(CHARACTER* Target);
+void FreeCharacter(Character* Target);
 
 void PrintUpdateSector(SectorAround* RemoveSector, SectorAround* AddSector);
 

@@ -38,21 +38,21 @@ struct SectorAround
 	BYTE Flag = 0;
 };
 
-struct CHARACTER
+struct Character
 {
-	__int64 SessionID;
+	__int64 sessionId_;
 	unsigned int SessionIDForContents;
-	unsigned int Action;
-	unsigned char Direction;
+	unsigned int action_;
+	unsigned char direction_;
 
-	short X;
-	short Y;
-	unsigned char HP;
-	bool IsMove;
+	short x_;
+	short y_;
+	unsigned char hp_;
+	bool isMove_;
 	bool IsDelete;
 
-	SectorPos OldSectorPos;
-	SectorPos CharacterSectorPos;
+	SectorPos oldSectorPos_;
+	SectorPos characterSectorPos_;
 
 
 };
@@ -98,11 +98,11 @@ public:
 
 
 
-	ObjectFreeList<CHARACTER> CharacterFreeList;
+	ObjectFreeList<Character> CharacterFreeList;
 
-	std::list<CHARACTER*> Sector[SECTORMAXY][SECTORMAXX];
+	std::list<Character*> Sector[SECTORMAXY][SECTORMAXX];
 	std::list<unsigned int> DeleteList;
-	std::unordered_map<__int64, CHARACTER*> CharacterMap;
+	std::unordered_map<__int64, Character*> CharacterMap;
 
 	unsigned int OldTick;
 	unsigned int OldTickforCheck;
@@ -121,43 +121,43 @@ public:
 
 
 	// MAKEPACKET
-	void MakePacketMoveStart(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+	void MakePacketMoveStart(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
 
-	void MakePacketMoveStartForMe(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+	void MakePacketMoveStartForMe(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
 
-	void MakePacketMoveStop(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+	void MakePacketMoveStop(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
 
-	void MakePacketCreateMyCharacter(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
+	void MakePacketCreateMyCharacter(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
 
-	void MakePacketCreateOtherCharacterForMe(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
+	void MakePacketCreateOtherCharacterForMe(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
 
-	void MakePacketCreateOtherCharacter(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
+	void MakePacketCreateOtherCharacter(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
 
-	void MakePacketDeleteCharacter(CHARACTER* Target, CPacket* Packet, unsigned int ID);
+	void MakePacketDeleteCharacter(Character* Target, CPacket* Packet, unsigned int ID);
 
-	void MakePacketDamage(CHARACTER* Target, CPacket* Packet, unsigned int AttackID, unsigned int DamageID, unsigned char DamageHP);
+	void MakePacketDamage(Character* Target, CPacket* Packet, unsigned int AttackID, unsigned int DamageID, unsigned char DamageHP);
 
-	void MakePacketAttack1(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+	void MakePacketAttack1(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
 
-	void MakePacketAttack2(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+	void MakePacketAttack2(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
 
-	void MakePacketAttack3(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+	void MakePacketAttack3(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
 
-	void MakePacketEcho(CHARACTER* Target, CPacket* Packet, unsigned int Time);
+	void MakePacketEcho(Character* Target, CPacket* Packet, unsigned int Time);
 
-	void MakePacketDeleteCharacterRemoveSector(CHARACTER* Target, CPacket* Packet, SectorAround* Around, unsigned int ID);
+	void MakePacketDeleteCharacterRemoveSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID);
 
-	void MakePacketDeleteCharacterForMe(CHARACTER* Target, CPacket* Packet, unsigned int ID);
+	void MakePacketDeleteCharacterForMe(Character* Target, CPacket* Packet, unsigned int ID);
 
-	void MakePacketCreateCharacterAddSector(CHARACTER* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
+	void MakePacketCreateCharacterAddSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
 
-	void MakePacketMoveStartAddSector(CHARACTER* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
+	void MakePacketMoveStartAddSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
 
-	void MakePacketSync(CHARACTER* Target, CPacket* Packet, unsigned int ID, unsigned short X, unsigned short Y);
+	void MakePacketSync(Character* Target, CPacket* Packet, unsigned int ID, unsigned short X, unsigned short Y);
 
-	void SendPacketUnicast(CHARACTER* Target, CPacket* Packet);
+	void SendPacketUnicast(Character* Target, CPacket* Packet);
 
-	void SendPacketAround(CHARACTER* Target, CPacket* Packet, bool SendMe = false);
+	void SendPacketAround(Character* Target, CPacket* Packet, bool SendMe = false);
 
 	void SendPacketAroundRemoveSector(CPacket* Packet, SectorAround* Around);
 
@@ -171,34 +171,34 @@ public:
 
 	bool PacketProc(MessageData* msg);
 
-	bool NetPacketProc_MoveStart(CHARACTER* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_MoveStop(CHARACTER* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_Attack1(CHARACTER* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_Attack2(CHARACTER* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_Attack3(CHARACTER* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_Echo(CHARACTER* Target, unsigned int Time);
+	bool NetPacketProc_MoveStart(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
+	bool NetPacketProc_MoveStop(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
+	bool NetPacketProc_Attack1(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
+	bool NetPacketProc_Attack2(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
+	bool NetPacketProc_Attack3(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
+	bool NetPacketProc_Echo(Character* Target, unsigned int Time);
 
 
 
-	bool SectorUpdateCharacter(CHARACTER* Target);
+	bool SectorUpdateCharacter(Character* Target);
 
-	void SectorUpdate(CHARACTER* Target);
+	void SectorUpdate(Character* Target);
 
-	void HitCheck(CHARACTER* TargetSession, int AttackNumber);
+	void HitCheck(Character* TargetSession, int AttackNumber);
 
-	void GetSectorAroundForHitLeft(CHARACTER* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
+	void GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
 
-	void GetSectorAroundForHitRight(CHARACTER* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
+	void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
 
-	void GetUpdateSectorAround(CHARACTER* Target, SectorAround* RemoveSector, SectorAround* AddSector);
+	void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, SectorAround* AddSector);
 
 	void Update();
 
-	void GameRun(CHARACTER* Target);
+	void GameRun(Character* Target);
 
 	void DeleteDisconnect();
 
-	void DisconnectContents(CHARACTER* Target);
+	void DisconnectContents(Character* Target);
 
 	void MessageLoop();
 

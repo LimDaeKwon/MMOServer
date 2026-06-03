@@ -2,7 +2,7 @@
 #include "CPacket.h" 
 
 
-bool PacketProc(SESSION* Target, unsigned char PacketType, CPacket* Packet)
+bool PacketProc(Session* Target, unsigned char PacketType, CPacket* Packet)
 {
 	switch (PacketType)
 	{
