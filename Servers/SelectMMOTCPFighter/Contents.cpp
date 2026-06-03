@@ -33,7 +33,7 @@ void CreateCharater(Session* NewSession)
 
 	Character* NewPlayer = CharacterFreeList.Alloc();
 	NewPlayer->characterSession_ = NewSession;
-	NewPlayer->sessionId_ = NewSession->SessionID;
+	NewPlayer->sessionId_ = NewSession->sessionId_;
 
 	NewPlayer->direction_ = dfPACKET_MOVE_DIR_RR;
 	NewPlayer->action_ = dfPACKET_MOVE_DIR_RR;
@@ -77,7 +77,7 @@ void CreateCharater(Session* NewSession)
 			Iter != Sector[CreateForMe.Around[i].Y][CreateForMe.Around[i].X].end(); ++Iter)
 		{
 			Character* Target = *Iter;
-			if ((Target->sessionId_ == NewPlayer->sessionId_) || (Target->characterSession_->IsDelete == 1))
+			if ((Target->sessionId_ == NewPlayer->sessionId_) || (Target->characterSession_->isDelete_ == 1))
 			{
 				continue;
 			}
@@ -127,7 +127,7 @@ void Update()
 		{
 			Character* Target = Iter->second;
 
-			if (Tick - Target->characterSession_->LastRecvTime > dfNETWORK_PACKET_RECV_TIMEOUT)
+			if (Tick - Target->characterSession_->lastRecvTime_ > dfNETWORK_PACKET_RECV_TIMEOUT)
 			{
 				//printf("타임 웨잇으로 인한 종료당하기. %d %d \n\n", Target->CharacterSession->SessionID , Tick - Target->CharacterSession->LastRecvTime);
 				//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(Target->CharacterSession->SessionID, TIMEOUT));
@@ -137,7 +137,7 @@ void Update()
 				continue;
 			}
 			
-			if (Target->isMove_ && (Target->characterSession_->IsDelete == 0))
+			if (Target->isMove_ && (Target->characterSession_->isDelete_ == 0))
 			{
 				for(int i = 0 ; i < FixUpdate; ++i)
 				{
@@ -340,7 +340,7 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 			{
 				Character* Target = *Iter;
 
-				if ((AttackCharacter == Target) || (Target->characterSession_->IsDelete == 1) || (AttackCharacter->x_ < Target->x_))
+				if ((AttackCharacter == Target) || (Target->characterSession_->isDelete_ == 1) || (AttackCharacter->x_ < Target->x_))
 				{
 					continue;
 				}
@@ -388,7 +388,7 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 			{
 				Character* Target = *Iter;
 
-				if ((AttackCharacter == Target) || (Target->characterSession_->IsDelete == 1) || (AttackCharacter->x_ > Target->x_))
+				if ((AttackCharacter == Target) || (Target->characterSession_->isDelete_ == 1) || (AttackCharacter->x_ > Target->x_))
 				{
 					continue;
 				}
@@ -449,7 +449,7 @@ void HitCheck(Character* AttackCharacter, int AttackNumber)
 
 bool NetPacketProc_MoveStart(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
-	Character* Target = CharacterMap.at(TargetSession->SessionID);
+	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
 
 	ID = Target->sessionId_;
@@ -510,7 +510,7 @@ bool NetPacketProc_MoveStart(Session* TargetSession, unsigned char Direction, un
 
 bool NetPacketProc_MoveStop(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
-	Character* Target = CharacterMap.at(TargetSession->SessionID);
+	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
 
 	ID = Target->sessionId_;
@@ -574,7 +574,7 @@ bool NetPacketProc_MoveStop(Session* TargetSession, unsigned char Direction, uns
 
 bool NetPacketProc_Attack1(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
-	Character* Target = CharacterMap.at(TargetSession->SessionID);
+	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
 
 	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
@@ -619,7 +619,7 @@ bool NetPacketProc_Attack1(Session* TargetSession, unsigned char Direction, unsi
 
 bool NetPacketProc_Attack2(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
-	Character* Target = CharacterMap.at(TargetSession->SessionID);
+	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 	unsigned int ID;
 
 	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
@@ -664,7 +664,7 @@ bool NetPacketProc_Attack2(Session* TargetSession, unsigned char Direction, unsi
 bool NetPacketProc_Attack3(Session* TargetSession, unsigned char Direction, unsigned short X, unsigned short Y)
 {
 
-	Character* Target = CharacterMap.at(TargetSession->SessionID);
+	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 
 	if (abs(Target->x_ - X) > dfERROR_RANGE || abs(Target->y_ - Y) > dfERROR_RANGE)
 	{
@@ -720,20 +720,20 @@ bool NetPacketProc_Echo(Session* Target, unsigned int Time)
 
 void Disconnect(Session* TargetSession)
 {
-	if (TargetSession->IsDelete == 1)
+	if (TargetSession->isDelete_ == 1)
 	{
 		return;
 	}
 
-	DeleteList.push_back(TargetSession->SessionID);
-	TargetSession->IsDelete = 1;
+	DeleteList.push_back(TargetSession->sessionId_);
+	TargetSession->isDelete_ = 1;
 
-	Character* Target = CharacterMap.at(TargetSession->SessionID);
+	Character* Target = CharacterMap.at(TargetSession->sessionId_);
 
 	Sector[Target->characterSectorPos_.Y][Target->characterSectorPos_.X].remove(Target);
 
 	GlobalCPacket->Clear();
-	MakePacketDeleteCharacter(TargetSession, GlobalCPacket, TargetSession->SessionID);
+	MakePacketDeleteCharacter(TargetSession, GlobalCPacket, TargetSession->sessionId_);
 	//wprintf(L"## Disconnect ID : %d \n", TargetSession->SessionID);
 
 }
@@ -1465,7 +1465,7 @@ void SectorUpdate(Character* Target)
 			IterCreate != Sector[Add.Around[i].Y][Add.Around[i].X].end(); ++IterCreate)
 		{
 			Character* CreateCharacter = *IterCreate;
-			if ((CreateCharacter->sessionId_ == Target->sessionId_) || (CreateCharacter->characterSession_->IsDelete == 1))
+			if ((CreateCharacter->sessionId_ == Target->sessionId_) || (CreateCharacter->characterSession_->isDelete_ == 1))
 			{
 				continue;
 			}

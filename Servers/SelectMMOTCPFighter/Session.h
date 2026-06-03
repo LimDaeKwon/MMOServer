@@ -5,12 +5,12 @@
 
 struct Session
 {
-    unsigned int LastRecvTime;
-    unsigned int SessionID;
+    unsigned int lastRecvTime_;
+    unsigned int sessionId_;
 
-    SOCKET Socket;
-    RingBuffer SendQ;
-    RingBuffer ReceiveQ;
+    SOCKET socket_;
+    RingBuffer sendQueue_;
+    RingBuffer receiveQueue_;
 
-    unsigned int IsDelete;
+    unsigned int isDelete_;
 };

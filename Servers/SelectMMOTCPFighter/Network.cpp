@@ -74,13 +74,13 @@ void Network()
 
 		if (Count == 0)
 		{
-			StartID = target->SessionID;
+			StartID = target->sessionId_;
 		}
 
-		FD_SET(target->Socket, &ReadSet);
-		if (target->SendQ.GetUseSize() > 0)
+		FD_SET(target->socket_, &ReadSet);
+		if (target->sendQueue_.GetUseSize() > 0)
 		{
-			FD_SET(target->Socket, &WriteSet);
+			FD_SET(target->socket_, &WriteSet);
 		}
 
 		Count++;
@@ -118,18 +118,18 @@ void Network()
 					}
 
 					target = IterSession->second;
-					if (target->IsDelete == 1)
+					if (target->isDelete_ == 1)
 					{
 						continue;
 					}
 
-					if (FD_ISSET(target->Socket, &ReadSet))
+					if (FD_ISSET(target->socket_, &ReadSet))
 					{
 						Receive(target);
 						SelectReturn--;
 					}
 
-					if (FD_ISSET(target->Socket, &WriteSet))
+					if (FD_ISSET(target->socket_, &WriteSet))
 					{
 						SendAll(target);
 						SelectReturn--;
@@ -183,18 +183,18 @@ void Network()
 				}
 
 				target = IterSession->second;
-				if (target->IsDelete == 1)
+				if (target->isDelete_ == 1)
 				{
 					continue;
 				}
 
-				if (FD_ISSET(target->Socket, &ReadSet))
+				if (FD_ISSET(target->socket_, &ReadSet))
 				{
 					Receive(target);
 					SelectReturn--;
 				}
 
-				if (FD_ISSET(target->Socket, &WriteSet))
+				if (FD_ISSET(target->socket_, &WriteSet))
 				{
 					SendAll(target);
 					SelectReturn--;
@@ -241,12 +241,12 @@ void AcceptClient()
 
 	Session* NewSession = SessionFreeList.Alloc();
 
-	NewSession->SessionID = SessionID++;
-	NewSession->Socket = ClientSocket;
-	NewSession->IsDelete = 0;
-	NewSession->LastRecvTime = timeGetTime();
+	NewSession->sessionId_ = SessionID++;
+	NewSession->socket_ = ClientSocket;
+	NewSession->isDelete_ = 0;
+	NewSession->lastRecvTime_ = timeGetTime();
 
-	Sessions.insert(std::unordered_map<unsigned int, Session*>::value_type(NewSession->SessionID, NewSession));
+	Sessions.insert(std::unordered_map<unsigned int, Session*>::value_type(NewSession->sessionId_, NewSession));
 	CreateCharater(NewSession);
 
 
@@ -257,11 +257,11 @@ void AcceptClient()
 void SendPacketUnicast(Session* Target, CPacket* Packet)
 {
 	int DataSize = Packet->GetDataSize();
-	int EnqueueHeaderReturn = Target->SendQ.Enqueue(Packet->GetBufferPtr(), DataSize);
+	int EnqueueHeaderReturn = Target->sendQueue_.Enqueue(Packet->GetBufferPtr(), DataSize);
 	if (EnqueueHeaderReturn != DataSize)
 	{
 		//인큐 불가 상태.
-		wprintf(L"EnqueueFail in SendPacketUnicast %d \n ",Target->SessionID);
+		wprintf(L"EnqueueFail in SendPacketUnicast %d \n ",Target->sessionId_);
 
 		Disconnect(Target);
 
@@ -278,12 +278,12 @@ void SendPacketSectorOne(int SectorX, int SectorY, Session* Except, CPacket* Pac
 	for (Iter = Sector[SectorY][SectorX].begin(); Iter != Sector[SectorY][SectorX].end(); ++Iter)
 	{
 		Target = *Iter;
-		if ((Target->characterSession_ == Except) || (Target->characterSession_->IsDelete == 1))
+		if ((Target->characterSession_ == Except) || (Target->characterSession_->isDelete_ == 1))
 		{
 			continue;
 		}
 
-		EnqueueHeaderReturn = Target->characterSession_->SendQ.Enqueue(Packet->GetBufferPtr(), DataSize);
+		EnqueueHeaderReturn = Target->characterSession_->sendQueue_.Enqueue(Packet->GetBufferPtr(), DataSize);
 		if (EnqueueHeaderReturn != DataSize)
 		{
 			//인큐 불가 상태.
@@ -318,7 +318,7 @@ void SendPacketAroundAddSector(Session* Target, CPacket* Packet, SectorAround* A
 
 void SendPacketAround(Session* Session, CPacket* Packet, bool SendMe)
 {
-	Character* Target = CharacterMap.at(Session->SessionID);
+	Character* Target = CharacterMap.at(Session->sessionId_);
 	SectorAround Around;
 
 	GetSectorAround(Target->characterSectorPos_.X, Target->characterSectorPos_.Y, &Around);
@@ -346,10 +346,10 @@ CPacket* cPacketBuffer = CPacket::Alloc();
 void Receive(Session* Target)
 {
 
-	int DirectEnqueueSize = Target->ReceiveQ.DirectEnqueueSize();
+	int DirectEnqueueSize = Target->receiveQueue_.DirectEnqueueSize();
 
 	int RecvError;
-	int RecvReturn = recv(Target->Socket, Target->ReceiveQ.GetRearBufferPtr(), DirectEnqueueSize, 0);
+	int RecvReturn = recv(Target->socket_, Target->receiveQueue_.GetRearBufferPtr(), DirectEnqueueSize, 0);
 
 
 	if (RecvReturn == SOCKET_ERROR)
@@ -377,7 +377,7 @@ void Receive(Session* Target)
 		Disconnect(Target);
 		return;
 	}
-	Target->ReceiveQ.MoveRear(RecvReturn);
+	Target->receiveQueue_.MoveRear(RecvReturn);
 	//wprintf(L"## ID : %d  ReceiveQEnqueue Size : %d  \n", Target->SessionID, RecvReturn);
 	unsigned int ReceiveQSize;
 	if (RecvReturn > 0)
@@ -385,7 +385,7 @@ void Receive(Session* Target)
 
 		while (1)
 		{
-			ReceiveQSize = Target->ReceiveQ.GetUseSize();
+			ReceiveQSize = Target->receiveQueue_.GetUseSize();
 			if (ReceiveQSize == 0)
 			{
 				break;
@@ -397,7 +397,7 @@ void Receive(Session* Target)
 				break;
 			}
 
-			if (Target->ReceiveQ.Peek((char*)&Header, sizeof(Header)) != sizeof(Header))
+			if (Target->receiveQueue_.Peek((char*)&Header, sizeof(Header)) != sizeof(Header))
 			{
 				break;
 			}
@@ -416,13 +416,13 @@ void Receive(Session* Target)
 				break;
 			}
 
-			unsigned int ReceiveQDequeueHeaderSize = Target->ReceiveQ.MoveFront(sizeof(Header));
+			unsigned int ReceiveQDequeueHeaderSize = Target->receiveQueue_.MoveFront(sizeof(Header));
 
 			//wprintf(L"## ID : %d  DequeueHeaderSize : %d  ", Target->SessionID, ReceiveQDequeueHeaderSize);
 
 			cPacketBuffer->Clear();
 
-			unsigned int ReceiveQDequeuePacketSize = Target->ReceiveQ.Dequeue(cPacketBuffer->GetBufferPtr(), Header.BySize);
+			unsigned int ReceiveQDequeuePacketSize = Target->receiveQueue_.Dequeue(cPacketBuffer->GetBufferPtr(), Header.BySize);
 
 			if (ReceiveQDequeuePacketSize != Header.BySize)
 			{
@@ -436,7 +436,7 @@ void Receive(Session* Target)
 
 			//wprintf(L"## DequeuePacketSize : %d \n", ReceiveQDequeuePacketSize);
 
-			Target->LastRecvTime = timeGetTime();
+			Target->lastRecvTime_ = timeGetTime();
 
 			PacketProc(Target, Header.ByType, cPacketBuffer);
 
@@ -491,9 +491,9 @@ void DeleteDisconnect()
 
 			CharacterMap.erase(Session_ID);
 
-			closesocket(Session->Socket);
-			Session->ReceiveQ.ClearBuffer();
-			Session->SendQ.ClearBuffer();
+			closesocket(Session->socket_);
+			Session->receiveQueue_.ClearBuffer();
+			Session->sendQueue_.ClearBuffer();
 
 			SessionFreeList.Free(Session);
 			Sessions.erase(Session_ID);
@@ -509,9 +509,9 @@ void DeleteDisconnect()
 void SendAll(Session* Target)
 {
 
-	int DirectDequeueSize = Target->SendQ.DirectDequeueSize();
+	int DirectDequeueSize = Target->sendQueue_.DirectDequeueSize();
 	//한 프레임에 센드를 두번 해주는 느낌..
-	int SendReturn = send(Target->Socket, Target->SendQ.GetFrontBufferPtr(), DirectDequeueSize, 0);
+	int SendReturn = send(Target->socket_, Target->sendQueue_.GetFrontBufferPtr(), DirectDequeueSize, 0);
 	//wprintf(L"## ID : %d  SendSize : %d \n", Target->ID, SecondMoveFrontSize);
 	if (SendReturn == SOCKET_ERROR)
 	{
@@ -536,7 +536,7 @@ void SendAll(Session* Target)
 		Disconnect(Target);
 		return;
 	}
-	int MoveFrontSize = Target->SendQ.MoveFront(DirectDequeueSize);
+	int MoveFrontSize = Target->sendQueue_.MoveFront(DirectDequeueSize);
 	if (MoveFrontSize != DirectDequeueSize)
 	{
 		wprintf(L"MoveFrontSize : %d , DirectDequeueSize : %d \n", MoveFrontSize, DirectDequeueSize);
