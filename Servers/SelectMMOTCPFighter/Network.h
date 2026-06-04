@@ -12,15 +12,7 @@ void Network();
 
 void AcceptClient();
 
-void SendPacketAround(SessionId Except, CPacket* Packet , bool SendMe = false);
-
-void SendPacketUnicast(SessionId sessionId, CPacket* Packet);
-
-void SendPacketSectorOne(int SectorX, int SectorY, SessionId Except, CPacket* Packet);
-
-void SendPacketAroundRemoveSector(SessionId Target, CPacket* Packet, SectorAround* Around);
-
-void SendPacketAroundAddSector(SessionId Target, CPacket* Packet, SectorAround* Around);
+void SendPacket(SessionId sessionId, CPacket* Packet);
 
 void Receive(Session* Target);
 

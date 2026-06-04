@@ -4,6 +4,7 @@
 #include "GameDefine.h"
 #include "Network.h"
 #include "PacketDefine.h"
+#include "Contents.h"
 
 void MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
@@ -16,7 +17,7 @@ void MakePacketMoveStartForMe(SessionId sessionId, CPacket* packet, SessionId id
 {
     *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStart) << id << direction << x << y;
 
-    SendPacketUnicast(sessionId, packet);
+    SendPacket(sessionId, packet);
 }
 
 void MakePacketMoveStop(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
@@ -30,14 +31,14 @@ void MakePacketCreateMyCharacter(SessionId sessionId, CPacket* packet, SessionId
 {
     *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateMyCharacter) << id << direction << x << y << hp;
 
-    SendPacketUnicast(sessionId, packet);
+    SendPacket(sessionId, packet);
 }
 
 void MakePacketCreateOtherCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
     *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateOtherCharacter) << id << direction << x << y << hp;
 
-    SendPacketUnicast(sessionId, packet);
+    SendPacket(sessionId, packet);
 }
 
 void MakePacketCreateOtherCharacter(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
@@ -86,7 +87,7 @@ void MakePacketEcho(SessionId sessionId, CPacket* packet, unsigned int time)
 {
     *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScEcho) << time;
 
-    SendPacketUnicast(sessionId, packet);
+    SendPacket(sessionId, packet);
 }
 
 void MakePacketDeleteCharacterRemoveSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id)
@@ -100,7 +101,7 @@ void MakePacketDeleteCharacterForMe(SessionId sessionId, CPacket* packet, Sessio
 {
     *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScDeleteCharacter) << id;
 
-    SendPacketUnicast(sessionId, packet);
+    SendPacket(sessionId, packet);
 }
 
 void MakePacketCreateCharacterAddSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
@@ -121,5 +122,5 @@ void MakePacketSync(SessionId sessionId, CPacket* packet, SessionId id, unsigned
 {
     *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(8) << static_cast<unsigned char>(PacketScSync) << id << x << y;
 
-    SendPacketUnicast(sessionId, packet);
+    SendPacket(sessionId, packet);
 }

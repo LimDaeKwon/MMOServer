@@ -5,6 +5,8 @@ struct Character;
 struct SectorAround;
 class CPacket;
 
+using SessionId = unsigned int;
+
 
 void GameRun(Character* Target);
 
@@ -33,3 +35,11 @@ void FreeCharacter(Character* Target);
 void PrintUpdateSector(SectorAround* RemoveSector, SectorAround* AddSector);
 
 void PrintHitCheckSector(SectorAround* HitCheckSector);
+
+void SendPacketAround(SessionId Except, CPacket* Packet, bool SendMe = false);
+
+void SendPacketSectorOne(int SectorX, int SectorY, SessionId Except, CPacket* Packet);
+
+void SendPacketAroundRemoveSector(SessionId Target, CPacket* Packet, SectorAround* Around);
+
+void SendPacketAroundAddSector(SessionId Target, CPacket* Packet, SectorAround* Around);

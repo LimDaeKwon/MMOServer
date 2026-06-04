@@ -1507,3 +1507,71 @@ void PrintHitCheckSector(SectorAround* hitCheckSector)
 //{
 //
 //}
+
+
+void SendPacketSectorOne(int sectorX, int sectorY, SessionId except, CPacket* packet)
+{
+	int dataSize = packet->GetDataSize();
+	int enqueueHeaderReturn;
+
+	Character* target;
+	std::list<Character*>::iterator iter;
+
+	for (iter = sector[sectorY][sectorX].begin(); iter != sector[sectorY][sectorX].end(); ++iter)
+	{
+		target = *iter;
+
+		if ((target->sessionId_ == except) || (target->characterSession_->isDelete_ == 1))
+		{
+			continue;
+		}
+
+		enqueueHeaderReturn = target->characterSession_->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize, dataSize);
+
+		if (enqueueHeaderReturn != dataSize)
+		{
+			wprintf(L"EnqueueFail in SendPacketUnicast%d \n ", target->sessionId_);
+
+			Disconnect(target->characterSession_);
+		}
+	}
+}
+
+void SendPacketAroundRemoveSector(SessionId sessionId, CPacket* packet, SectorAround* around)
+{
+	for (unsigned int index = 0; index < around->count_; ++index)
+	{
+		SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, NULL, packet);
+	}
+}
+
+void SendPacketAroundAddSector(SessionId sessionId, CPacket* packet, SectorAround* around)
+{
+	for (unsigned int index = 0; index < around->count_; ++index)
+	{
+		SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, NULL, packet);
+	}
+}
+
+void SendPacketAround(SessionId sessionId, CPacket* packet, bool sendMe)
+{
+	Character* target = characterMap.at(sessionId);
+	SectorAround around;
+
+	GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &around);
+
+	if (sendMe)
+	{
+		for (unsigned int index = 0; index < around.count_; ++index)
+		{
+			SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, NULL, packet);
+		}
+	}
+	else
+	{
+		for (unsigned int index = 0; index < around.count_; ++index)
+		{
+			SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, target->sessionId_, packet);
+		}
+	}
+}
