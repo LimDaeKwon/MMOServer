@@ -44,7 +44,7 @@ public:
         {
             BlockNode* tempNode = static_cast<BlockNode*>(malloc(sizeof(BlockNode)));
 
-            if (isPlacementNew_)
+            if (!isPlacementNew_)
             {
                 new (&tempNode->data_) DataType;
             }
@@ -180,7 +180,7 @@ public:
 		{
 			BlockNode* temp = static_cast<BlockNode*>(malloc(sizeof(BlockNode)));
 
-			if (isPlacementNew_)
+			if (!isPlacementNew_)
 			{
 				new (&temp->data_) DataType;
 			}
