@@ -3,7 +3,10 @@
 #include "CPacket.h"
 #include "PacketDefine.h"
 
-bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer)
+using SessionId = unsigned int;
+
+
+bool PacketProc(SessionId sessionId, unsigned char packetType, CPacket* packetBuffer)
 {
     switch (packetType)
     {
@@ -15,7 +18,7 @@ bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer
 
         *packetBuffer >> direction >> x >> y;
 
-        return NetPacketProcMoveStart(target, direction, x, y);
+        return NetPacketProcMoveStart(sessionId, direction, x, y);
     }
 
     case PacketCsMoveStop:
@@ -26,7 +29,7 @@ bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer
 
         *packetBuffer >> direction >> x >> y;
 
-        return NetPacketProcMoveStop(target, direction, x, y);
+        return NetPacketProcMoveStop(sessionId, direction, x, y);
     }
 
     case PacketCsAttack1:
@@ -37,7 +40,7 @@ bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer
 
         *packetBuffer >> direction >> x >> y;
 
-        return NetPacketProcAttack1(target, direction, x, y);
+        return NetPacketProcAttack1(sessionId, direction, x, y);
     }
 
     case PacketCsAttack2:
@@ -48,7 +51,7 @@ bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer
 
         *packetBuffer >> direction >> x >> y;
 
-        return NetPacketProcAttack2(target, direction, x, y);
+        return NetPacketProcAttack2(sessionId, direction, x, y);
     }
 
     case PacketCsAttack3:
@@ -59,7 +62,7 @@ bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer
 
         *packetBuffer >> direction >> x >> y;
 
-        return NetPacketProcAttack3(target, direction, x, y);
+        return NetPacketProcAttack3(sessionId, direction, x, y);
     }
 
     case PacketCsEcho:
@@ -68,7 +71,7 @@ bool PacketProc(Session* target, unsigned char packetType, CPacket* packetBuffer
 
         *packetBuffer >> time;
 
-        return NetPacketProcEcho(target, time);
+        return NetPacketProcEcho(sessionId, time);
     }
 
     default:

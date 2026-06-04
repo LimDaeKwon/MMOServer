@@ -399,7 +399,7 @@ void Receive(Session* target)
 
             target->lastRecvTime_ = timeGetTime();
 
-            PacketProc(target, header.byType_, cPacketBuffer);
+            PacketProc(target->sessionId_, header.byType_, cPacketBuffer);
         }
     }
 }

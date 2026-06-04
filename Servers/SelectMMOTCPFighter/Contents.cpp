@@ -453,24 +453,17 @@ void HitCheck(Character* attackCharacter, int attackNumber)
 }
 
 
-bool NetPacketProcMoveStart(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
+bool NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Character* target = characterMap.at(targetSession->sessionId_);
-	unsigned int id;
-
-	id = target->sessionId_;
+	Character* target = characterMap.at(sessionId);
 
 	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
-		//Disconnect(target->CharacterSession);
-
 
 		globalCPacket->Clear();
 
 		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
-
-		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 	}
 	else
 	{
@@ -480,10 +473,9 @@ bool NetPacketProcMoveStart(Session* targetSession, unsigned char direction, uns
 
 		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(target); // 지연처리 해주자.. 
+			SectorUpdate(target);
 		}
 
-		//섹터 업데이트 지연처리 해줘야함.,.
 	}
 
 
@@ -514,20 +506,12 @@ bool NetPacketProcMoveStart(Session* targetSession, unsigned char direction, uns
 	return true;
 }
 
-bool NetPacketProcMoveStop(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
+bool NetPacketProcMoveStop(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Character* target = characterMap.at(targetSession->sessionId_);
-	unsigned int id;
-
-	id = target->sessionId_;
-	//여기서 처리. 클라의 좌표를 인정해준다.64
-
-	//여기서 한번 돌려줘야함. run을.. 
+	Character* target = characterMap.at(sessionId);
 
 	if ((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange))
 	{
-		//Disconnect(target->CharacterSession);
-		//wprintf(L"MoveStop OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 		globalCPacket->Clear();
 		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
@@ -541,14 +525,11 @@ bool NetPacketProcMoveStop(Session* targetSession, unsigned char direction, unsi
 
 		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(target); // 지연처리 해주자.. 
+			SectorUpdate(target); 
 		}
 
 
 	}
-
-	//wprintf(L"## StopPacket : x  %d   y  %d  \n", x, y);
-
 	target->isMove_ = false;
 
 
@@ -578,10 +559,10 @@ bool NetPacketProcMoveStop(Session* targetSession, unsigned char direction, unsi
 	return true;
 }
 
-bool NetPacketProcAttack1(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
+bool NetPacketProcAttack1(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Character* target = characterMap.at(targetSession->sessionId_);
-	unsigned int id;
+	Character* target = characterMap.at(sessionId);
+
 
 	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
@@ -611,22 +592,20 @@ bool NetPacketProcAttack1(Session* targetSession, unsigned char direction, unsig
 
 
 
-	id = target->sessionId_;
 	target->direction_ = direction;
 
 	globalCPacket->Clear();
 
 	//wprintf(L"## SendAttack1 Packet : id :  %d , targetDir  : %d  \n", id, direction);
-	MakePacketAttack1(target->characterSession_, globalCPacket, id, direction, target->x_, target->y_);
+	MakePacketAttack1(target->characterSession_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
 	HitCheck(target, 1);
 
 	return true;
 }
 
-bool NetPacketProcAttack2(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
+bool NetPacketProcAttack2(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Character* target = characterMap.at(targetSession->sessionId_);
-	unsigned int id;
+	Character* target = characterMap.at(sessionId);
 
 	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
@@ -654,23 +633,21 @@ bool NetPacketProcAttack2(Session* targetSession, unsigned char direction, unsig
 		//섹터 업데이트 지연처리 해줘야함.,.
 	}
 
-
-	id = target->sessionId_;
 	target->direction_ = direction;
 
 	globalCPacket->Clear();
 
 	//wprintf(L"## SendAttack2 Packet : id :  %d , targetDir  : %d  \n", id, direction);
-	MakePacketAttack2(target->characterSession_, globalCPacket, id, direction, target->x_, target->y_);
+	MakePacketAttack2(target->characterSession_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
 	HitCheck(target, 2);
 
 	return true;
 }
 
-bool NetPacketProcAttack3(Session* targetSession, unsigned char direction, unsigned short x, unsigned short y)
+bool NetPacketProcAttack3(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
 
-	Character* target = characterMap.at(targetSession->sessionId_);
+	Character* target = characterMap.at(sessionId);
 
 	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
@@ -698,28 +675,24 @@ bool NetPacketProcAttack3(Session* targetSession, unsigned char direction, unsig
 		//섹터 업데이트 지연처리 해줘야함.,.
 	}
 
-
-	unsigned int id;
-	id = target->sessionId_;
 
 	target->direction_ = direction;
 
 	globalCPacket->Clear();
 
 	//wprintf(L"## SendAttack3 Packet : id :  %d , targetDir  : %d  \n", id, direction);
-	MakePacketAttack3(target->characterSession_, globalCPacket, id, direction, target->x_, target->y_);
+	MakePacketAttack3(target->characterSession_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
 	HitCheck(target, 3);
 	return true;
 }
 
 
-bool NetPacketProcEcho(Session* target, unsigned int time)
+bool NetPacketProcEcho(SessionId sessionId, unsigned int time)
 {
-
-	//CPacket Packet_SC_Echo;
+	Character* target = characterMap.at(sessionId);
 	globalCPacket->Clear();
 
-	MakePacketEcho(target, globalCPacket, time);
+	MakePacketEcho(target->characterSession_, globalCPacket, time);
 
 	return true;
 }
