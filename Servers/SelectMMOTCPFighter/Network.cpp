@@ -4,19 +4,13 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
-#include "Character.h"
 #include "CPacket.h"
 #include "Contents.h"
 #include "GameDefine.h"
-#include "NetworkProxy.h"
 #include "NetworkStub.h"
 #include "ObjectFreeList.h"
 #include "PacketDefine.h"
-#include "RingBuffer.h"
-#include "Sector.h"
 #include "Session.h"
-
-
 
 #include <conio.h>
 #include <iostream>
@@ -25,14 +19,12 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
-unsigned int sessionId = 0;
+unsigned int sessionId = 1;
 SOCKET listenSocket = INVALID_SOCKET;
 std::unordered_map<unsigned int, Session*> sessions;
 ObjectFreeList<Session> sessionFreeList(10000);
 
-extern std::list<unsigned int> deleteList;
-extern std::unordered_map<unsigned int, Character*> characterMap;
-extern std::list<Character*> sector[SectorMaxY][SectorMaxX];
+std::list<unsigned int> deleteList;
 
 CPacket* cPacketBuffer = CPacket::Alloc();
 
