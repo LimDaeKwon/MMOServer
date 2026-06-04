@@ -2,13 +2,12 @@
 
 #include "Sector.h"
 
-struct Session;
+using SessionId = unsigned int;
 
 struct Character
 {
-    unsigned int sessionId_;
+    SessionId sessionId_;
     unsigned int action_;
-    Session* characterSession_;
     unsigned char direction_;
 
     short x_;

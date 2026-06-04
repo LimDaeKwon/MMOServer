@@ -238,7 +238,13 @@ void AcceptClient()
 
 void SendPacket(SessionId sessionId, CPacket* packet)
 {
+
     Session* target = sessions.at(sessionId);
+
+	if (target->isDelete_)
+	{
+		return;
+	}
 
     int dataSize = packet->GetDataSize();
     int enqueueHeaderReturn = target->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize, dataSize);
@@ -247,7 +253,7 @@ void SendPacket(SessionId sessionId, CPacket* packet)
     {
         wprintf(L"EnqueueFail in SendPacketUnicast %d \n ", target->sessionId_);
 
-        Disconnect(target);
+        Disconnect(target->sessionId_);
     }
 }
 
@@ -264,14 +270,14 @@ void Receive(Session* target)
 
         if (recvError != WSAEWOULDBLOCK)
         {
-            Disconnect(target);
+            Disconnect(target->sessionId_);
             return;
         }
     }
 
     if (recvReturn == 0)
     {
-        Disconnect(target);
+        Disconnect(target->sessionId_);
         return;
     }
 
@@ -306,7 +312,7 @@ void Receive(Session* target)
             {
                 wprintf(L"Header.byCode_ != PacketCode\n");
 
-                Disconnect(target);
+                Disconnect(target->sessionId_);
                 break;
             }
 
@@ -326,7 +332,7 @@ void Receive(Session* target)
             {
                 wprintf(L"## ReceiveQDequeuePacketSize != header.bySize_ : %d \n", receiveQueueDequeuePacketSize);
 
-                Disconnect(target);
+                Disconnect(target->sessionId_);
                 break;
             }
 
@@ -358,37 +364,6 @@ void ServerControl()
     }
 }
 
-void DeleteDisconnect()
-{
-    if (deleteList.size() > 0)
-    {
-        Session* session;
-        Character* deleteTarget;
-        unsigned int sessionId;
-
-        std::list<unsigned int>::iterator iter;
-
-        for (iter = deleteList.begin(); iter != deleteList.end(); ++iter)
-        {
-            sessionId = *iter;
-            session = sessions.at(sessionId);
-            deleteTarget = characterMap.at(sessionId);
-
-            FreeCharacter(deleteTarget);
-
-            characterMap.erase(sessionId);
-
-            closesocket(session->socket_);
-            session->receiveQueue_.ClearBuffer();
-            session->sendQueue_.ClearBuffer();
-
-            sessionFreeList.Free(session);
-            sessions.erase(sessionId);
-        }
-
-        deleteList.clear();
-    }
-}
 
 void SendAll(Session* target)
 {
@@ -402,7 +377,7 @@ void SendAll(Session* target)
 
         if (error != WSAEWOULDBLOCK)
         {
-            Disconnect(target);
+            Disconnect(target->sessionId_);
             return;
         }
     }
@@ -411,7 +386,7 @@ void SendAll(Session* target)
     {
         wprintf(L"SendSize : %d , SendReturn : %d \n", directDequeueSize, sendReturn);
 
-        Disconnect(target);
+        Disconnect(target->sessionId_);
         return;
     }
 
@@ -423,6 +398,45 @@ void SendAll(Session* target)
         DebugBreak();
     }
 }
+
+void Disconnect(SessionId sessionId)
+{
+    Session* target = sessions.at(sessionId);
+	if (target->isDelete_ == 1)
+	{
+		return;
+	}
+    target->isDelete_ = 1;
+    deleteList.push_back(target->sessionId_);
+   
+}
+
+void DeleteDisconnect()
+{
+    if (deleteList.size() > 0)
+    {
+        Session* session;
+        SessionId sessionId;
+
+        std::list<unsigned int>::iterator iter;
+
+        for (iter = deleteList.begin(); iter != deleteList.end(); ++iter)
+        {
+            sessionId = *iter;
+            session = sessions.at(sessionId);
+            closesocket(session->socket_);
+            session->receiveQueue_.ClearBuffer();
+            session->sendQueue_.ClearBuffer();
+            sessionFreeList.Free(session);
+            sessions.erase(sessionId);
+
+            ReleaseInContents(sessionId);
+        }
+
+        deleteList.clear();
+    }
+}
+
 
 void Initialize()
 {
@@ -514,4 +528,22 @@ void Initialize()
 
         DebugBreak();
     }
+}
+
+void TimeOut()
+{
+	unsigned int currentTime = timeGetTime();
+	std::unordered_map<unsigned int, Session*>::iterator iter;
+	for (iter = sessions.begin(); iter != sessions.end(); ++iter)
+	{
+		Session* target = iter->second;
+		if (target->isDelete_ == 1)
+		{
+			continue;
+		}
+		if (currentTime - target->lastRecvTime_ > NetworkPacketRecvTimeout)
+		{
+			Disconnect(target->sessionId_);
+		}
+	}
 }

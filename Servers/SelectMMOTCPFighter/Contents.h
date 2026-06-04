@@ -7,39 +7,38 @@ class CPacket;
 
 using SessionId = unsigned int;
 
+void GameRun(Character* target);
 
-void GameRun(Character* Target);
-
-void CreateCharacter(Session* NewSession);
+void CreateCharacter(Session* newSession);
 
 void Update();
 
-void HitCheck(Character* TargetSession, int AttackNumber);
+void HitCheck(Character* target, int attackNumber);
 
-void Disconnect(Session* TargetSession);
+void ReleaseInContents(SessionId sessionId);
 
-void GetSectorAround(int SectorX, int SectorY, SectorAround* Around);
+void GetSectorAround(int sectorX, int sectorY, SectorAround* around);
 
-void GetSectorAroundForHitLeft(Character* Target , int BoundaryX, int BoundaryY, SectorAround* Around);
+void GetSectorAroundForHitLeft(Character* target, int boundaryX, int boundaryY, SectorAround* around);
 
-void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
+void GetSectorAroundForHitRight(Character* target, int boundaryX, int boundaryY, SectorAround* around);
 
-void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, SectorAround* AddSector);
+void GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector);
 
-bool SectorUpdateCharacter(Character* Target);
+bool SectorUpdateCharacter(Character* target);
 
-void SectorUpdate(Character* Target);
+void SectorUpdate(Character* target);
 
-void FreeCharacter(Character* Target);
+void FreeCharacter(Character* target);
 
-void PrintUpdateSector(SectorAround* RemoveSector, SectorAround* AddSector);
+void PrintUpdateSector(SectorAround* removeSector, SectorAround* addSector);
 
-void PrintHitCheckSector(SectorAround* HitCheckSector);
+void PrintHitCheckSector(SectorAround* hitCheckSector);
 
-void SendPacketAround(SessionId Except, CPacket* Packet, bool SendMe = false);
+void SendPacketAround(SessionId except, CPacket* packet, bool sendMe = false);
 
-void SendPacketSectorOne(int SectorX, int SectorY, SessionId Except, CPacket* Packet);
+void SendPacketSectorOne(int sectorX, int sectorY, SessionId except, CPacket* packet);
 
-void SendPacketAroundRemoveSector(SessionId Target, CPacket* Packet, SectorAround* Around);
+void SendPacketAroundRemoveSector(SessionId target, CPacket* packet, SectorAround* around);
 
-void SendPacketAroundAddSector(SessionId Target, CPacket* Packet, SectorAround* Around);
+void SendPacketAroundAddSector(SessionId target, CPacket* packet, SectorAround* around);

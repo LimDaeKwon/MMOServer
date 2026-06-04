@@ -38,7 +38,6 @@ void CreateCharacter(Session* newSession)
 {
 
 	Character* newPlayer = characterFreeList.Alloc();
-	newPlayer->characterSession_ = newSession;
 	newPlayer->sessionId_ = newSession->sessionId_;
 
 	newPlayer->direction_ = PacketMoveDirectionRR;
@@ -83,7 +82,7 @@ void CreateCharacter(Session* newSession)
 			iter != sector[createForMe.around_[i].y_][createForMe.around_[i].x_].end(); ++iter)
 		{
 			Character* target = *iter;
-			if ((target->sessionId_ == newPlayer->sessionId_) || (target->characterSession_->isDelete_ == 1))
+			if ((target->sessionId_ == newPlayer->sessionId_))
 			{
 				continue;
 			}
@@ -127,23 +126,16 @@ void Update()
 
 	if (frame >= 40)
 	{
+
+		TimeOut();
+
 		int fixUpdate = (frame / 40);
 		std::unordered_map<unsigned int, Character*>::iterator iter;
 		for (iter = characterMap.begin(); iter != characterMap.end(); ++iter)
 		{
 			Character* target = iter->second;
 
-			if (tick - target->characterSession_->lastRecvTime_ > NetworkPacketRecvTimeout)
-			{
-				//printf("타임 웨잇으로 인한 종료당하기. %d %d \n\n", target->CharacterSession->Sessionid , tick - target->CharacterSession->LastRecvtime);
-				//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(target->CharacterSession->Sessionid, TIMEOUT));
-
-
-				Disconnect(target->characterSession_);
-				continue;
-			}
-
-			if (target->isMove_ && (target->characterSession_->isDelete_ == 0))
+			if (target->isMove_)
 			{
 				for (int i = 0; i < fixUpdate; ++i)
 				{
@@ -346,7 +338,7 @@ void HitCheck(Character* attackCharacter, int attackNumber)
 			{
 				Character* target = *iter;
 
-				if ((attackCharacter == target) || (target->characterSession_->isDelete_ == 1) || (attackCharacter->x_ < target->x_))
+				if ((attackCharacter == target) || (attackCharacter->x_ < target->x_))
 				{
 					continue;
 				}
@@ -370,7 +362,7 @@ void HitCheck(Character* attackCharacter, int attackNumber)
 
 					if (target->hp_ == 0)
 					{
-						Disconnect(target->characterSession_);
+						Disconnect(target->sessionId_);
 						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(target->CharacterSession->Sessionid, HP));
 
 					}
@@ -394,7 +386,7 @@ void HitCheck(Character* attackCharacter, int attackNumber)
 			{
 				Character* target = *iter;
 
-				if ((attackCharacter == target) || (target->characterSession_->isDelete_ == 1) || (attackCharacter->x_ > target->x_))
+				if ((attackCharacter == target)|| (attackCharacter->x_ > target->x_))
 				{
 					continue;
 				}
@@ -424,7 +416,7 @@ void HitCheck(Character* attackCharacter, int attackNumber)
 						//printf(" HP가 0 이라 종료 당하는 녀석 : %d \n\n", target->Sessionid);
 						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(target->CharacterSession->Sessionid, TIMEOUT));
 
-						Disconnect(target->characterSession_);
+						Disconnect(target->sessionId_);
 					}
 
 					return;
@@ -697,23 +689,20 @@ bool NetPacketProcEcho(SessionId sessionId, unsigned int time)
 	return true;
 }
 
-void Disconnect(Session* targetSession)
+void ReleaseInContents(SessionId sessionId)
 {
-	if (targetSession->isDelete_ == 1)
-	{
-		return;
-	}
 
-	deleteList.push_back(targetSession->sessionId_);
-	targetSession->isDelete_ = 1;
+	Character* target = characterMap.at(sessionId);
 
-	Character* target = characterMap.at(targetSession->sessionId_);
-
-	sector[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
 
 	globalCPacket->Clear();
-	MakePacketDeleteCharacter(targetSession->sessionId_, globalCPacket, targetSession->sessionId_);
-	//wprintf(L"## Disconnect id : %d \n", targetSession->Sessionid);
+	MakePacketDeleteCharacter(target->sessionId_, globalCPacket, target->sessionId_);
+
+	FreeCharacter(target);
+	characterMap.erase(sessionId);
+	sector[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
+
+
 
 }
 
@@ -1444,7 +1433,7 @@ void SectorUpdate(Character* target)
 			iterCreate != sector[addSector.around_[i].y_][addSector.around_[i].x_].end(); ++iterCreate)
 		{
 			Character* createCharacter = *iterCreate;
-			if ((createCharacter->sessionId_ == target->sessionId_) || (createCharacter->characterSession_->isDelete_ == 1))
+			if (createCharacter->sessionId_ == target->sessionId_)
 			{
 				continue;
 			}
@@ -1464,12 +1453,12 @@ void SectorUpdate(Character* target)
 	}
 
 
-
 }
 void FreeCharacter(Character* target)
 {
 	characterFreeList.Free(target);
 }
+
 void PrintUpdateSector(SectorAround* removeSector, SectorAround* addSector)
 {
 	wprintf(L"addSector : ");
@@ -1512,8 +1501,6 @@ void PrintHitCheckSector(SectorAround* hitCheckSector)
 void SendPacketSectorOne(int sectorX, int sectorY, SessionId except, CPacket* packet)
 {
 	int dataSize = packet->GetDataSize();
-	int enqueueHeaderReturn;
-
 	Character* target;
 	std::list<Character*>::iterator iter;
 
@@ -1521,19 +1508,11 @@ void SendPacketSectorOne(int sectorX, int sectorY, SessionId except, CPacket* pa
 	{
 		target = *iter;
 
-		if ((target->sessionId_ == except) || (target->characterSession_->isDelete_ == 1))
+		if (target->sessionId_ == except)
 		{
 			continue;
 		}
-
-		enqueueHeaderReturn = target->characterSession_->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize, dataSize);
-
-		if (enqueueHeaderReturn != dataSize)
-		{
-			wprintf(L"EnqueueFail in SendPacketUnicast%d \n ", target->sessionId_);
-
-			Disconnect(target->characterSession_);
-		}
+		SendPacket(target->sessionId_, packet);
 	}
 }
 
