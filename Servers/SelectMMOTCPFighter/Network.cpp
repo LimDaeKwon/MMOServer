@@ -236,8 +236,10 @@ void AcceptClient()
     CreateCharacter(newSession);
 }
 
-void SendPacketUnicast(Session* target, CPacket* packet)
+void SendPacketUnicast(SessionId sessionId, CPacket* packet)
 {
+    Session* target = sessions.at(sessionId);
+
     int dataSize = packet->GetDataSize();
     int enqueueHeaderReturn = target->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize, dataSize);
 
@@ -249,7 +251,7 @@ void SendPacketUnicast(Session* target, CPacket* packet)
     }
 }
 
-void SendPacketSectorOne(int sectorX, int sectorY, Session* except, CPacket* packet)
+void SendPacketSectorOne(int sectorX, int sectorY, SessionId except, CPacket* packet)
 {
     int dataSize = packet->GetDataSize();
     int enqueueHeaderReturn;
@@ -261,7 +263,7 @@ void SendPacketSectorOne(int sectorX, int sectorY, Session* except, CPacket* pac
     {
         target = *iter;
 
-        if ((target->characterSession_ == except) || (target->characterSession_->isDelete_ == 1))
+        if ((target->sessionId_ == except) || (target->characterSession_->isDelete_ == 1))
         {
             continue;
         }
@@ -277,25 +279,25 @@ void SendPacketSectorOne(int sectorX, int sectorY, Session* except, CPacket* pac
     }
 }
 
-void SendPacketAroundRemoveSector(Session* target, CPacket* packet, SectorAround* around)
+void SendPacketAroundRemoveSector(SessionId sessionId, CPacket* packet, SectorAround* around)
 {
     for (unsigned int index = 0; index < around->count_; ++index)
     {
-        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, nullptr, packet);
+        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, NULL, packet);
     }
 }
 
-void SendPacketAroundAddSector(Session* target, CPacket* packet, SectorAround* around)
+void SendPacketAroundAddSector(SessionId sessionId, CPacket* packet, SectorAround* around)
 {
     for (unsigned int index = 0; index < around->count_; ++index)
     {
-        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, nullptr, packet);
+        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, NULL, packet);
     }
 }
 
-void SendPacketAround(Session* session, CPacket* packet, bool sendMe)
+void SendPacketAround(SessionId sessionId, CPacket* packet, bool sendMe)
 {
-    Character* target = characterMap.at(session->sessionId_);
+    Character* target = characterMap.at(sessionId);
     SectorAround around;
 
     GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &around);
@@ -304,14 +306,14 @@ void SendPacketAround(Session* session, CPacket* packet, bool sendMe)
     {
         for (unsigned int index = 0; index < around.count_; ++index)
         {
-            SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, nullptr, packet);
+            SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, NULL, packet);
         }
     }
     else
     {
         for (unsigned int index = 0; index < around.count_; ++index)
         {
-            SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, session, packet);
+            SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, target->sessionId_, packet);
         }
     }
 }

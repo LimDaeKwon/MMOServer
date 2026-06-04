@@ -65,11 +65,11 @@ void CreateCharacter(Session* newSession)
 
 	globalCPacket->Clear();
 
-	MakePacketCreateMyCharacter(newPlayer->characterSession_, globalCPacket, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+	MakePacketCreateMyCharacter(newPlayer->sessionId_, globalCPacket, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
 
 
 	globalCPacket->Clear();
-	MakePacketCreateOtherCharacter(newPlayer->characterSession_, globalCPacket, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+	MakePacketCreateOtherCharacter(newPlayer->sessionId_, globalCPacket, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
 	//나를 남에게.
 
 	SectorAround createForMe;
@@ -90,13 +90,13 @@ void CreateCharacter(Session* newSession)
 
 			//CPacket OtherCharacter;
 			globalCPacket->Clear();
-			MakePacketCreateOtherCharacterForMe(newPlayer->characterSession_, globalCPacket, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
+			MakePacketCreateOtherCharacterForMe(newPlayer->sessionId_, globalCPacket, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
 
 			if (target->isMove_ == true)
 			{
 				///CPacket Packet_SC_MOVE_START;
 				globalCPacket->Clear();
-				MakePacketMoveStartForMe(newPlayer->characterSession_, globalCPacket, target->sessionId_, target->action_, target->x_, target->y_);
+				MakePacketMoveStartForMe(newPlayer->sessionId_, globalCPacket, target->sessionId_, target->action_, target->x_, target->y_);
 			}
 
 		}
@@ -366,7 +366,7 @@ void HitCheck(Character* attackCharacter, int attackNumber)
 
 					globalCPacket->Clear();
 
-					MakePacketDamage(target->characterSession_, globalCPacket, attackCharacter->sessionId_, target->sessionId_, target->hp_);
+					MakePacketDamage(target->sessionId_, globalCPacket, attackCharacter->sessionId_, target->sessionId_, target->hp_);
 
 					if (target->hp_ == 0)
 					{
@@ -416,7 +416,7 @@ void HitCheck(Character* attackCharacter, int attackNumber)
 
 					//wprintf(L"## Senddamage Packet : Attackid : %d targetid %d  \n", attackCharacter->Sessionid, target->Sessionid);
 
-					MakePacketDamage(target->characterSession_, globalCPacket, attackCharacter->sessionId_, target->sessionId_, target->hp_);
+					MakePacketDamage(target->sessionId_, globalCPacket, attackCharacter->sessionId_, target->sessionId_, target->hp_);
 					//SendPacketBroadcast(NULL, &Pakcet_SC_DAMAGE);
 
 					if (target->hp_ == 0)
@@ -462,7 +462,7 @@ bool NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsign
 
 		globalCPacket->Clear();
 
-		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
+		MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 	}
 	else
@@ -501,7 +501,7 @@ bool NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsign
 
 
 	globalCPacket->Clear();
-	MakePacketMoveStart(target->characterSession_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
+	MakePacketMoveStart(target->sessionId_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
 
 	return true;
 }
@@ -513,7 +513,7 @@ bool NetPacketProcMoveStop(SessionId sessionId, unsigned char direction, unsigne
 	if ((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange))
 	{
 		globalCPacket->Clear();
-		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
+		MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 	}
 	else
@@ -554,7 +554,7 @@ bool NetPacketProcMoveStop(SessionId sessionId, unsigned char direction, unsigne
 
 	globalCPacket->Clear();
 
-	MakePacketMoveStop(target->characterSession_, globalCPacket, target->sessionId_, target->direction_, target->x_, target->y_);
+	MakePacketMoveStop(target->sessionId_, globalCPacket, target->sessionId_, target->direction_, target->x_, target->y_);
 
 	return true;
 }
@@ -571,7 +571,7 @@ bool NetPacketProcAttack1(SessionId sessionId, unsigned char direction, unsigned
 
 		globalCPacket->Clear();
 
-		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
+		MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 
 		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
@@ -597,7 +597,7 @@ bool NetPacketProcAttack1(SessionId sessionId, unsigned char direction, unsigned
 	globalCPacket->Clear();
 
 	//wprintf(L"## SendAttack1 Packet : id :  %d , targetDir  : %d  \n", id, direction);
-	MakePacketAttack1(target->characterSession_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
+	MakePacketAttack1(target->sessionId_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
 	HitCheck(target, 1);
 
 	return true;
@@ -614,7 +614,7 @@ bool NetPacketProcAttack2(SessionId sessionId, unsigned char direction, unsigned
 
 		globalCPacket->Clear();
 
-		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
+		MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 
 		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
@@ -638,7 +638,7 @@ bool NetPacketProcAttack2(SessionId sessionId, unsigned char direction, unsigned
 	globalCPacket->Clear();
 
 	//wprintf(L"## SendAttack2 Packet : id :  %d , targetDir  : %d  \n", id, direction);
-	MakePacketAttack2(target->characterSession_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
+	MakePacketAttack2(target->sessionId_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
 	HitCheck(target, 2);
 
 	return true;
@@ -656,7 +656,7 @@ bool NetPacketProcAttack3(SessionId sessionId, unsigned char direction, unsigned
 
 		globalCPacket->Clear();
 
-		MakePacketSync(target->characterSession_, globalCPacket, target->sessionId_, target->x_, target->y_);
+		MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
 
 
 		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
@@ -681,7 +681,7 @@ bool NetPacketProcAttack3(SessionId sessionId, unsigned char direction, unsigned
 	globalCPacket->Clear();
 
 	//wprintf(L"## SendAttack3 Packet : id :  %d , targetDir  : %d  \n", id, direction);
-	MakePacketAttack3(target->characterSession_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
+	MakePacketAttack3(target->sessionId_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
 	HitCheck(target, 3);
 	return true;
 }
@@ -692,7 +692,7 @@ bool NetPacketProcEcho(SessionId sessionId, unsigned int time)
 	Character* target = characterMap.at(sessionId);
 	globalCPacket->Clear();
 
-	MakePacketEcho(target->characterSession_, globalCPacket, time);
+	MakePacketEcho(target->sessionId_, globalCPacket, time);
 
 	return true;
 }
@@ -712,7 +712,7 @@ void Disconnect(Session* targetSession)
 	sector[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
 
 	globalCPacket->Clear();
-	MakePacketDeleteCharacter(targetSession, globalCPacket, targetSession->sessionId_);
+	MakePacketDeleteCharacter(targetSession->sessionId_, globalCPacket, targetSession->sessionId_);
 	//wprintf(L"## Disconnect id : %d \n", targetSession->Sessionid);
 
 }
@@ -1406,7 +1406,7 @@ void SectorUpdate(Character* target)
 
 	globalCPacket->Clear();
 
-	MakePacketDeleteCharacterRemoveSector(target->characterSession_, globalCPacket, &removeSector, target->sessionId_); //패킷 만들어서 removeSector 시켜줘야하는데.. 
+	MakePacketDeleteCharacterRemoveSector(target->sessionId_, globalCPacket, &removeSector, target->sessionId_); //패킷 만들어서 removeSector 시켜줘야하는데.. 
 
 
 
@@ -1417,7 +1417,7 @@ void SectorUpdate(Character* target)
 		for (iter = sector[removeSector.around_[i].y_][removeSector.around_[i].x_].begin(); iter != sector[removeSector.around_[i].y_][removeSector.around_[i].x_].end(); ++iter)
 		{
 			globalCPacket->Clear();
-			MakePacketDeleteCharacterForMe(target->characterSession_, globalCPacket, (*iter)->sessionId_);
+			MakePacketDeleteCharacterForMe(target->sessionId_, globalCPacket, (*iter)->sessionId_);
 
 
 			//printf("removeSector에 있는 애들의 삭제를 나에게 보냄. 지움 당하는 아이디 %d  : 받는 아이디 %d \n\n", target->CharacterSession->Sessionid, (*iter)->Sessionid);
@@ -1428,12 +1428,12 @@ void SectorUpdate(Character* target)
 
 	//add에 있는 애들에게 나의 생성을 보냄. 
 	globalCPacket->Clear();
-	MakePacketCreateCharacterAddSector(target->characterSession_, globalCPacket, &addSector, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
+	MakePacketCreateCharacterAddSector(target->sessionId_, globalCPacket, &addSector, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
 	//이동 정보도 보내줘야함. 
 	// 
 	// 
 	globalCPacket->Clear();
-	MakePacketMoveStartAddSector(target->characterSession_, globalCPacket, &addSector, target->sessionId_, target->action_, target->x_, target->y_);
+	MakePacketMoveStartAddSector(target->sessionId_, globalCPacket, &addSector, target->sessionId_, target->action_, target->x_, target->y_);
 
 
 
@@ -1451,13 +1451,13 @@ void SectorUpdate(Character* target)
 
 			globalCPacket->Clear();
 
-			MakePacketCreateOtherCharacterForMe(target->characterSession_, globalCPacket, createCharacter->sessionId_, createCharacter->direction_, createCharacter->x_, createCharacter->y_, createCharacter->hp_);
+			MakePacketCreateOtherCharacterForMe(target->sessionId_, globalCPacket, createCharacter->sessionId_, createCharacter->direction_, createCharacter->x_, createCharacter->y_, createCharacter->hp_);
 
 			if (createCharacter->isMove_ == true)
 			{
 
 				globalCPacket->Clear();
-				MakePacketMoveStartForMe(target->characterSession_, globalCPacket, createCharacter->sessionId_, createCharacter->action_, createCharacter->x_, createCharacter->y_);
+				MakePacketMoveStartForMe(target->sessionId_, globalCPacket, createCharacter->sessionId_, createCharacter->action_, createCharacter->x_, createCharacter->y_);
 			}
 
 		}
