@@ -39,4 +39,5 @@ constexpr unsigned char PacketMoveDirectionLD = 7;
 constexpr int NetworkPacketRecvTimeout = 30000;
 constexpr unsigned char PacketCode = 0x89;
 constexpr int NetworkPacketHeaderSize = 3;
+constexpr int LibraryHeaderSize = 5;
 constexpr unsigned short ServerPort = 25000;

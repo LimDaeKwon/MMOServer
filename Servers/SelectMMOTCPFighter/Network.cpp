@@ -239,7 +239,7 @@ void AcceptClient()
 void SendPacketUnicast(Session* target, CPacket* packet)
 {
     int dataSize = packet->GetDataSize();
-    int enqueueHeaderReturn = target->sendQueue_.Enqueue(packet->GetBufferPtr(), dataSize);
+    int enqueueHeaderReturn = target->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize, dataSize);
 
     if (enqueueHeaderReturn != dataSize)
     {
@@ -266,7 +266,7 @@ void SendPacketSectorOne(int sectorX, int sectorY, Session* except, CPacket* pac
             continue;
         }
 
-        enqueueHeaderReturn = target->characterSession_->sendQueue_.Enqueue(packet->GetBufferPtr(), dataSize);
+        enqueueHeaderReturn = target->characterSession_->sendQueue_.Enqueue(packet->GetBufferPtr()+ LibraryHeaderSize, dataSize);
 
         if (enqueueHeaderReturn != dataSize)
         {
@@ -385,7 +385,7 @@ void Receive(Session* target)
             cPacketBuffer->Clear();
 
             unsigned int receiveQueueDequeuePacketSize =
-                target->receiveQueue_.Dequeue(cPacketBuffer->GetBufferPtr(), header.bySize_);
+                target->receiveQueue_.Dequeue(cPacketBuffer->GetBufferPtr()+ LibraryHeaderSize, header.bySize_);
 
             if (receiveQueueDequeuePacketSize != header.bySize_)
             {
@@ -524,7 +524,7 @@ void Initialize()
     {
         bindReturn = WSAGetLastError();
 
-        wprintf(L"Connect Error : %d \n", bindReturn);
+        wprintf(L"bind Error : %d \n", bindReturn);
 
         DebugBreak();
     }
