@@ -16,14 +16,7 @@ SSMonitoringServer::SSMonitoringServer() : userPool_(0), MessageDataFreeList(100
 
 	mysql_init(&conn);
 
-	connection = mysql_real_connect(&conn,
-		"127.0.0.1",
-		"root",
-		"dlaeornjs",
-		"logdb",
-		3306,
-		NULL,
-		0);
+	connection = mysql_real_connect(&conn, "127.0.0.1", "root", "dlaeornjs", "logdb", 3306, NULL, 0);
 
 
 }
@@ -679,20 +672,7 @@ bool SSMonitoringServer::InsertMonitorValueLog(int logTime, int serverNo, int ty
 
 	char query[1024];
 
-	sprintf_s(
-		query,
-		sizeof(query),
-		"INSERT INTO monitorlog "
-		"(logtime, serverno, type, avg_value, min_value, max_value) "
-		"VALUES "
-		"(FROM_UNIXTIME(%d), %d, %d, %d, %d, %d)",
-		logTime,
-		serverNo,
-		type,
-		avgValue,
-		monitorValue.min_,
-		monitorValue.max_
-	);
+	sprintf_s(query, sizeof(query), "INSERT INTO monitorlog " "(logtime, serverno, type, avg_value, min_value, max_value) " "VALUES " "(FROM_UNIXTIME(%d), %d, %d, %d, %d, %d)", logTime, serverNo, type, avgValue, monitorValue.min_, monitorValue.max_);
 
 	if (mysql_query(connection, query) != 0)
 	{

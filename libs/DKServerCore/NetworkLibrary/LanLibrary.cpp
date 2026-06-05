@@ -47,11 +47,7 @@ unsigned int __stdcall LanLibrary::AcceptThread(void* thisPointer)
 
         InterlockedIncrement(&thisForAccept->acceptCount_);
 
-        CreateIoCompletionPort(
-            reinterpret_cast<HANDLE>(clientSock),
-            thisForAccept->handleIocp_,
-            reinterpret_cast<ULONG_PTR>(newSession),
-            0);
+        CreateIoCompletionPort(reinterpret_cast<HANDLE>(clientSock), thisForAccept->handleIocp_, reinterpret_cast<ULONG_PTR>(newSession), 0);
 
         sockaddr_in clientAddr;
         int addrLen = sizeof(clientAddr);
@@ -83,12 +79,7 @@ unsigned int __stdcall LanLibrary::WorkerThread(void* thisPointer)
         MyOverlapped* overlapPointer = nullptr;
         Session* target = nullptr;
 
-        int retval = GetQueuedCompletionStatus(
-            thisForWorker->handleIocp_,
-            &cbTransferred,
-            reinterpret_cast<PULONG_PTR>(&target),
-            reinterpret_cast<LPOVERLAPPED*>(&overlapPointer),
-            INFINITE);
+        int retval = GetQueuedCompletionStatus(thisForWorker->handleIocp_, &cbTransferred, reinterpret_cast<PULONG_PTR>(&target), reinterpret_cast<LPOVERLAPPED*>(&overlapPointer), INFINITE);
 
         if (overlapPointer == nullptr && cbTransferred == 0 && target == nullptr)
         {
@@ -203,14 +194,7 @@ LanLibrary::~LanLibrary()
 {
 }
 
-bool LanLibrary::Start(
-    const char* serverIp,
-    unsigned int serverPort,
-    unsigned int workerNum,
-    unsigned int concurrentThreads,
-    unsigned int nagle,
-    unsigned int sessions,
-    unsigned int header)
+bool LanLibrary::Start(const char* serverIp, unsigned int serverPort, unsigned int workerNum, unsigned int concurrentThreads, unsigned int nagle, unsigned int sessions, unsigned int header)
 {
     maxSession_ = sessions;
     sessionNum_ = 0;
@@ -263,10 +247,7 @@ bool LanLibrary::Start(
     InetPtonA(AF_INET, serverIp, &serverAddress.sin_addr);
     serverAddress.sin_port = htons(serverPort);
 
-    int bindReturn = bind(
-        listenSock_,
-        reinterpret_cast<const sockaddr*>(&serverAddress),
-        sizeof(serverAddress));
+    int bindReturn = bind(listenSock_, reinterpret_cast<const sockaddr*>(&serverAddress), sizeof(serverAddress));
 
     if (bindReturn == SOCKET_ERROR)
     {
@@ -279,12 +260,7 @@ bool LanLibrary::Start(
 
     DWORD optionVal = 0;
 
-    int socketOptionReturn = setsockopt(
-        listenSock_,
-        SOL_SOCKET,
-        SO_SNDBUF,
-        reinterpret_cast<const char*>(&optionVal),
-        sizeof(optionVal));
+    int socketOptionReturn = setsockopt(listenSock_, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const char*>(&optionVal), sizeof(optionVal));
 
     if (socketOptionReturn == SOCKET_ERROR)
     {
@@ -298,12 +274,7 @@ bool LanLibrary::Start(
     linger.l_linger = 0;
     linger.l_onoff = 1;
 
-    int socketOption = setsockopt(
-        listenSock_,
-        SOL_SOCKET,
-        SO_LINGER,
-        reinterpret_cast<const char*>(&linger),
-        sizeof(linger));
+    int socketOption = setsockopt(listenSock_, SOL_SOCKET, SO_LINGER, reinterpret_cast<const char*>(&linger), sizeof(linger));
 
     if (socketOption == SOCKET_ERROR)
     {
@@ -317,12 +288,7 @@ bool LanLibrary::Start(
     {
         DWORD noDelay = 1;
 
-        int noDelayOption = setsockopt(
-            listenSock_,
-            IPPROTO_TCP,
-            TCP_NODELAY,
-            reinterpret_cast<const char*>(&noDelay),
-            sizeof(noDelay));
+        int noDelayOption = setsockopt(listenSock_, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&noDelay), sizeof(noDelay));
 
         if (noDelayOption == SOCKET_ERROR)
         {

@@ -17,11 +17,7 @@ LanClient::~LanClient()
     Stop();
 }
 
-bool LanClient::Start(
-    const char* serverIp,
-    unsigned int serverPort,
-    unsigned int nagle,
-    unsigned int header)
+bool LanClient::Start(const char* serverIp, unsigned int serverPort, unsigned int nagle, unsigned int header)
 {
     headerSize_ = header;
 
@@ -51,34 +47,19 @@ bool LanClient::Start(
     }
 
     DWORD zero = 0;
-    setsockopt(
-        clientSession_->sock_,
-        SOL_SOCKET,
-        SO_SNDBUF,
-        reinterpret_cast<const char*>(&zero),
-        sizeof(zero));
+    setsockopt(clientSession_->sock_, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const char*>(&zero), sizeof(zero));
 
     LINGER linger;
     linger.l_onoff = 1;
     linger.l_linger = 0;
 
-    setsockopt(
-        clientSession_->sock_,
-        SOL_SOCKET,
-        SO_LINGER,
-        reinterpret_cast<const char*>(&linger),
-        sizeof(linger));
+    setsockopt(clientSession_->sock_, SOL_SOCKET, SO_LINGER, reinterpret_cast<const char*>(&linger), sizeof(linger));
 
     if (nagle)
     {
         DWORD noDelay = 1;
 
-        setsockopt(
-            clientSession_->sock_,
-            IPPROTO_TCP,
-            TCP_NODELAY,
-            reinterpret_cast<const char*>(&noDelay),
-            sizeof(noDelay));
+        setsockopt(clientSession_->sock_, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&noDelay), sizeof(noDelay));
     }
 
     SOCKADDR_IN serverAddress;
@@ -91,10 +72,7 @@ bool LanClient::Start(
 
     for (int i = 0; i < 3; ++i)
     {
-        connectReturn = connect(
-            clientSession_->sock_,
-            reinterpret_cast<sockaddr*>(&serverAddress),
-            sizeof(serverAddress));
+        connectReturn = connect(clientSession_->sock_, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(serverAddress));
 
         if (connectReturn == 0)
         {
@@ -194,12 +172,7 @@ unsigned int __stdcall LanClient::ClientWorkerThread(void* thisPointer)
         MyOverlapped* overlapPointer = nullptr;
         ClientSession* target = nullptr;
 
-        int retval = GetQueuedCompletionStatus(
-            thisForWorker->handleIocp_,
-            &cbTransferred,
-            reinterpret_cast<PULONG_PTR>(&target),
-            reinterpret_cast<LPOVERLAPPED*>(&overlapPointer),
-            INFINITE);
+        int retval = GetQueuedCompletionStatus(thisForWorker->handleIocp_, &cbTransferred, reinterpret_cast<PULONG_PTR>(&target), reinterpret_cast<LPOVERLAPPED*>(&overlapPointer), INFINITE);
 
         if (overlapPointer == nullptr && cbTransferred == 0 && target == nullptr)
         {
@@ -295,14 +268,7 @@ void LanClient::ReceiveFirst(ClientSession* newSession)
 
     ZeroMemory(&newSession->recvOverlapped_.overlapped_, sizeof(newSession->recvOverlapped_.overlapped_));
 
-    int retval = WSARecv(
-        newSession->sock_,
-        &wsaBuf,
-        1,
-        &recvBytes,
-        &flags,
-        &newSession->recvOverlapped_.overlapped_,
-        0);
+    int retval = WSARecv(newSession->sock_, &wsaBuf, 1, &recvBytes, &flags, &newSession->recvOverlapped_.overlapped_, 0);
 
     if (retval == SOCKET_ERROR)
     {
@@ -398,14 +364,7 @@ void LanClient::SendPost(ClientSession* target)
 
     ZeroMemory(&target->sendOverlapped_.overlapped_, sizeof(target->sendOverlapped_.overlapped_));
 
-    int wsaSendReturn = WSASend(
-        target->sock_,
-        localWsaBuf,
-        bufCount,
-        &sendBytes,
-        0,
-        &target->sendOverlapped_.overlapped_,
-        nullptr);
+    int wsaSendReturn = WSASend(target->sock_, localWsaBuf, bufCount, &sendBytes, 0, &target->sendOverlapped_.overlapped_, nullptr);
 
     if (wsaSendReturn == SOCKET_ERROR)
     {
@@ -480,9 +439,7 @@ void LanClient::RecvProc(ClientSession* target)
 
         CPacket* packetBuffer = CPacket::Alloc();
 
-        unsigned int receiveDequeuePacketSize = target->recvBuffer_.Dequeue(
-            packetBuffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize,
-            header.length_);
+        unsigned int receiveDequeuePacketSize = target->recvBuffer_.Dequeue(packetBuffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize, header.length_);
 
         if (receiveDequeuePacketSize != header.length_)
         {
@@ -521,14 +478,7 @@ void LanClient::Receive(ClientSession* target)
 
     InterlockedIncrement(&target->ioCount_);
 
-    int retval = WSARecv(
-        target->sock_,
-        recvWsaBuf,
-        2,
-        &recvBytes,
-        &flags,
-        &target->recvOverlapped_.overlapped_,
-        0);
+    int retval = WSARecv(target->sock_, recvWsaBuf, 2, &recvBytes, &flags, &target->recvOverlapped_.overlapped_, 0);
 
     if (retval == SOCKET_ERROR)
     {

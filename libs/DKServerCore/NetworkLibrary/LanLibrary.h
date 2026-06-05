@@ -56,14 +56,7 @@ public:
         int* index_;
     };
 
-    bool Start(
-        const char* serverIp,
-        unsigned int serverPort,
-        unsigned int threadsCount,
-        unsigned int concurrentThreads,
-        unsigned int nagle,
-        unsigned int sessions,
-        unsigned int headerSize);
+    bool Start(const char* serverIp, unsigned int serverPort, unsigned int threadsCount, unsigned int concurrentThreads, unsigned int nagle, unsigned int sessions, unsigned int headerSize);
 
     bool Stop();
     void Disconnect(__int64 sessionId);

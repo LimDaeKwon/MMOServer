@@ -125,14 +125,7 @@ BYTE LoginServer::ProcAuth(INT64 AccountNo, char* SessionKey, WCHAR* ID, WCHAR* 
 		DBConnection = new TLSDBConnection;
 		mysql_init(&DBConnection->conn);
 
-		DBConnection->Connection = mysql_real_connect(&DBConnection->conn,
-			"127.0.0.1",
-			"root",
-			"dlaeornjs",
-			"accountdb",
-			3306,
-			NULL,
-			0);
+		DBConnection->Connection = mysql_real_connect(&DBConnection->conn, "127.0.0.1", "root", "dlaeornjs", "accountdb", 3306, NULL, 0);
 
 		TlsSetValue(TLSDBConnectionIndex, DBConnection);
 

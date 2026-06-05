@@ -116,9 +116,7 @@ unsigned int __stdcall ContentGroupBase::GroupThread(void* thisPointer)
 
             case ContentGroupBase::Message:
             {
-                contents->OnMessage(
-                    messageData->sessionId_,
-                    messageData->contentsPacket_);
+                contents->OnMessage(messageData->sessionId_, messageData->contentsPacket_);
 
                 break;
             }

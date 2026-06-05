@@ -48,12 +48,9 @@ public:
         newNode->data_ = data;
         newNode->next_ = nullptr;
 
-        __int64 newTag = InterlockedAdd64(
-            &index_,
-            static_cast<__int64>(1) << DKServerCore::TagOffset);
+        __int64 newTag = InterlockedAdd64(&index_, static_cast<__int64>(1) << DKServerCore::TagOffset);
 
-        newNode = reinterpret_cast<Node*>(
-            reinterpret_cast<__int64>(newNode) | newTag);
+        newNode = reinterpret_cast<Node*>(reinterpret_cast<__int64>(newNode) | newTag);
 
         Node* oldTail = nullptr;
         Node* unmaskedTail = nullptr;
@@ -79,10 +76,7 @@ public:
             }
         }
 
-        InterlockedCompareExchange64(
-            reinterpret_cast<volatile __int64*>(&tail_),
-            reinterpret_cast<__int64>(newNode),
-            reinterpret_cast<__int64>(oldTail));
+        InterlockedCompareExchange64(reinterpret_cast<volatile __int64*>(&tail_), reinterpret_cast<__int64>(newNode), reinterpret_cast<__int64>(oldTail));
 
         InterlockedIncrement(&size_);
 
@@ -161,17 +155,13 @@ private:
                 continue;
             }
 
-            InterlockedCompareExchange64(
-                reinterpret_cast<volatile __int64*>(&tail_),
-                reinterpret_cast<__int64>(unmaskedTail->next_),
-                reinterpret_cast<__int64>(oldTail));
+            InterlockedCompareExchange64(reinterpret_cast<volatile __int64*>(&tail_), reinterpret_cast<__int64>(unmaskedTail->next_), reinterpret_cast<__int64>(oldTail));
         }
     }
 
     Node* UnmaskNode(Node* node)
     {
-        return reinterpret_cast<Node*>(
-            reinterpret_cast<__int64>(node) & DKServerCore::AddressMask);
+        return reinterpret_cast<Node*>(reinterpret_cast<__int64>(node) & DKServerCore::AddressMask);
     }
 
 private:

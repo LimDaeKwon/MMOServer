@@ -70,18 +70,13 @@ public:
         while (true)
         {
             oldTail = tail_;
-            maskedNewNode = MaskNewTag(
-                reinterpret_cast<__int64>(oldTail),
-                reinterpret_cast<__int64>(newNode));
+            maskedNewNode = MaskNewTag(reinterpret_cast<__int64>(oldTail), reinterpret_cast<__int64>(newNode));
 
             unmaskedTail = UnmaskTag(reinterpret_cast<__int64>(oldTail));
 
             if (unmaskedTail->next_ != nullptr)
             {
-                InterlockedCompareExchange64(
-                    reinterpret_cast<volatile __int64*>(&tail_),
-                    reinterpret_cast<__int64>(unmaskedTail->next_),
-                    reinterpret_cast<__int64>(oldTail));
+                InterlockedCompareExchange64(reinterpret_cast<volatile __int64*>(&tail_), reinterpret_cast<__int64>(unmaskedTail->next_), reinterpret_cast<__int64>(oldTail));
 
                 continue;
             }
@@ -101,10 +96,7 @@ public:
             }
         }
 
-        InterlockedCompareExchange64(
-            reinterpret_cast<volatile __int64*>(&tail_),
-            static_cast<__int64>(maskedNewNode),
-            reinterpret_cast<__int64>(oldTail));
+        InterlockedCompareExchange64(reinterpret_cast<volatile __int64*>(&tail_), static_cast<__int64>(maskedNewNode), reinterpret_cast<__int64>(oldTail));
 
         InterlockedIncrement(&size_);
 
@@ -193,10 +185,7 @@ private:
                 break;
             }
 
-            InterlockedCompareExchange64(
-                reinterpret_cast<volatile __int64*>(&tail_),
-                reinterpret_cast<__int64>(unmaskedTail->next_),
-                reinterpret_cast<__int64>(oldTail));
+            InterlockedCompareExchange64(reinterpret_cast<volatile __int64*>(&tail_), reinterpret_cast<__int64>(unmaskedTail->next_), reinterpret_cast<__int64>(oldTail));
         }
     }
 

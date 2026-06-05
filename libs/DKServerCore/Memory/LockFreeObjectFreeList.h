@@ -74,9 +74,7 @@ public:
         while (true)
         {
             localTop = topNode_;
-            maskedNewTop = MaskNewTag(
-                reinterpret_cast<__int64>(localTop),
-                reinterpret_cast<__int64>(newTop));
+            maskedNewTop = MaskNewTag(reinterpret_cast<__int64>(localTop), reinterpret_cast<__int64>(newTop));
 
             newTop->next_ = localTop;
 
@@ -270,9 +268,7 @@ public:
         while (true)
         {
             localTop = topNode_;
-            maskedNewTop = MaskNewTag(
-                reinterpret_cast<__int64>(localTop),
-                reinterpret_cast<__int64>(newTop));
+            maskedNewTop = MaskNewTag(reinterpret_cast<__int64>(localTop), reinterpret_cast<__int64>(newTop));
 
             newTop->next_ = localTop;
 

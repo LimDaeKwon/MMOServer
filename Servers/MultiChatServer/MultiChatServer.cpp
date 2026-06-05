@@ -307,12 +307,7 @@ bool MultiChatServer::AuthToken(INT64 AccountNo, char* SessionKey)
 	std::string Key = std::to_string(AccountNo);
 
 	std::string Value;
-	Connection_->get(Key, [&Value](cpp_redis::reply& reply) {
-		if (reply.is_string())
-		{
-			Value = reply.as_string();
-		}
-		});
+	Connection_->get(Key, [&Value](cpp_redis::reply& reply) { if (reply.is_string()) { Value = reply.as_string(); } });
 
 	Connection_->sync_commit();
 

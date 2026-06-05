@@ -18,8 +18,7 @@ SystemMonitoring::SystemMonitoring()
     updateThreadHandle_(nullptr),
     cpuUsage_()
 {
-    updateThreadHandle_ = reinterpret_cast<HANDLE>(
-        _beginthreadex(nullptr, 0, UpdateThread, this, 0, nullptr));
+    updateThreadHandle_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, UpdateThread, this, 0, nullptr));
 
     const wchar_t* interfaceNames[NetworkInterfaceCount] =
     {
@@ -29,19 +28,11 @@ SystemMonitoring::SystemMonitoring()
     };
 
     PdhOpenQuery(nullptr, 0, &serverNonPagedQuery_);
-    PdhAddCounter(
-        serverNonPagedQuery_,
-        L"\\Memory\\Pool Nonpaged Bytes",
-        0,
-        &serverNonPagedTotal_);
+    PdhAddCounter(serverNonPagedQuery_, L"\\Memory\\Pool Nonpaged Bytes", 0, &serverNonPagedTotal_);
     PdhCollectQueryData(serverNonPagedQuery_);
 
     PdhOpenQuery(nullptr, 0, &serverAvailableMemoryQuery_);
-    PdhAddCounter(
-        serverAvailableMemoryQuery_,
-        L"\\Memory\\Available MBytes",
-        0,
-        &serverAvailableMemoryTotal_);
+    PdhAddCounter(serverAvailableMemoryQuery_, L"\\Memory\\Available MBytes", 0, &serverAvailableMemoryTotal_);
     PdhCollectQueryData(serverAvailableMemoryQuery_);
 
     wchar_t sendPath[256];
@@ -49,30 +40,16 @@ SystemMonitoring::SystemMonitoring()
 
     for (int i = 0; i < NetworkInterfaceCount; ++i)
     {
-        wsprintf(
-            sendPath,
-            L"\\Network Interface(%s)\\Bytes Sent/sec",
-            interfaceNames[i]);
+        wsprintf(sendPath, L"\\Network Interface(%s)\\Bytes Sent/sec", interfaceNames[i]);
 
-        wsprintf(
-            recvPath,
-            L"\\Network Interface(%s)\\Bytes Received/sec",
-            interfaceNames[i]);
+        wsprintf(recvPath, L"\\Network Interface(%s)\\Bytes Received/sec", interfaceNames[i]);
 
         PdhOpenQuery(nullptr, 0, &serverNetSendQuery_[i]);
-        PdhAddCounter(
-            serverNetSendQuery_[i],
-            sendPath,
-            0,
-            &serverNetSendTotal_[i]);
+        PdhAddCounter(serverNetSendQuery_[i], sendPath, 0, &serverNetSendTotal_[i]);
         PdhCollectQueryData(serverNetSendQuery_[i]);
 
         PdhOpenQuery(nullptr, 0, &serverNetRecvQuery_[i]);
-        PdhAddCounter(
-            serverNetRecvQuery_[i],
-            recvPath,
-            0,
-            &serverNetRecvTotal_[i]);
+        PdhAddCounter(serverNetRecvQuery_[i], recvPath, 0, &serverNetRecvTotal_[i]);
         PdhCollectQueryData(serverNetRecvQuery_[i]);
     }
 }
@@ -134,34 +111,18 @@ unsigned int WINAPI SystemMonitoring::UpdateThread(void* thisPointer)
         monitor->UpdateCpuTime();
 
         PdhCollectQueryData(monitor->serverNonPagedQuery_);
-        PdhGetFormattedCounterValue(
-            monitor->serverNonPagedTotal_,
-            PDH_FMT_DOUBLE,
-            nullptr,
-            &monitor->serverNonPagedCounterValue_);
+        PdhGetFormattedCounterValue(monitor->serverNonPagedTotal_, PDH_FMT_DOUBLE, nullptr, &monitor->serverNonPagedCounterValue_);
 
         PdhCollectQueryData(monitor->serverAvailableMemoryQuery_);
-        PdhGetFormattedCounterValue(
-            monitor->serverAvailableMemoryTotal_,
-            PDH_FMT_DOUBLE,
-            nullptr,
-            &monitor->serverAvailableMemoryCounterValue_);
+        PdhGetFormattedCounterValue(monitor->serverAvailableMemoryTotal_, PDH_FMT_DOUBLE, nullptr, &monitor->serverAvailableMemoryCounterValue_);
 
         for (int i = 0; i < NetworkInterfaceCount; ++i)
         {
             PdhCollectQueryData(monitor->serverNetSendQuery_[i]);
-            PdhGetFormattedCounterValue(
-                monitor->serverNetSendTotal_[i],
-                PDH_FMT_DOUBLE,
-                nullptr,
-                &monitor->serverNetSendCounterValue_[i]);
+            PdhGetFormattedCounterValue(monitor->serverNetSendTotal_[i], PDH_FMT_DOUBLE, nullptr, &monitor->serverNetSendCounterValue_[i]);
 
             PdhCollectQueryData(monitor->serverNetRecvQuery_[i]);
-            PdhGetFormattedCounterValue(
-                monitor->serverNetRecvTotal_[i],
-                PDH_FMT_DOUBLE,
-                nullptr,
-                &monitor->serverNetRecvCounterValue_[i]);
+            PdhGetFormattedCounterValue(monitor->serverNetRecvTotal_[i], PDH_FMT_DOUBLE, nullptr, &monitor->serverNetRecvCounterValue_[i]);
         }
     }
 

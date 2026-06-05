@@ -80,7 +80,12 @@ bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned
         DebugBreak();
     }
 
-    DWORD noDelay = nagle == 0 ? 1 : 0;
+    DWORD noDelay = 0;
+
+    if (nagle == 0)
+    {
+        noDelay = 1;
+    }
 
     int noDelayOption = setsockopt(listenSocket_, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&noDelay), sizeof(noDelay));
 

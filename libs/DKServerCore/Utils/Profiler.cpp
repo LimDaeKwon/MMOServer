@@ -18,10 +18,7 @@ void ProfileBegin(const WCHAR* tagName)
     if (profileManagement == nullptr)
     {
         profileManagement = new ProfileManagement[DKServerCore::ProfilerMaxIndex];
-        memset(
-            profileManagement,
-            0,
-            sizeof(ProfileManagement) * DKServerCore::ProfilerMaxIndex);
+        memset(profileManagement, 0, sizeof(ProfileManagement) * DKServerCore::ProfilerMaxIndex);
 
         TlsSetValue(tlsIndex, profileManagement);
 
@@ -63,10 +60,7 @@ void ProfileBegin(const WCHAR* tagName)
 
     profileManagement[index].flag_ = 1;
 
-    wmemcpy(
-        profileManagement[index].name_,
-        tagName,
-        wcslen(tagName));
+    wmemcpy(profileManagement[index].name_, tagName, wcslen(tagName));
 
     QueryPerformanceCounter(&start);
 
@@ -145,12 +139,7 @@ void ProfileDataOutText(const WCHAR* fileName)
 
         WCHAR outputFileName[MAX_PATH];
 
-        swprintf_s(
-            outputFileName,
-            MAX_PATH,
-            L"%s%02d.txt",
-            fileName,
-            profileManagement->threadId_);
+        swprintf_s(outputFileName, MAX_PATH, L"%s%02d.txt", fileName, profileManagement->threadId_);
 
         FILE* writeFile = nullptr;
 
@@ -160,16 +149,7 @@ void ProfileDataOutText(const WCHAR* fileName)
             return;
         }
 
-        fwprintf(
-            writeFile,
-            L"---------------------------------------------------------------------------------------------------------------------\n"
-            L"%20s  %20s  %20s  %25s  %20s \n"
-            L"---------------------------------------------------------------------------------------------------------------------\n",
-            L"Name",
-            L"Average",
-            L"Min",
-            L"Max",
-            L"Call");
+        fwprintf(writeFile, L"---------------------------------------------------------------------------------------------------------------------\n" L"%20s %20s %20s %25s %20s \n" L"---------------------------------------------------------------------------------------------------------------------\n", L"Name", L"Average", L"Min", L"Max", L"Call");
 
         for (int index = 0; index < DKServerCore::ProfilerMaxIndex; ++index)
         {
@@ -179,28 +159,9 @@ void ProfileDataOutText(const WCHAR* fileName)
                     writeFile,
                     L"%20s  %20s§Á  %20s§Á  %20s§Á  %10s\n",
                     profileManagement[index].name_,
-                    std::to_wstring(
-                        static_cast<double>(
-                            profileManagement[index].totalTime_
-                            - profileManagement[index].min_[0]
-                            - profileManagement[index].max_[0]
-                            - profileManagement[index].min_[1]
-                            - profileManagement[index].max_[1])
-                        / (profileManagement[index].call_ - 4)
-                        / frequency.QuadPart
-                        * 1000000).c_str(),
-                    std::to_wstring(
-                        static_cast<double>(
-                            (profileManagement[index].min_[0] + profileManagement[index].min_[1])
-                            / static_cast<double>(2))
-                        / frequency.QuadPart
-                        * 1000000).c_str(),
-                    std::to_wstring(
-                        static_cast<double>(
-                            (profileManagement[index].max_[0] + profileManagement[index].max_[1])
-                            / static_cast<double>(2))
-                        / frequency.QuadPart
-                        * 1000000).c_str(),
+                    std::to_wstring(static_cast<double>(profileManagement[index].totalTime_ - profileManagement[index].min_[0] - profileManagement[index].max_[0] - profileManagement[index].min_[1] - profileManagement[index].max_[1]) / (profileManagement[index].call_ - 4) / frequency.QuadPart * 1000000).c_str(),
+                    std::to_wstring(static_cast<double>((profileManagement[index].min_[0] + profileManagement[index].min_[1]) / static_cast<double>(2)) / frequency.QuadPart * 1000000).c_str(),
+                    std::to_wstring(static_cast<double>((profileManagement[index].max_[0] + profileManagement[index].max_[1]) / static_cast<double>(2)) / frequency.QuadPart * 1000000).c_str(),
                     std::to_wstring(profileManagement[index].call_ - 4).c_str());
             }
             else
@@ -209,9 +170,7 @@ void ProfileDataOutText(const WCHAR* fileName)
             }
         }
 
-        fwprintf(
-            writeFile,
-            L"---------------------------------------------------------------------------------------------------------------------\n");
+        fwprintf(writeFile, L"---------------------------------------------------------------------------------------------------------------------\n");
 
         wprintf(L"WriteFileComplete %d\n", profileManagement->threadId_);
 

@@ -50,11 +50,7 @@ public:
         BufferCount bufferCount_;
     };
 
-    bool Start(
-        const char* serverIp,
-        unsigned int serverPort,
-        unsigned int nagle,
-        unsigned int headerSize);
+    bool Start(const char* serverIp, unsigned int serverPort, unsigned int nagle, unsigned int headerSize);
 
     bool Stop();
     void Close();

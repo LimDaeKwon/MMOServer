@@ -55,44 +55,18 @@ private:
             &processMemoryCounters,
             sizeof(processMemoryCounters)))
         {
-            workingMemory = static_cast<int>(
-                processMemoryCounters.WorkingSetSize / 1024 / 1024);
+            workingMemory = static_cast<int>(processMemoryCounters.WorkingSetSize / 1024 / 1024);
         }
 
         WCHAR fileName[MAX_PATH];
 
         GetLocalTime(&time);
 
-        swprintf_s(
-            fileName,
-            MAX_PATH,
-            L"Dump_%d%02d%02d_%02d.%02d.%02d_%d_%dMB.dmp",
-            time.wYear,
-            time.wMonth,
-            time.wDay,
-            time.wHour,
-            time.wMinute,
-            time.wSecond,
-            localDumpCount,
-            workingMemory);
+        swprintf_s(fileName, MAX_PATH, L"Dump_%d%02d%02d_%02d.%02d.%02d_%d_%dMB.dmp", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, localDumpCount, workingMemory);
 
-        wprintf(
-            L"\n\n\n!!! Crash Error ..... %d.%d.%d / %d:%d:%d \n",
-            time.wYear,
-            time.wMonth,
-            time.wDay,
-            time.wHour,
-            time.wMinute,
-            time.wSecond);
+        wprintf(L"\n\n\n!!! Crash Error ..... %d.%d.%d / %d:%d:%d \n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond);
 
-        HANDLE dumpFile = CreateFile(
-            fileName,
-            GENERIC_WRITE,
-            FILE_SHARE_WRITE,
-            nullptr,
-            CREATE_ALWAYS,
-            FILE_ATTRIBUTE_NORMAL,
-            nullptr);
+        HANDLE dumpFile = CreateFile(fileName, GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 
         if (dumpFile != INVALID_HANDLE_VALUE)
         {
@@ -102,14 +76,7 @@ private:
             minidumpExceptionInformation.ExceptionPointers = exceptionPointers;
             minidumpExceptionInformation.ClientPointers = TRUE;
 
-            BOOL result = MiniDumpWriteDump(
-                GetCurrentProcess(),
-                GetCurrentProcessId(),
-                dumpFile,
-                MiniDumpWithFullMemory,
-                &minidumpExceptionInformation,
-                nullptr,
-                nullptr);
+            BOOL result = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), dumpFile, MiniDumpWithFullMemory, &minidumpExceptionInformation, nullptr, nullptr);
 
             if (result == FALSE)
             {
@@ -126,12 +93,7 @@ private:
         return EXCEPTION_EXECUTE_HANDLER;
     }
 
-    static void MyInvalidParameterHandler(
-        const wchar_t* expression,
-        const wchar_t* function,
-        const wchar_t* file,
-        unsigned int line,
-        uintptr_t reserved)
+    static void MyInvalidParameterHandler(const wchar_t* expression, const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t reserved)
     {
         UNREFERENCED_PARAMETER(expression);
         UNREFERENCED_PARAMETER(function);

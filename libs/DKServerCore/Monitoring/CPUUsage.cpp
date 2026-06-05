@@ -67,10 +67,7 @@ HANDLE CpuUsage::GetProcessHandle(const wchar_t* processName)
         return nullptr;
     }
 
-    HANDLE processHandle = OpenProcess(
-        PROCESS_ALL_ACCESS,
-        FALSE,
-        processId);
+    HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 
     if (processHandle == nullptr)
     {
@@ -107,14 +104,11 @@ void CpuUsage::UpdateCpuTime()
     }
     else
     {
-        processorTotal_ = static_cast<float>(
-            static_cast<double>(total - idleDiff) / static_cast<double>(total) * 100.0);
+        processorTotal_ = static_cast<float>(static_cast<double>(total - idleDiff) / static_cast<double>(total) * 100.0);
 
-        processorUser_ = static_cast<float>(
-            static_cast<double>(userDiff) / static_cast<double>(total) * 100.0);
+        processorUser_ = static_cast<float>(static_cast<double>(userDiff) / static_cast<double>(total) * 100.0);
 
-        processorKernel_ = static_cast<float>(
-            static_cast<double>(kernelDiff - idleDiff) / static_cast<double>(total) * 100.0);
+        processorKernel_ = static_cast<float>(static_cast<double>(kernelDiff - idleDiff) / static_cast<double>(total) * 100.0);
     }
 
     processorLastKernel_ = kernel;
@@ -149,23 +143,11 @@ void CpuUsage::UpdateCpuTime()
     }
     else
     {
-        processTotal_ = static_cast<float>(
-            static_cast<double>(total) /
-            static_cast<double>(numberOfProcessors_) /
-            static_cast<double>(timeDiff) *
-            100.0);
+        processTotal_ = static_cast<float>(static_cast<double>(total) / static_cast<double>(numberOfProcessors_) / static_cast<double>(timeDiff) * 100.0);
 
-        processKernel_ = static_cast<float>(
-            static_cast<double>(kernelDiff) /
-            static_cast<double>(numberOfProcessors_) /
-            static_cast<double>(timeDiff) *
-            100.0);
+        processKernel_ = static_cast<float>(static_cast<double>(kernelDiff) / static_cast<double>(numberOfProcessors_) / static_cast<double>(timeDiff) * 100.0);
 
-        processUser_ = static_cast<float>(
-            static_cast<double>(userDiff) /
-            static_cast<double>(numberOfProcessors_) /
-            static_cast<double>(timeDiff) *
-            100.0);
+        processUser_ = static_cast<float>(static_cast<double>(userDiff) / static_cast<double>(numberOfProcessors_) / static_cast<double>(timeDiff) * 100.0);
     }
 
     processLastTime_ = nowTime;

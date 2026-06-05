@@ -71,17 +71,7 @@ public:
     ContentsNetLibrary();
     virtual ~ContentsNetLibrary();
 
-    bool Start(
-        const char* serverIp,
-        unsigned int serverPort,
-        unsigned int threadsCount,
-        unsigned int concurrentThreads,
-        unsigned int nagle,
-        unsigned int sessions,
-        unsigned int headerSize,
-        unsigned int sync,
-        unsigned int sendThreads,
-        unsigned char packetCode);
+    bool Start(const char* serverIp, unsigned int serverPort, unsigned int threadsCount, unsigned int concurrentThreads, unsigned int nagle, unsigned int sessions, unsigned int headerSize, unsigned int sync, unsigned int sendThreads, unsigned char packetCode);
 
     bool Stop();
     void Disconnect(__int64 sessionId);
