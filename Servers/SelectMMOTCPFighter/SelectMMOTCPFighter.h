@@ -1,7 +1,9 @@
 #pragma once
 #include "SelectServer.h"
-#include "GameDefine.h"
 #include "ObjectFreeList.h"
+#include "GameDefine.h"
+#include "Character.h"
+
 
 
 struct Character;
@@ -113,13 +115,12 @@ public:
 
 private:
 
-	std::list<Character*> sector[SectorMaxY][SectorMaxX];
+	std::list<Character*> sectorCharacterList_[SectorMaxY][SectorMaxX];
 
-	std::unordered_map<SessionId, Character*> characterMap;
+	std::unordered_map<SessionId, Character*> characterMap_;
 
-	ObjectFreeList<Character> characterFreeList;
+	ObjectFreeList<Character> characterFreeList_;
 
-	CPacket* globalCPacket;
 
 };
 

@@ -1,6 +1,10 @@
-﻿#include "Contents.h"
+﻿
+#include "SelectMMOTCPFighter.h"
 #include "CrashDump.h"
+#include "Contents.h"
 #include "Network.h"
+
+
 
 
 #pragma comment(lib, "Winmm.lib")
@@ -13,20 +17,26 @@ int main()
 {
     timeBeginPeriod(1);
 
+	SelectMMOTCPFighter* instance = new SelectMMOTCPFighter();
+
+    //Initialize();
+
+    //while (true)
+    //{
+    //    Network();
+
+    //    Update();
+
+    //    // ServerControl();
+    //}
+
+    //WSACleanup();
+
+	instance->Start("0.0.0.0",25000, 0, 10000, PacketCode, 40);
+
+    Sleep(INFINITE);
 
 
-    Initialize();
-
-    while (true)
-    {
-        Network();
-
-        Update();
-
-        // ServerControl();
-    }
-
-    WSACleanup();
     timeEndPeriod(1);
 
     return 0;

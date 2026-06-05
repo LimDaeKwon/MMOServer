@@ -40,10 +40,10 @@ protected:
     HANDLE gameLoopThread_;
 	SOCKET listenSocket_;
     std::unordered_map<unsigned int, Session*> sessions_;
-    std::list<unsigned int> deleteList;
-    ObjectFreeList<Session> sessionFreeList;
-	SessionId sessionId;
-	CPacket* cPacketBuffer;
+    std::list<unsigned int> deleteList_;
+    ObjectFreeList<Session> sessionFreeList_;
+	SessionId sessionId_;
+	CPacket* cPacketBuffer_;
     unsigned int frameMs_;
 	unsigned int oldTick_;
 };

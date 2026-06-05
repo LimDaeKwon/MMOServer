@@ -5,15 +5,15 @@
 #include "GameDefine.h"
 #include "CPacket.h"
 
-SelectServer::SelectServer() :sessionFreeList(10000), sessionId(1)
+SelectServer::SelectServer() :sessionFreeList_(10000), sessionId_(1)
 {
-	cPacketBuffer = CPacket::Alloc();
+	cPacketBuffer_ = CPacket::Alloc();
 
 }
 
 SelectServer::~SelectServer()
 {
-	CPacket::Free(cPacketBuffer);
+	CPacket::Free(cPacketBuffer_);
 }
 
 bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned int nagle, unsigned int sessions, unsigned char packetCode, unsigned int frameMs)
@@ -107,7 +107,7 @@ bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned
         DebugBreak();
     }
 
-
+	frameMs_ = frameMs;
     gameLoopThread_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, GameLoopThread, this, 0, nullptr));
 
 
@@ -309,9 +309,9 @@ void SelectServer::AcceptClient()
         DebugBreak();
     }
 
-    Session* newSession = sessionFreeList.Alloc();
+    Session* newSession = sessionFreeList_.Alloc();
 
-    newSession->sessionId_ = sessionId++;
+    newSession->sessionId_ = sessionId_++;
     newSession->socket_ = clientSocket;
     newSession->isDelete_ = 0;
     newSession->lastRecvTime_ = timeGetTime();
@@ -350,33 +350,33 @@ void SelectServer::Disconnect(SessionId sessionId)
         return;
     }
     target->isDelete_ = 1;
-    deleteList.push_back(target->sessionId_);
+    deleteList_.push_back(target->sessionId_);
 }
 
 void SelectServer::DeleteDisconnect()
 {
-    if (deleteList.size() > 0)
+    if (deleteList_.size() > 0)
     {
         Session* session;
         SessionId sessionId;
 
         std::list<unsigned int>::iterator iter;
 
-        for (iter = deleteList.begin(); iter != deleteList.end(); ++iter)
+        for (iter = deleteList_.begin(); iter != deleteList_.end(); ++iter)
         {
             sessionId = *iter;
             session = sessions_.at(sessionId);
             closesocket(session->socket_);
             session->receiveQueue_.ClearBuffer();
             session->sendQueue_.ClearBuffer();
-            sessionFreeList.Free(session);
+            sessionFreeList_.Free(session);
             sessions_.erase(sessionId);
 			OnRelease(sessionId);
 
             //ReleaseInContents(sessionId);
         }
 
-        deleteList.clear();
+        deleteList_.clear();
     }
 }
 
@@ -465,10 +465,10 @@ void SelectServer::Receive(Session* target)
 
             unsigned int receiveQueueDequeueHeaderSize = target->receiveQueue_.MoveFront(sizeof(header));
             
-            cPacketBuffer->Clear();
+            cPacketBuffer_->Clear();
 
             unsigned int receiveQueueDequeuePacketSize =
-                target->receiveQueue_.Dequeue(cPacketBuffer->GetBufferPtr() + LibraryHeaderSize, header.bySize_);
+                target->receiveQueue_.Dequeue(cPacketBuffer_->GetBufferPtr() + LibraryHeaderSize, header.bySize_);
 
             if (receiveQueueDequeuePacketSize != header.bySize_)
             {
@@ -478,11 +478,11 @@ void SelectServer::Receive(Session* target)
                 break;
             }
 
-            cPacketBuffer->MoveWritePosition(receiveQueueDequeuePacketSize);
+            cPacketBuffer_->MoveWritePosition(receiveQueueDequeuePacketSize);
 
             target->lastRecvTime_ = timeGetTime();
 
-			OnMessage(target->sessionId_, header.byType_, cPacketBuffer);
+			OnMessage(target->sessionId_, header.byType_, cPacketBuffer_);
            
             //PacketProc(target->sessionId_, header.byType_, cPacketBuffer);
         }
@@ -534,6 +534,7 @@ bool SelectServer::TryUpdate()
     unsigned int frame = tick - oldTick_;
     if (frame > frameMs_)
     {
+		TimeOut();
         unsigned int fixUpdate = (frame / 40);
 
         for (unsigned int i = 0; i < fixUpdate; ++i)

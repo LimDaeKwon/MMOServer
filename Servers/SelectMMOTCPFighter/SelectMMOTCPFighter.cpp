@@ -1,23 +1,22 @@
 ﻿#include "SelectMMOTCPFighter.h"
-#include "CPacket.h"
 #include "Character.h"
+#include "CPacket.h"
+
 #include "PacketDefine.h"
 
 
-SelectMMOTCPFighter::SelectMMOTCPFighter() :characterFreeList(10000)
+SelectMMOTCPFighter::SelectMMOTCPFighter() :characterFreeList_(10000)
 {
 
-    globalCPacket = CPacket::Alloc();
 }
 
 SelectMMOTCPFighter::~SelectMMOTCPFighter()
 {
-    CPacket::Free(globalCPacket);
 }
 
 void SelectMMOTCPFighter::OnAccept(SessionId sessionId)
 {
-    Character* newPlayer = characterFreeList.Alloc();
+    Character* newPlayer = characterFreeList_.Alloc();
     newPlayer->sessionId_ = sessionId;
 
     newPlayer->direction_ = PacketMoveDirectionRR;
@@ -35,15 +34,15 @@ void SelectMMOTCPFighter::OnAccept(SessionId sessionId)
 
     newPlayer->isMove_ = false;
 
-    sector[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
-    characterMap.insert(std::unordered_map<SessionId, Character*>::value_type(newPlayer->sessionId_, newPlayer));
+    sectorCharacterList_[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
+    characterMap_.insert(std::unordered_map<SessionId, Character*>::value_type(newPlayer->sessionId_, newPlayer));
 
-    globalCPacket->Clear();
+    cPacketBuffer_->Clear();
 
-    MakePacketCreateMyCharacter(newPlayer->sessionId_, globalCPacket, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+    MakePacketCreateMyCharacter(newPlayer->sessionId_, cPacketBuffer_, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
 
-    globalCPacket->Clear();
-    MakePacketCreateOtherCharacter(newPlayer->sessionId_, globalCPacket, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+    cPacketBuffer_->Clear();
+    MakePacketCreateOtherCharacter(newPlayer->sessionId_, cPacketBuffer_, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
 
     SectorAround createForMe;
     GetSectorAround(newPlayer->characterSectorPos_.x_, newPlayer->characterSectorPos_.y_, &createForMe);
@@ -51,8 +50,8 @@ void SelectMMOTCPFighter::OnAccept(SessionId sessionId)
     for (unsigned int i = 0; i < createForMe.count_; ++i)
     {
         std::list<Character*>::iterator iter;
-        for (iter = sector[createForMe.around_[i].y_][createForMe.around_[i].x_].begin();
-            iter != sector[createForMe.around_[i].y_][createForMe.around_[i].x_].end(); ++iter)
+        for (iter = sectorCharacterList_[createForMe.around_[i].y_][createForMe.around_[i].x_].begin();
+            iter != sectorCharacterList_[createForMe.around_[i].y_][createForMe.around_[i].x_].end(); ++iter)
         {
             Character* target = *iter;
             if ((target->sessionId_ == newPlayer->sessionId_))
@@ -60,13 +59,13 @@ void SelectMMOTCPFighter::OnAccept(SessionId sessionId)
                 continue;
             }
 
-            globalCPacket->Clear();
-            MakePacketCreateOtherCharacterForMe(newPlayer->sessionId_, globalCPacket, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
+            cPacketBuffer_->Clear();
+            MakePacketCreateOtherCharacterForMe(newPlayer->sessionId_, cPacketBuffer_, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
 
             if (target->isMove_ == true)
             {
-                globalCPacket->Clear();
-                MakePacketMoveStartForMe(newPlayer->sessionId_, globalCPacket, target->sessionId_, target->action_, target->x_, target->y_);
+                cPacketBuffer_->Clear();
+                MakePacketMoveStartForMe(newPlayer->sessionId_, cPacketBuffer_, target->sessionId_, target->action_, target->x_, target->y_);
             }
         }
     }
@@ -153,20 +152,20 @@ void SelectMMOTCPFighter::OnMessage(SessionId sessionId, unsigned char packetTyp
 
 void SelectMMOTCPFighter::OnRelease(SessionId sessionId)
 {
-    Character* target = characterMap.at(sessionId);
+    Character* target = characterMap_.at(sessionId);
 
-    globalCPacket->Clear();
-    MakePacketDeleteCharacter(target->sessionId_, globalCPacket, target->sessionId_);
+    cPacketBuffer_->Clear();
+    MakePacketDeleteCharacter(target->sessionId_, cPacketBuffer_, target->sessionId_);
 
-    sector[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
-    characterMap.erase(sessionId);
-    characterFreeList.Free(target);
+    sectorCharacterList_[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
+    characterMap_.erase(sessionId);
+    characterFreeList_.Free(target);
 }
 
 void SelectMMOTCPFighter::OnUpdate()
 {
     std::unordered_map<SessionId, Character*>::iterator iter;
-    for (iter = characterMap.begin(); iter != characterMap.end(); ++iter)
+    for (iter = characterMap_.begin(); iter != characterMap_.end(); ++iter)
     {
         Character* target = iter->second;
 
@@ -323,7 +322,7 @@ void SelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
         for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
         {
             std::list<Character*>::iterator iter;
-            for (iter = sector[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sector[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
+            for (iter = sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
             {
                 Character* target = *iter;
 
@@ -343,9 +342,9 @@ void SelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
                         target->hp_ -= damage;
                     }
 
-                    globalCPacket->Clear();
+                    cPacketBuffer_->Clear();
 
-                    MakePacketDamage(target->sessionId_, globalCPacket, attackCharacter->sessionId_, target->sessionId_, target->hp_);
+                    MakePacketDamage(target->sessionId_, cPacketBuffer_, attackCharacter->sessionId_, target->sessionId_, target->hp_);
 
                     if (target->hp_ == 0)
                     {
@@ -363,7 +362,7 @@ void SelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
         for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
         {
             std::list<Character*>::iterator iter;
-            for (iter = sector[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sector[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
+            for (iter = sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
             {
                 Character* target = *iter;
 
@@ -383,9 +382,9 @@ void SelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
                         target->hp_ -= damage;
                     }
 
-                    globalCPacket->Clear();
+                    cPacketBuffer_->Clear();
 
-                    MakePacketDamage(target->sessionId_, globalCPacket, attackCharacter->sessionId_, target->sessionId_, target->hp_);
+                    MakePacketDamage(target->sessionId_, cPacketBuffer_, attackCharacter->sessionId_, target->sessionId_, target->hp_);
 
                     if (target->hp_ == 0)
                     {
@@ -987,8 +986,8 @@ bool SelectMMOTCPFighter::SectorUpdateCharacter(Character* target)
         target->characterSectorPos_.x_ = targetCurSectorAroundPosX;
         target->characterSectorPos_.y_ = targetCurSectorAroundPosY;
 
-        sector[target->oldSectorPos_.y_][target->oldSectorPos_.x_].remove(target);
-        sector[target->characterSectorPos_.y_][target->characterSectorPos_.x_].push_back(target);
+        sectorCharacterList_[target->oldSectorPos_.y_][target->oldSectorPos_.x_].remove(target);
+        sectorCharacterList_[target->characterSectorPos_.y_][target->characterSectorPos_.x_].push_back(target);
 
         return true;
     }
@@ -1003,33 +1002,33 @@ void SelectMMOTCPFighter::SectorUpdate(Character* target)
 
     GetUpdateSectorAround(target, &removeSector, &addSector);
 
-    globalCPacket->Clear();
+    cPacketBuffer_->Clear();
 
-    MakePacketDeleteCharacterRemoveSector(target->sessionId_, globalCPacket, &removeSector, target->sessionId_); //패킷 만들어서 removeSector 시켜줘야하는데..
+    MakePacketDeleteCharacterRemoveSector(target->sessionId_, cPacketBuffer_, &removeSector, target->sessionId_); //패킷 만들어서 removeSector 시켜줘야하는데..
 
     //removeSector에 있는 애들의 삭제를 나에게 보냄.
     for (unsigned int i = 0; i < removeSector.count_; ++i)
     {
         std::list<Character*>::iterator iter;
-        for (iter = sector[removeSector.around_[i].y_][removeSector.around_[i].x_].begin(); iter != sector[removeSector.around_[i].y_][removeSector.around_[i].x_].end(); ++iter)
+        for (iter = sectorCharacterList_[removeSector.around_[i].y_][removeSector.around_[i].x_].begin(); iter != sectorCharacterList_[removeSector.around_[i].y_][removeSector.around_[i].x_].end(); ++iter)
         {
-            globalCPacket->Clear();
-            MakePacketDeleteCharacterForMe(target->sessionId_, globalCPacket, (*iter)->sessionId_);
+            cPacketBuffer_->Clear();
+            MakePacketDeleteCharacterForMe(target->sessionId_, cPacketBuffer_, (*iter)->sessionId_);
         }
     }
 
     //add에 있는 애들에게 나의 생성을 보냄.
-    globalCPacket->Clear();
-    MakePacketCreateCharacterAddSector(target->sessionId_, globalCPacket, &addSector, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
+    cPacketBuffer_->Clear();
+    MakePacketCreateCharacterAddSector(target->sessionId_, cPacketBuffer_, &addSector, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
     //이동 정보도 보내줘야함.
-    globalCPacket->Clear();
-    MakePacketMoveStartAddSector(target->sessionId_, globalCPacket, &addSector, target->sessionId_, target->action_, target->x_, target->y_);
+    cPacketBuffer_->Clear();
+    MakePacketMoveStartAddSector(target->sessionId_, cPacketBuffer_, &addSector, target->sessionId_, target->action_, target->x_, target->y_);
 
     for (unsigned int i = 0; i < addSector.count_; ++i)
     {
         std::list<Character*>::iterator iterCreate;
-        for (iterCreate = sector[addSector.around_[i].y_][addSector.around_[i].x_].begin();
-            iterCreate != sector[addSector.around_[i].y_][addSector.around_[i].x_].end(); ++iterCreate)
+        for (iterCreate = sectorCharacterList_[addSector.around_[i].y_][addSector.around_[i].x_].begin();
+            iterCreate != sectorCharacterList_[addSector.around_[i].y_][addSector.around_[i].x_].end(); ++iterCreate)
         {
             Character* createCharacter = *iterCreate;
             if (createCharacter->sessionId_ == target->sessionId_)
@@ -1037,14 +1036,14 @@ void SelectMMOTCPFighter::SectorUpdate(Character* target)
                 continue;
             }
 
-            globalCPacket->Clear();
+            cPacketBuffer_->Clear();
 
-            MakePacketCreateOtherCharacterForMe(target->sessionId_, globalCPacket, createCharacter->sessionId_, createCharacter->direction_, createCharacter->x_, createCharacter->y_, createCharacter->hp_);
+            MakePacketCreateOtherCharacterForMe(target->sessionId_, cPacketBuffer_, createCharacter->sessionId_, createCharacter->direction_, createCharacter->x_, createCharacter->y_, createCharacter->hp_);
 
             if (createCharacter->isMove_ == true)
             {
-                globalCPacket->Clear();
-                MakePacketMoveStartForMe(target->sessionId_, globalCPacket, createCharacter->sessionId_, createCharacter->action_, createCharacter->x_, createCharacter->y_);
+                cPacketBuffer_->Clear();
+                MakePacketMoveStartForMe(target->sessionId_, cPacketBuffer_, createCharacter->sessionId_, createCharacter->action_, createCharacter->x_, createCharacter->y_);
             }
         }
     }
@@ -1181,13 +1180,13 @@ bool SelectMMOTCPFighter::PacketProc(SessionId sessionId, unsigned char packetTy
 
 bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-    Character* target = characterMap.at(sessionId);
+    Character* target = characterMap_.at(sessionId);
 
     if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
     {
-        globalCPacket->Clear();
+        cPacketBuffer_->Clear();
 
-        MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
+        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
     }
     else
     {
@@ -1218,20 +1217,20 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned c
         break;
     }
 
-    globalCPacket->Clear();
-    MakePacketMoveStart(target->sessionId_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
+    cPacketBuffer_->Clear();
+    MakePacketMoveStart(target->sessionId_, cPacketBuffer_, target->sessionId_, direction, target->x_, target->y_);
 
     return true;
 }
 
 bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-    Character* target = characterMap.at(sessionId);
+    Character* target = characterMap_.at(sessionId);
 
     if ((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange))
     {
-        globalCPacket->Clear();
-        MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
+        cPacketBuffer_->Clear();
+        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
     }
     else
     {
@@ -1262,22 +1261,22 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned ch
         break;
     }
 
-    globalCPacket->Clear();
+    cPacketBuffer_->Clear();
 
-    MakePacketMoveStop(target->sessionId_, globalCPacket, target->sessionId_, target->direction_, target->x_, target->y_);
+    MakePacketMoveStop(target->sessionId_, cPacketBuffer_, target->sessionId_, target->direction_, target->x_, target->y_);
 
     return true;
 }
 
 bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-    Character* target = characterMap.at(sessionId);
+    Character* target = characterMap_.at(sessionId);
 
     if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
     {
-        globalCPacket->Clear();
+        cPacketBuffer_->Clear();
 
-        MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_); \
+        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_); \
     }
     else
     {
@@ -1292,9 +1291,9 @@ bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned cha
 
     target->direction_ = direction;
 
-    globalCPacket->Clear();
+    cPacketBuffer_->Clear();
 
-    MakePacketAttack1(target->sessionId_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
+    MakePacketAttack1(target->sessionId_, cPacketBuffer_, target->sessionId_, direction, target->x_, target->y_);
     HitCheck(target, 1);
 
     return true;
@@ -1302,12 +1301,12 @@ bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned cha
 
 bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-    Character* target = characterMap.at(sessionId);
+    Character* target = characterMap_.at(sessionId);
 
     if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
     {
-        globalCPacket->Clear();
-        MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
+        cPacketBuffer_->Clear();
+        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
     }
     else
     {
@@ -1323,8 +1322,8 @@ bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned cha
 
     target->direction_ = direction;
 
-    globalCPacket->Clear();
-    MakePacketAttack2(target->sessionId_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
+    cPacketBuffer_->Clear();
+    MakePacketAttack2(target->sessionId_, cPacketBuffer_, target->sessionId_, direction, target->x_, target->y_);
     HitCheck(target, 2);
 
     return true;
@@ -1332,12 +1331,12 @@ bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned cha
 
 bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-    Character* target = characterMap.at(sessionId);
+    Character* target = characterMap_.at(sessionId);
 
     if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
     {
-        globalCPacket->Clear();
-        MakePacketSync(target->sessionId_, globalCPacket, target->sessionId_, target->x_, target->y_);
+        cPacketBuffer_->Clear();
+        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
     }
     else
     {
@@ -1353,19 +1352,19 @@ bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned cha
 
     target->direction_ = direction;
 
-    globalCPacket->Clear();
+    cPacketBuffer_->Clear();
 
-    MakePacketAttack3(target->sessionId_, globalCPacket, target->sessionId_, direction, target->x_, target->y_);
+    MakePacketAttack3(target->sessionId_, cPacketBuffer_, target->sessionId_, direction, target->x_, target->y_);
     HitCheck(target, 3);
     return true;
 }
 
 bool SelectMMOTCPFighter::NetPacketProcEcho(SessionId sessionId, unsigned int time)
 {
-    Character* target = characterMap.at(sessionId);
-    globalCPacket->Clear();
+    Character* target = characterMap_.at(sessionId);
+    cPacketBuffer_->Clear();
 
-    MakePacketEcho(target->sessionId_, globalCPacket, time);
+    MakePacketEcho(target->sessionId_, cPacketBuffer_, time);
 
     return true;
 }
@@ -1375,7 +1374,7 @@ void SelectMMOTCPFighter::SendPacketSectorOne(int sectorX, int sectorY, SessionI
     Character* target;
     std::list<Character*>::iterator iter;
 
-    for (iter = sector[sectorY][sectorX].begin(); iter != sector[sectorY][sectorX].end(); ++iter)
+    for (iter = sectorCharacterList_[sectorY][sectorX].begin(); iter != sectorCharacterList_[sectorY][sectorX].end(); ++iter)
     {
         target = *iter;
 
@@ -1405,7 +1404,7 @@ void SelectMMOTCPFighter::SendPacketAroundAddSector(SessionId sessionId, CPacket
 
 void SelectMMOTCPFighter::SendPacketAround(SessionId sessionId, CPacket* packet, bool sendMe)
 {
-    Character* target = characterMap.at(sessionId);
+    Character* target = characterMap_.at(sessionId);
     SectorAround around;
 
     GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &around);
