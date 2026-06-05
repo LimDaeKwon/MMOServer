@@ -26,11 +26,7 @@ public:
 
 	void GameRun(Character* target);
 
-	void CreateCharacter(Session* newSession);
-
 	void HitCheck(Character* attackCharacter, int attackNumber);
-
-	void ReleaseInContents(SessionId sessionId);
 
 	void GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector);
 
@@ -44,15 +40,6 @@ public:
 
 	void SectorUpdate(Character* target);
 
-	void FreeCharacter(Character* target);
-
-	void PrintUpdateSector(SectorAround* removeSector, SectorAround* addSector);
-
-	void PrintHitCheckSector(SectorAround* hitCheckSector);
-
-	
-	
-	
 	void SendPacketAround(SessionId except, CPacket* packet, bool sendMe = false);
 
 	void SendPacketSectorOne(int sectorX, int sectorY, SessionId except, CPacket* packet);
@@ -95,10 +82,6 @@ public:
 	void MakePacketMoveStartAddSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y);
 
 	void MakePacketSync(SessionId sessionId, CPacket* packet, SessionId id, unsigned short x, unsigned short y);
-
-
-	////
-	bool PacketProc(SessionId sessionId, unsigned char packetType, CPacket* packetBuffer);
 
 	bool NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y);
 

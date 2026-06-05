@@ -76,10 +76,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\Libs\DKServerCore;$(ProjectDir)..\..\Libs\DKServerCore\Memory;$(ProjectDir)..\..\Libs\DKServerCore\Packet;$(ProjectDir)..\..\Libs\DKServerCore\Utils;$(ProjectDir)..\..\Libs\DKServerCore\NetworkLibrary;$(ProjectDir)..\..\Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -90,12 +92,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\Libs\DKServerCore;$(ProjectDir)..\..\Libs\DKServerCore\Memory;$(ProjectDir)..\..\Libs\DKServerCore\Packet;$(ProjectDir)..\..\Libs\DKServerCore\Utils;$(ProjectDir)..\..\Libs\DKServerCore\NetworkLibrary;$(ProjectDir)..\..\Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -104,10 +108,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\Libs\DKServerCore;$(ProjectDir)..\..\Libs\DKServerCore\Memory;$(ProjectDir)..\..\Libs\DKServerCore\Packet;$(ProjectDir)..\..\Libs\DKServerCore\Utils;$(ProjectDir)..\..\Libs\DKServerCore\NetworkLibrary;$(ProjectDir)..\..\Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -122,32 +128,25 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <LanguageStandard>stdcpp14</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir)Libs\DKServerCore;$(SolutionDir)Libs\DKServerCore\Memory;$(SolutionDir)Libs\DKServerCore\Packet;$(SolutionDir)Libs\DKServerCore\Utils;$(SolutionDir)Libs\DKServerCore\NetworkLibrary;$(SolutionDir)Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\Libs\DKServerCore;$(ProjectDir)..\..\Libs\DKServerCore\Memory;$(ProjectDir)..\..\Libs\DKServerCore\Packet;$(ProjectDir)..\..\Libs\DKServerCore\Utils;$(ProjectDir)..\..\Libs\DKServerCore\NetworkLibrary;$(ProjectDir)..\..\Libs\DKServerCore\Monitoring;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Character.h" />
-    <ClCompile Include="Contents.cpp" />
     <ClCompile Include="MMOTCPFighterServer.cpp" />
-    <ClCompile Include="Network.cpp" />
-    <ClCompile Include="NetworkProxy.cpp" />
-    <ClCompile Include="NetworkStub.cpp" />
     <ClCompile Include="Sector.h" />
     <ClCompile Include="SelectMMOTCPFighter.cpp" />
     <ClCompile Include="SelectServer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Contents.h" />
     <ClInclude Include="GameDefine.h" />
-    <ClInclude Include="Network.h" />
-    <ClInclude Include="NetworkProxy.h" />
-    <ClInclude Include="NetworkStub.h" />
     <ClInclude Include="PacketDefine.h" />
     <ClInclude Include="SelectMMOTCPFighter.h" />
     <ClInclude Include="SelectServer.h" />

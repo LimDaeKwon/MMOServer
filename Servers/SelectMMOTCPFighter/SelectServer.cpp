@@ -5,7 +5,16 @@
 #include "GameDefine.h"
 #include "CPacket.h"
 
-SelectServer::SelectServer() :sessionFreeList_(10000), sessionId_(1)
+SelectServer::SelectServer() :
+    gameLoopThread_(nullptr),
+    listenSocket_(INVALID_SOCKET),
+    sessionFreeList_(DefaultMaxSessionCount),
+    sessionId_(1),
+    cPacketBuffer_(nullptr),
+    frameMs_(0),
+    oldTick_(0),
+    maxSessionCount_(DefaultMaxSessionCount),
+    packetCode_(PacketCode)
 {
 	cPacketBuffer_ = CPacket::Alloc();
 
@@ -16,7 +25,7 @@ SelectServer::~SelectServer()
 	CPacket::Free(cPacketBuffer_);
 }
 
-bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned int nagle, unsigned int sessions, unsigned char packetCode, unsigned int frameMs)
+bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned int nagle, unsigned int maxSessionCount, unsigned char packetCode, unsigned int frameMs)
 {
     WSADATA wsa;
 
@@ -71,7 +80,7 @@ bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned
         DebugBreak();
     }
 
-    DWORD noDelay = 1;
+    DWORD noDelay = nagle == 0 ? 1 : 0;
 
     int noDelayOption = setsockopt(listenSocket_, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&noDelay), sizeof(noDelay));
 
@@ -107,6 +116,8 @@ bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned
         DebugBreak();
     }
 
+    maxSessionCount_ = maxSessionCount;
+    packetCode_ = packetCode;
 	frameMs_ = frameMs;
     gameLoopThread_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, GameLoopThread, this, 0, nullptr));
 
@@ -114,7 +125,7 @@ bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned
 
 
 
-	return false;
+	return true;
 }
 
 void SelectServer::Network()
@@ -309,6 +320,12 @@ void SelectServer::AcceptClient()
         DebugBreak();
     }
 
+    if (sessions_.size() >= maxSessionCount_)
+    {
+        closesocket(clientSocket);
+        return;
+    }
+
     Session* newSession = sessionFreeList_.Alloc();
 
     newSession->sessionId_ = sessionId_++;
@@ -318,7 +335,6 @@ void SelectServer::AcceptClient()
 
     sessions_.insert(std::unordered_map<unsigned int, Session*>::value_type(newSession->sessionId_, newSession));
 
-    //CreateCharacter(newSession);
 	OnAccept(newSession->sessionId_);
 }
 
@@ -369,11 +385,9 @@ void SelectServer::DeleteDisconnect()
             closesocket(session->socket_);
             session->receiveQueue_.ClearBuffer();
             session->sendQueue_.ClearBuffer();
+			OnRelease(sessionId);
             sessionFreeList_.Free(session);
             sessions_.erase(sessionId);
-			OnRelease(sessionId);
-
-            //ReleaseInContents(sessionId);
         }
 
         deleteList_.clear();
@@ -450,7 +464,7 @@ void SelectServer::Receive(Session* target)
                 break;
             }
 
-            if (header.byCode_ != PacketCode)
+            if (header.byCode_ != packetCode_)
             {
                 wprintf(L"Header.byCode_ != PacketCode\n");
 
@@ -463,7 +477,7 @@ void SelectServer::Receive(Session* target)
                 break;
             }
 
-            unsigned int receiveQueueDequeueHeaderSize = target->receiveQueue_.MoveFront(sizeof(header));
+            target->receiveQueue_.MoveFront(sizeof(header));
             
             cPacketBuffer_->Clear();
 
@@ -483,8 +497,6 @@ void SelectServer::Receive(Session* target)
             target->lastRecvTime_ = timeGetTime();
 
 			OnMessage(target->sessionId_, header.byType_, cPacketBuffer_);
-           
-            //PacketProc(target->sessionId_, header.byType_, cPacketBuffer);
         }
     }
 

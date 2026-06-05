@@ -56,3 +56,5 @@ constexpr unsigned char PacketCode = 0x89;
 constexpr int NetworkPacketHeaderSize = 3;
 constexpr int LibraryHeaderSize = 5;
 constexpr unsigned short ServerPort = 25000;
+constexpr unsigned int DefaultMaxSessionCount = 10000;
+constexpr unsigned int InvalidSessionId = static_cast<unsigned int>(-1);

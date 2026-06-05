@@ -1170,14 +1170,6 @@ void SelectMMOTCPFighter::MakePacketSync(SessionId sessionId, CPacket* packet, S
 
 
 
-bool SelectMMOTCPFighter::PacketProc(SessionId sessionId, unsigned char packetType, CPacket* packetBuffer)
-{
-
-}
-
-
-
-
 bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
     Character* target = characterMap_.at(sessionId);
@@ -1276,7 +1268,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned cha
     {
         cPacketBuffer_->Clear();
 
-        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_); \
+        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
     }
     else
     {
@@ -1390,7 +1382,7 @@ void SelectMMOTCPFighter::SendPacketAroundRemoveSector(SessionId sessionId, CPac
 {
     for (unsigned int index = 0; index < around->count_; ++index)
     {
-        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, NULL, packet);
+        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, InvalidSessionId, packet);
     }
 }
 
@@ -1398,7 +1390,7 @@ void SelectMMOTCPFighter::SendPacketAroundAddSector(SessionId sessionId, CPacket
 {
     for (unsigned int index = 0; index < around->count_; ++index)
     {
-        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, NULL, packet);
+        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, InvalidSessionId, packet);
     }
 }
 
@@ -1413,7 +1405,7 @@ void SelectMMOTCPFighter::SendPacketAround(SessionId sessionId, CPacket* packet,
     {
         for (unsigned int index = 0; index < around.count_; ++index)
         {
-            SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, NULL, packet);
+            SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, InvalidSessionId, packet);
         }
     }
     else

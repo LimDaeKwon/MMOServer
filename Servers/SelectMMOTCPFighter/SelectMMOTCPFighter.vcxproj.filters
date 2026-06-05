@@ -10,18 +10,6 @@
     <ClCompile Include="MMOTCPFighterServer.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
-    <ClCompile Include="Network.cpp">
-      <Filter>Contents</Filter>
-    </ClCompile>
-    <ClCompile Include="NetworkProxy.cpp">
-      <Filter>Contents</Filter>
-    </ClCompile>
-    <ClCompile Include="NetworkStub.cpp">
-      <Filter>Contents</Filter>
-    </ClCompile>
-    <ClCompile Include="Contents.cpp">
-      <Filter>Contents</Filter>
-    </ClCompile>
     <ClCompile Include="Character.h">
       <Filter>Contents</Filter>
     </ClCompile>
@@ -36,19 +24,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="NetworkProxy.h">
-      <Filter>Contents</Filter>
-    </ClInclude>
-    <ClInclude Include="NetworkStub.h">
-      <Filter>Contents</Filter>
-    </ClInclude>
-    <ClInclude Include="Contents.h">
-      <Filter>Contents</Filter>
-    </ClInclude>
     <ClInclude Include="PacketDefine.h">
-      <Filter>Contents</Filter>
-    </ClInclude>
-    <ClInclude Include="Network.h">
       <Filter>Contents</Filter>
     </ClInclude>
     <ClInclude Include="Session.h">
