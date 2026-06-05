@@ -28,6 +28,9 @@
     <ClCompile Include="Sector.h">
       <Filter>Contents</Filter>
     </ClCompile>
+    <ClCompile Include="SelectServer.cpp">
+      <Filter>Contents</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NetworkProxy.h">
@@ -49,5 +52,6 @@
       <Filter>Contents</Filter>
     </ClInclude>
     <ClInclude Include="GameDefine.h" />
+    <ClInclude Include="SelectServer.h" />
   </ItemGroup>
 </Project>

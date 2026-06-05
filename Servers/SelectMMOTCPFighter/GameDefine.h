@@ -1,5 +1,20 @@
 #pragma once
 
+
+
+
+#pragma pack(push, 1)
+
+struct PacketHeader
+{
+    unsigned char byCode_;
+    unsigned char bySize_;
+    unsigned char byType_;
+};
+
+#pragma pack(pop)
+
+
 constexpr int RangeMoveTop = 0;
 constexpr int RangeMoveLeft = 0;
 constexpr int RangeMoveRight = 6400;

@@ -1,26 +1,6 @@
 #pragma once
 
 
-
-// ---------------------------------------------------------------
-// 패킷 헤더
-//
-// BYTE byCode;  // 패킷 코드
-// BYTE bySize;  // 패킷 사이즈
-// BYTE byType;  // 패킷 타입
-// ---------------------------------------------------------------
-
-#pragma pack(push, 1)
-
-struct PacketHeader
-{
-    unsigned char byCode_;
-    unsigned char bySize_;
-    unsigned char byType_;
-};
-
-#pragma pack(pop)
-
 // ---------------------------------------------------------------
 // Server -> Client
 // 클라이언트 자신의 캐릭터 할당
