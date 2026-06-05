@@ -561,7 +561,6 @@ unsigned int __stdcall SelectServer::GameLoopThread(void* thisPointer)
     {
         thisForGameLoop->Network();
         
-
         thisForGameLoop->TryUpdate();
         //ServerControl();
 

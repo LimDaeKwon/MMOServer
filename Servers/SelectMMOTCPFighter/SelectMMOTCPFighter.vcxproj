@@ -139,6 +139,7 @@
     <ClCompile Include="NetworkProxy.cpp" />
     <ClCompile Include="NetworkStub.cpp" />
     <ClCompile Include="Sector.h" />
+    <ClCompile Include="SelectMMOTCPFighter.cpp" />
     <ClCompile Include="SelectServer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -148,6 +149,7 @@
     <ClInclude Include="NetworkProxy.h" />
     <ClInclude Include="NetworkStub.h" />
     <ClInclude Include="PacketDefine.h" />
+    <ClInclude Include="SelectMMOTCPFighter.h" />
     <ClInclude Include="SelectServer.h" />
     <ClInclude Include="Session.h" />
   </ItemGroup>

@@ -31,6 +31,9 @@
     <ClCompile Include="SelectServer.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
+    <ClCompile Include="SelectMMOTCPFighter.cpp">
+      <Filter>Contents</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NetworkProxy.h">
@@ -53,5 +56,6 @@
     </ClInclude>
     <ClInclude Include="GameDefine.h" />
     <ClInclude Include="SelectServer.h" />
+    <ClInclude Include="SelectMMOTCPFighter.h" />
   </ItemGroup>
 </Project>
