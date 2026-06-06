@@ -86,6 +86,7 @@ unsigned int __stdcall LanNetworkLibraryServer::WorkerThread(void* thisPointer)
 			if (overlapPointer == nullptr && cbTransferred == 0 && target != nullptr)
 			{
 				thisForWorker->SendPost(target);
+				continue;
 			}
 			else if (overlapPointer->type_ == DKServerCore::RecvIoType)
 			{
@@ -471,7 +472,7 @@ void LanNetworkLibraryServer::SendPacket(__int64 sessionId, CPacket* sendPacket)
 		return;
 	}
 
-	LanAddHeader(sendPacket);
+	NetAddHeader(sendPacket);
 
 	sendPacket->IncreaseRefCount();
 
@@ -494,10 +495,23 @@ void LanNetworkLibraryServer::SendPacket(__int64 sessionId, CPacket* sendPacket)
 
 void LanNetworkLibraryServer::SendPost(Session* target)
 {
-	if (target->disconnectFlag_ == 1)
+	if (InterlockedOr8(reinterpret_cast<volatile char*>(&target->disconnectFlag_), 0) == 1)
 	{
 		return;
 	}
+
+	long localCount = InterlockedIncrement(&target->ioCount_);
+
+	if ((localCount & DKServerCore::ReleaseFlag) == DKServerCore::ReleaseFlag)
+	{
+		if (InterlockedDecrement(&target->ioCount_) == 0)
+		{
+			Release(target);
+		}
+
+		return;
+	}
+
 
 	if (InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 1) == 0)
 	{
@@ -633,17 +647,15 @@ void LanNetworkLibraryServer::NetAddHeader(CPacket* packetBuffer)
 	char* temp = packetBuffer->GetBufferPtr();
 	temp += DKServerCore::PacketLibHeaderSize - headerSize_;
 
-	unsigned short netHeader;
 
 	NetPacketHeader netLibHeader;
-	netLibHeader.size_ = static_cast<BYTE>(packetBuffer->GetDataSize() - 1);
+	netLibHeader.size_ = static_cast<BYTE>(packetBuffer->GetDataSize()-1);
 	netLibHeader.code_ = DKServerCore::LibraryPacketCode;
 
-	netHeader = netLibHeader.size_;
-	netHeader <<= 8;
-	netHeader |= netLibHeader.code_;
 
-	*reinterpret_cast<unsigned short*>(temp) = netHeader;
+	*(temp) = netLibHeader.code_;
+	temp++;
+	*(temp) = netLibHeader.size_;
 }
 
 void LanNetworkLibraryServer::Release(Session* target)
