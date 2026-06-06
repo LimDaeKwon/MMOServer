@@ -5,78 +5,78 @@
 #include <conio.h>
 
 
-MMOTCPServer_Single::MMOTCPServer_Single() :MessageDataFreeList(1000), CharacterFreeList(1000)
+MMOTCPServerSingle::MMOTCPServerSingle() : messageDataFreeList_(1000), characterFreeList_(1000)
 {
 
-	wprintf(L"MMOTCPServer_Single\n");
+	wprintf(L"MMOTCPServerSingle\n");
 
-	OldTick = timeGetTime();
-	OldTickforCheck = OldTick;
+	oldTick_ = timeGetTime();
+	oldTickForCheck_ = oldTick_;
 
-	LogicThreadHandle = (HANDLE)_beginthreadex(nullptr, 0, LogicThread, this, 0, nullptr);
+	logicThreadHandle_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, LogicThread, this, 0, nullptr));
 
 }
 
-MMOTCPServer_Single::~MMOTCPServer_Single()
+MMOTCPServerSingle::~MMOTCPServerSingle()
 {
 
 }
 
-bool MMOTCPServer_Single::OnConnectionRequest(const wchar_t* server_IP, unsigned short server_port)
+bool MMOTCPServerSingle::OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort)
 {
 	return false;
 }
 
-void MMOTCPServer_Single::OnAccept(const wchar_t* server_IP, unsigned short server_port, __int64 session_ID)
+void MMOTCPServerSingle::OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId)
 {
 
 
-	MessageData* msg_data = MessageDataFreeList.Alloc();
-	msg_data->session_ID = session_ID;
-	msg_data->contents_packet = nullptr;
-	msg_data->type = ACCEPT;
+	MessageData* messageData = messageDataFreeList_.Alloc();
+	messageData->sessionId_ = sessionId;
+	messageData->contentsPacket_ = nullptr;
+	messageData->type_ = MessageTypeAccept;
 
-	MessageQueue.Enqueue(msg_data);
+	messageQueue_.Enqueue(messageData);
 
 
 }
 
-void MMOTCPServer_Single::OnRelease(__int64 session_ID)
+void MMOTCPServerSingle::OnRelease(__int64 sessionId)
 {
 
-	MessageData* msg_data = MessageDataFreeList.Alloc();
-	msg_data->session_ID = session_ID;
-	msg_data->contents_packet = nullptr;
-	msg_data->type = RELEASE;
+	MessageData* messageData = messageDataFreeList_.Alloc();
+	messageData->sessionId_ = sessionId;
+	messageData->contentsPacket_ = nullptr;
+	messageData->type_ = MessageTypeRelease;
 
-	MessageQueue.Enqueue(msg_data);
+	messageQueue_.Enqueue(messageData);
 
 
 }
 
-void MMOTCPServer_Single::OnMessage(__int64 session_ID, CPacket* contents_send_packet)
+void MMOTCPServerSingle::OnMessage(__int64 sessionId, CPacket* contentsSendPacket)
 {
 
 
-	MessageData* msg_data = MessageDataFreeList.Alloc();
-	msg_data->session_ID = session_ID;
-	contents_send_packet->IncreaseRefCount();
-	msg_data->contents_packet = contents_send_packet;
-	msg_data->type = PACKET;
+	MessageData* messageData = messageDataFreeList_.Alloc();
+	messageData->sessionId_ = sessionId;
+	contentsSendPacket->IncreaseRefCount();
+	messageData->contentsPacket_ = contentsSendPacket;
+	messageData->type_ = MessageTypePacket;
 
-	MessageQueue.Enqueue(msg_data);
+	messageQueue_.Enqueue(messageData);
 
 }
 
-void MMOTCPServer_Single::OnError(int errorcode, const wchar_t* error_log)
+void MMOTCPServerSingle::OnError(int errorCode, const wchar_t* errorLog)
 {
 
 }
 
 
-unsigned int WINAPI MMOTCPServer_Single::LogicThread(LPVOID this_ptr)
+unsigned int WINAPI MMOTCPServerSingle::LogicThread(LPVOID thisPtr)
 {
-	MMOTCPServer_Single* server = static_cast<MMOTCPServer_Single*>(this_ptr);
+	MMOTCPServerSingle* server = static_cast<MMOTCPServerSingle*>(thisPtr);
 
 	while (true)
 	{
@@ -90,12 +90,12 @@ unsigned int WINAPI MMOTCPServer_Single::LogicThread(LPVOID this_ptr)
 	return 0;
 }
 
-void MMOTCPServer_Single::MessageLoop()
+void MMOTCPServerSingle::MessageLoop()
 {
 	while (1)
 	{
 		MessageData* msg = nullptr;
-		if (!MessageQueue.Dequeue(&msg))
+		if (!messageQueue_.Dequeue(&msg))
 		{
 			break;
 		}
@@ -105,32 +105,32 @@ void MMOTCPServer_Single::MessageLoop()
 			DebugBreak();
 		}
 
-		if (msg->contents_packet != nullptr)
+		if (msg->contentsPacket_ != nullptr)
 		{
-			CPacket::Free(msg->contents_packet);
+			CPacket::Free(msg->contentsPacket_);
 		}
-		MessageDataFreeList.Free(msg);
+		messageDataFreeList_.Free(msg);
 	}
 }
 
 
-bool MMOTCPServer_Single::MessageProc(MessageData* msg)
+bool MMOTCPServerSingle::MessageProc(MessageData* msg)
 {
-	switch (msg->type)
+	switch (msg->type_)
 	{
-	case ACCEPT:
+	case MessageTypeAccept:
 	{
-		CreateCharater(msg->session_ID);
+		CreateCharacter(msg->sessionId_);
 		break;
 	}
-	case PACKET:
+	case MessageTypePacket:
 	{
 		PacketProc(msg);
 		break;
 	}
-	case RELEASE:
+	case MessageTypeRelease:
 	{
-		ReleaseCharacter(msg->session_ID);
+		ReleaseCharacter(msg->sessionId_);
 		break;
 
 	}
@@ -139,25 +139,25 @@ bool MMOTCPServer_Single::MessageProc(MessageData* msg)
 	return true;
 }
 
-void MMOTCPServer_Single::ReleaseCharacter(__int64 NewSession)
+void MMOTCPServerSingle::ReleaseCharacter(__int64 newSession)
 {
-	Character* Target = CharacterMap.at(NewSession);
+	Character* target = characterMap_.at(newSession);
 
-	CharacterMap.erase(NewSession);
-	Sector[Target->characterSectorPos_.y_][Target->characterSectorPos_.x_].remove(Target);
+	characterMap_.erase(newSession);
+	sector_[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
 
 
-	if (Target->SessionIDForContents == 0)
+	if (target->sessionIdForContents_ == 0)
 	{
 		DebugBreak();
 	}
-	CPacket* DeleteCharacterPacket = CPacket::Alloc();
-	MakePacketDeleteCharacter(Target, DeleteCharacterPacket, Target->SessionIDForContents);
-	CPacket::Free(DeleteCharacterPacket);
+	CPacket* deleteCharacterPacket = CPacket::Alloc();
+	MakePacketDeleteCharacter(target, deleteCharacterPacket, target->sessionIdForContents_);
+	CPacket::Free(deleteCharacterPacket);
 
-	CharacterFreeList.Free(Target);
+	characterFreeList_.Free(target);
 
-	//wprintf(L"## Disconnect ID : %d \n", TargetSession->SessionID);
+	//wprintf(L"## Disconnect id : %d \n", targetSession->SessionID);
 
 
 
@@ -166,72 +166,72 @@ void MMOTCPServer_Single::ReleaseCharacter(__int64 NewSession)
 
 
 
-bool MMOTCPServer_Single::PacketProc(MessageData* msg)
+bool MMOTCPServerSingle::PacketProc(MessageData* msg)
 {
-	BYTE ByType;
-	*msg->contents_packet >> ByType;
+	BYTE packetType;
+	*msg->contentsPacket_ >> packetType;
 
-	Character* Target;
-	Target = CharacterMap.at(msg->session_ID);
+	Character* target;
+	target = characterMap_.at(msg->sessionId_);
 
 
-	switch (ByType)
+	switch (packetType)
 	{
 	case PacketCsMoveStart:
 	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*msg->contents_packet >> Direction >> X >> Y;
-		return NetPacketProc_MoveStart(Target, Direction, X, Y);
+		unsigned char direction;
+		unsigned short x;
+		unsigned short y;
+		*msg->contentsPacket_ >> direction >> x >> y;
+		return NetPacketProcMoveStart(target, direction, x, y);
 		break;
 	}
 
 	case PacketCsMoveStop:
 	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*msg->contents_packet >> Direction >> X >> Y;
-		return NetPacketProc_MoveStop(Target, Direction, X, Y);
+		unsigned char direction;
+		unsigned short x;
+		unsigned short y;
+		*msg->contentsPacket_ >> direction >> x >> y;
+		return NetPacketProcMoveStop(target, direction, x, y);
 		break;
 	}
 
 	case PacketCsAttack1:
 	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*msg->contents_packet >> Direction >> X >> Y;
-		return NetPacketProc_Attack1(Target, Direction, X, Y);
+		unsigned char direction;
+		unsigned short x;
+		unsigned short y;
+		*msg->contentsPacket_ >> direction >> x >> y;
+		return NetPacketProcAttack1(target, direction, x, y);
 		break;
 	}
 
 	case PacketCsAttack2:
 	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*msg->contents_packet >> Direction >> X >> Y;
-		return NetPacketProc_Attack2(Target, Direction, X, Y);
+		unsigned char direction;
+		unsigned short x;
+		unsigned short y;
+		*msg->contentsPacket_ >> direction >> x >> y;
+		return NetPacketProcAttack2(target, direction, x, y);
 		break;
 	}
 
-	case dfPACKET_CS_ATTACK3:
+	case PacketCsAttack3:
 	{
-		unsigned char Direction;
-		unsigned short X;
-		unsigned short Y;
-		*msg->contents_packet >> Direction >> X >> Y;
-		return NetPacketProc_Attack3(Target, Direction, X, Y);
+		unsigned char direction;
+		unsigned short x;
+		unsigned short y;
+		*msg->contentsPacket_ >> direction >> x >> y;
+		return NetPacketProcAttack3(target, direction, x, y);
 		break;
 	}
 
 	case PacketCsEcho:
 	{
-		unsigned int Time;
-		*msg->contents_packet >> Time;
-		return NetPacketProc_Echo(Target, Time);
+		unsigned int time;
+		*msg->contentsPacket_ >> time;
+		return NetPacketProcEcho(target, time);
 		break;
 	}
 	default:
@@ -246,68 +246,66 @@ bool MMOTCPServer_Single::PacketProc(MessageData* msg)
 }
 
 
-void MMOTCPServer_Single::CreateCharater(__int64 new_session)
+void MMOTCPServerSingle::CreateCharacter(__int64 newSession)
 {
-	Character* new_player = CharacterFreeList.Alloc();
-	new_player->sessionId_ = new_session;
-	new_player->SessionIDForContents = (unsigned int)new_session;
-	new_player->direction_ = PacketMoveDirectionRR;
-	new_player->action_ = PacketMoveDirectionRR;
-	new_player->x_ = rand() % 6399;
-	new_player->y_ = rand() % 6399;
+	Character* newPlayer = characterFreeList_.Alloc();
+	newPlayer->sessionId_ = newSession;
+	newPlayer->sessionIdForContents_ = static_cast<unsigned int>(newSession);
+	newPlayer->direction_ = PacketMoveDirectionRR;
+	newPlayer->action_ = PacketMoveDirectionRR;
+	newPlayer->x_ = rand() % 6399;
+	newPlayer->y_ = rand() % 6399;
 
-	//new_player->X = 100;
-	//new_player->Y = 100;
+	//newPlayer->x = 100;
+	//newPlayer->y = 100;
 
-	new_player->hp_ = 100;
-	new_player->characterSectorPos_.x_ = new_player->x_ / SectorXSize;
-	new_player->characterSectorPos_.y_ = new_player->y_ / SectorYSize;
-	new_player->oldSectorPos_.x_ = SectorMaxX;
-	new_player->oldSectorPos_.y_ = SectorMaxY;
-	new_player->isMove_ = false;
-	new_player->IsDelete = false;
-
-
-	//필요해보이진 않으나 일단 컨텐츠에서는 sessionID를 DWORD로 사용하기로 되어있으니 이렇게 구분. 
-
-	Sector[new_player->characterSectorPos_.y_][new_player->characterSectorPos_.x_].push_back(new_player);
-	CharacterMap.insert(std::unordered_map<__int64, Character*>::value_type(new_player->sessionId_, new_player));
+	newPlayer->hp_ = 100;
+	newPlayer->characterSectorPos_.x_ = newPlayer->x_ / SectorXSize;
+	newPlayer->characterSectorPos_.y_ = newPlayer->y_ / SectorYSize;
+	newPlayer->oldSectorPos_.x_ = SectorMaxX;
+	newPlayer->oldSectorPos_.y_ = SectorMaxY;
+	newPlayer->isMove_ = false;
+	newPlayer->isDelete_ = false;
 
 
-	CPacket* packet_create_my_character = CPacket::Alloc();
-	MakePacketCreateMyCharacter(new_player, packet_create_my_character, new_player->SessionIDForContents, new_player->direction_, new_player->x_, new_player->y_, new_player->hp_);
-	CPacket::Free(packet_create_my_character);
+	sector_[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
+	characterMap_.insert(std::unordered_map<__int64, Character*>::value_type(newPlayer->sessionId_, newPlayer));
 
-	CPacket* packet_create_other_character = CPacket::Alloc();
-	MakePacketCreateOtherCharacter(new_player, packet_create_other_character, new_player->SessionIDForContents, new_player->direction_, new_player->x_, new_player->y_, new_player->hp_);
-	CPacket::Free(packet_create_other_character);
+
+	CPacket* packetCreateMyCharacter = CPacket::Alloc();
+	MakePacketCreateMyCharacter(newPlayer, packetCreateMyCharacter, newPlayer->sessionIdForContents_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+	CPacket::Free(packetCreateMyCharacter);
+
+	CPacket* packetCreateOtherCharacter = CPacket::Alloc();
+	MakePacketCreateOtherCharacter(newPlayer, packetCreateOtherCharacter, newPlayer->sessionIdForContents_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+	CPacket::Free(packetCreateOtherCharacter);
 
 
 	//나를 남에게.
-	SectorAround CreateForMe;
-	GetSectorAround(new_player->characterSectorPos_.x_, new_player->characterSectorPos_.y_, &CreateForMe);
+	SectorAround createForMe;
+	GetSectorAround(newPlayer->characterSectorPos_.x_, newPlayer->characterSectorPos_.y_, &createForMe);
 
-	for (unsigned int i = 0; i < CreateForMe.count_; i++)
+	for (unsigned int i = 0; i < createForMe.count_; i++)
 	{
-		std::list<Character*>::iterator Iter;
-		for (Iter = Sector[CreateForMe.around_[i].y_][CreateForMe.around_[i].x_].begin(); Iter != Sector[CreateForMe.around_[i].y_][CreateForMe.around_[i].x_].end(); ++Iter)
+		std::list<Character*>::iterator iter;
+		for (iter = sector_[createForMe.around_[i].y_][createForMe.around_[i].x_].begin(); iter != sector_[createForMe.around_[i].y_][createForMe.around_[i].x_].end(); ++iter)
 		{
-			Character* Target = *Iter;
-			if ((Target->SessionIDForContents == new_player->SessionIDForContents) || (Target->IsDelete == 1))
+			Character* target = *iter;
+			if ((target->sessionIdForContents_ == newPlayer->sessionIdForContents_) || (target->isDelete_ == 1))
 			{
 				continue;
 			}
 
-			CPacket* OtherCharacter = CPacket::Alloc();
-			MakePacketCreateOtherCharacterForMe(new_player, OtherCharacter, Target->SessionIDForContents, Target->direction_, Target->x_, Target->y_, Target->hp_);
-			CPacket::Free(OtherCharacter);
+			CPacket* otherCharacter = CPacket::Alloc();
+			MakePacketCreateOtherCharacterForMe(newPlayer, otherCharacter, target->sessionIdForContents_, target->direction_, target->x_, target->y_, target->hp_);
+			CPacket::Free(otherCharacter);
 
 
-			if (Target->isMove_ == true)
+			if (target->isMove_ == true)
 			{
-				CPacket* MoveStartForMePacket = CPacket::Alloc();
-				MakePacketMoveStartForMe(new_player, MoveStartForMePacket, Target->SessionIDForContents, Target->action_, Target->x_, Target->y_);
-				CPacket::Free(MoveStartForMePacket);
+				CPacket* moveStartForMePacket = CPacket::Alloc();
+				MakePacketMoveStartForMe(newPlayer, moveStartForMePacket, target->sessionIdForContents_, target->action_, target->x_, target->y_);
+				CPacket::Free(moveStartForMePacket);
 			}
 
 		}
@@ -316,22 +314,22 @@ void MMOTCPServer_Single::CreateCharater(__int64 new_session)
 
 
 
-int MMOTCPServer_Single::ServerControl()
+int MMOTCPServerSingle::ServerControl()
 {
-	static bool ControlMode = false;
+	static bool controlMode = false;
 
 
 	if (_kbhit())
 	{
-		WCHAR ControlKey = _getwch();
+		WCHAR controlKey = _getwch();
 
-		if (L'u' == ControlKey || L'U' == ControlKey)
+		if (L'u' == controlKey || L'U' == controlKey)
 		{
-			ControlMode = true;
+			controlMode = true;
 
 		}
 
-		if (ControlMode && L'q' == ControlKey || L'q' == ControlKey)
+		if (controlMode && L'q' == controlKey || L'q' == controlKey)
 		{
 			Stop();
 			return -1;
@@ -348,184 +346,184 @@ int MMOTCPServer_Single::ServerControl()
 
 
 
-void MMOTCPServer_Single::MakePacketMoveStart(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MMOTCPServerSingle::MakePacketMoveStart(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)11 << ID << Direction << X << Y;
-	SendPacketAround(Target, Packet);
+	*packet << PacketScMoveStart << id << direction << x << y;
+	SendPacketAround(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketMoveStartForMe(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MMOTCPServerSingle::MakePacketMoveStartForMe(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)11 << ID << Direction << X << Y;
-	SendPacketUnicast(Target, Packet);
+	*packet << PacketScMoveStart << id << direction << x << y;
+	SendPacketUnicast(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketMoveStop(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MMOTCPServerSingle::MakePacketMoveStop(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)13 << ID << Direction << X << Y;
-	SendPacketAround(Target, Packet);
+	*packet << PacketScMoveStop << id << direction << x << y;
+	SendPacketAround(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketCreateMyCharacter(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MMOTCPServerSingle::MakePacketCreateMyCharacter(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
 
-	*Packet << (unsigned char)0 << ID << Direction << X << Y << HP;
+	*packet << PacketScCreateMyCharacter << id << direction << x << y << hp;
 
 
-	SendPacketUnicast(Target, Packet);
+	SendPacketUnicast(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketCreateOtherCharacterForMe(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MMOTCPServerSingle::MakePacketCreateOtherCharacterForMe(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
-	*Packet << (unsigned char)1 << ID << Direction << X << Y << HP;
-	SendPacketUnicast(Target, Packet);
+	*packet << PacketScCreateOtherCharacter << id << direction << x << y << hp;
+	SendPacketUnicast(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketCreateOtherCharacter(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MMOTCPServerSingle::MakePacketCreateOtherCharacter(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
-	*Packet << (unsigned char)1 << ID << Direction << X << Y << HP;
-	SendPacketAround(Target, Packet);
+	*packet << PacketScCreateOtherCharacter << id << direction << x << y << hp;
+	SendPacketAround(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketDeleteCharacter(Character* Target, CPacket* Packet, unsigned int ID)
+void MMOTCPServerSingle::MakePacketDeleteCharacter(Character* target, CPacket* packet, unsigned int id)
 {
-	*Packet << (unsigned char)2 << ID;
-	SendPacketAround(Target, Packet);
+	*packet << PacketScDeleteCharacter << id;
+	SendPacketAround(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketDamage(Character* Target, CPacket* Packet, unsigned int AttackID, unsigned int DamageID, unsigned char DamageHP)
+void MMOTCPServerSingle::MakePacketDamage(Character* target, CPacket* packet, unsigned int attackId, unsigned int damageId, unsigned char damageHp)
 {
-	*Packet << (unsigned char)30 << AttackID << DamageID << DamageHP;
-	SendPacketAround(Target, Packet, true);
+	*packet << PacketScDamage << attackId << damageId << damageHp;
+	SendPacketAround(target, packet, true);
 }
 
 
-void MMOTCPServer_Single::MakePacketAttack1(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MMOTCPServerSingle::MakePacketAttack1(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)21 << ID << Direction << X << Y;
-	SendPacketAround(Target, Packet);
+	*packet << PacketScAttack1 << id << direction << x << y;
+	SendPacketAround(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketAttack2(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MMOTCPServerSingle::MakePacketAttack2(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)23 << ID << Direction << X << Y;
-	SendPacketAround(Target, Packet);
+	*packet << PacketScAttack2 << id << direction << x << y;
+	SendPacketAround(target, packet);
 }
 
 
-void MMOTCPServer_Single::MakePacketAttack3(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MMOTCPServerSingle::MakePacketAttack3(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)25 << ID << Direction << X << Y;
-	SendPacketAround(Target, Packet);
+	*packet << PacketScAttack3 << id << direction << x << y;
+	SendPacketAround(target, packet);
 }
 
-void MMOTCPServer_Single::MakePacketEcho(Character* Target, CPacket* Packet, unsigned int Time)
+void MMOTCPServerSingle::MakePacketEcho(Character* target, CPacket* packet, unsigned int time)
 {
-	*Packet << (unsigned char)253 << Time;
-	SendPacketUnicast(Target, Packet);
+	*packet << PacketScEcho << time;
+	SendPacketUnicast(target, packet);
 }
 
-void MMOTCPServer_Single::MakePacketDeleteCharacterRemoveSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID)
+void MMOTCPServerSingle::MakePacketDeleteCharacterRemoveSector(Character* target, CPacket* packet, SectorAround* around, unsigned int id)
 {
-	*Packet << (unsigned char)2 << ID;
-	SendPacketAroundRemoveSector(Packet, Around);
+	*packet << PacketScDeleteCharacter << id;
+	SendPacketAroundRemoveSector(packet, around);
 }
 
-void MMOTCPServer_Single::MakePacketCreateCharacterAddSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP)
+void MMOTCPServerSingle::MakePacketCreateCharacterAddSector(Character* target, CPacket* packet, SectorAround* around, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
-	*Packet << (unsigned char)1 << ID << Direction << X << Y << HP;
-	SendPacketAroundAddSector(Packet, Around);
+	*packet << PacketScCreateOtherCharacter << id << direction << x << y << hp;
+	SendPacketAroundAddSector(packet, around);
 }
 
-void MMOTCPServer_Single::MakePacketMoveStartAddSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y)
+void MMOTCPServerSingle::MakePacketMoveStartAddSector(Character* target, CPacket* packet, SectorAround* around, unsigned int id, unsigned char direction, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)11 << ID << Direction << X << Y;
-	SendPacketAroundAddSector(Packet, Around);
+	*packet << PacketScMoveStart << id << direction << x << y;
+	SendPacketAroundAddSector(packet, around);
 }
 
-void MMOTCPServer_Single::MakePacketDeleteCharacterForMe(Character* Target, CPacket* Packet, unsigned int ID)
+void MMOTCPServerSingle::MakePacketDeleteCharacterForMe(Character* target, CPacket* packet, unsigned int id)
 {
-	*Packet << (unsigned char)2 << ID;
-	SendPacketUnicast(Target, Packet);
+	*packet << PacketScDeleteCharacter << id;
+	SendPacketUnicast(target, packet);
 
 }
 
-void MMOTCPServer_Single::MakePacketSync(Character* Target, CPacket* Packet, unsigned int ID, unsigned short X, unsigned short Y)
+void MMOTCPServerSingle::MakePacketSync(Character* target, CPacket* packet, unsigned int id, unsigned short x, unsigned short y)
 {
-	*Packet << (unsigned char)251 << ID << X << Y;
-	SendPacketAround(Target, Packet, true);
+	*packet << PacketScSync << id << x << y;
+	SendPacketAround(target, packet, true);
 }
 
 
-void MMOTCPServer_Single::SendPacketUnicast(Character* Target, CPacket* Packet)
+void MMOTCPServerSingle::SendPacketUnicast(Character* target, CPacket* packet)
 {
-	SendPacket(Target->sessionId_, Packet);
+	SendPacket(target->sessionId_, packet);
 }
 
-void MMOTCPServer_Single::SendPacketAround(Character* Target, CPacket* Packet, bool SendMe)
+void MMOTCPServerSingle::SendPacketAround(Character* target, CPacket* packet, bool sendMe)
 {
 
-	SectorAround Around;
-	GetSectorAround(Target->characterSectorPos_.x_, Target->characterSectorPos_.y_, &Around);
+	SectorAround around;
+	GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &around);
 
 
-	if (SendMe)
+	if (sendMe)
 	{
-		for (unsigned int Index = 0; Index < Around.count_; Index++)
+		for (unsigned int index = 0; index < around.count_; index++)
 		{
-			SendPacketSectorOne(Around.around_[Index].x_, Around.around_[Index].y_, NULL, Packet);
+			SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, 0, packet);
 		}
 	}
 	else
 	{
-		for (unsigned int Index = 0; Index < Around.count_; Index++)
+		for (unsigned int index = 0; index < around.count_; index++)
 		{
-			SendPacketSectorOne(Around.around_[Index].x_, Around.around_[Index].y_, Target->SessionIDForContents, Packet);
+			SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, target->sessionIdForContents_, packet);
 		}
 	}
 
 }
 
-//TODO : 이 둘의 코드는 같은데 왜 분리를 해놨는가? 
-// 
-//타겟은 왜 있는거지? 
+//TODO : 이 둘의 코드는 같은데 왜 분리를 해놨는가?
+//
+//타겟은 왜 있는거지?
 
-void MMOTCPServer_Single::SendPacketAroundRemoveSector(CPacket* Packet, SectorAround* Around)
+void MMOTCPServerSingle::SendPacketAroundRemoveSector(CPacket* packet, SectorAround* around)
 {
-	for (unsigned int Index = 0; Index < Around->count_; Index++)
+	for (unsigned int index = 0; index < around->count_; index++)
 	{
-		SendPacketSectorOne(Around->around_[Index].x_, Around->around_[Index].y_, NULL, Packet);
+		SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, 0, packet);
 	}
 }
 
-void MMOTCPServer_Single::SendPacketAroundAddSector(CPacket* Packet, SectorAround* Around)
+void MMOTCPServerSingle::SendPacketAroundAddSector(CPacket* packet, SectorAround* around)
 {
-	for (unsigned int Index = 0; Index < Around->count_; Index++)
+	for (unsigned int index = 0; index < around->count_; index++)
 	{
-		SendPacketSectorOne(Around->around_[Index].x_, Around->around_[Index].y_, NULL, Packet);
+		SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, 0, packet);
 	}
 }
 
-void MMOTCPServer_Single::SendPacketSectorOne(int SectorX, int SectorY, unsigned int ExceptSessionID, CPacket* Packet)
+void MMOTCPServerSingle::SendPacketSectorOne(int sectorX, int sectorY, unsigned int exceptSessionId, CPacket* packet)
 {
-	Character* Target;
-	std::list<Character*>::iterator Iter;
-	for (Iter = Sector[SectorY][SectorX].begin(); Iter != Sector[SectorY][SectorX].end(); ++Iter)
+	Character* target;
+	std::list<Character*>::iterator iter;
+	for (iter = sector_[sectorY][sectorX].begin(); iter != sector_[sectorY][sectorX].end(); ++iter)
 	{
-		Target = *Iter;
-		if ((Target->SessionIDForContents == ExceptSessionID) || (Target->IsDelete == 1))
+		target = *iter;
+		if ((target->sessionIdForContents_ == exceptSessionId) || (target->isDelete_ == 1))
 		{
 			continue;
 		}
-		SendPacket(Target->sessionId_, Packet);
+		SendPacket(target->sessionId_, packet);
 	}
 }
 
@@ -533,150 +531,150 @@ void MMOTCPServer_Single::SendPacketSectorOne(int SectorX, int SectorY, unsigned
 
 
 
-bool MMOTCPServer_Single::NetPacketProc_MoveStart(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y)
+bool MMOTCPServerSingle::NetPacketProcMoveStart(Character* target, unsigned char direction, unsigned short x, unsigned short y)
 {
 
-	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
+	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
-		//Disconnect(Target->CharacterSession);
-		CPacket* SyncPacket = CPacket::Alloc();
-		MakePacketSync(Target, SyncPacket, Target->SessionIDForContents, Target->x_, Target->y_);
-		CPacket::Free(SyncPacket);
+		//Disconnect(target->CharacterSession);
+		CPacket* syncPacket = CPacket::Alloc();
+		MakePacketSync(target, syncPacket, target->sessionIdForContents_, target->x_, target->y_);
+		CPacket::Free(syncPacket);
 
 
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 	}
 	else
 	{
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target);
+			SectorUpdate(target);
 		}
 	}
 
 
 
-	Target->isMove_ = true;
-	Target->action_ = Direction;
+	target->isMove_ = true;
+	target->action_ = direction;
 
-	switch (Direction)
+	switch (direction)
 	{
 	case PacketMoveDirectionRR:
 	case PacketMoveDirectionRU:
 	case PacketMoveDirectionRD:
-		Target->direction_ = PacketMoveDirectionRR;
+		target->direction_ = PacketMoveDirectionRR;
 		break;
 
 	case PacketMoveDirectionLU:
 	case PacketMoveDirectionLL:
 	case PacketMoveDirectionLD:
-		Target->direction_ = PacketMoveDirectionLL;
+		target->direction_ = PacketMoveDirectionLL;
 		break;
 
 	}
 
-	CPacket* MoveStartPacket = CPacket::Alloc();
-	MakePacketMoveStart(Target, MoveStartPacket, Target->SessionIDForContents, Direction, Target->x_, Target->y_);
-	CPacket::Free(MoveStartPacket);
+	CPacket* moveStartPacket = CPacket::Alloc();
+	MakePacketMoveStart(target, moveStartPacket, target->sessionIdForContents_, direction, target->x_, target->y_);
+	CPacket::Free(moveStartPacket);
 
 
 	return true;
 }
 
-bool MMOTCPServer_Single::NetPacketProc_MoveStop(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y)
+bool MMOTCPServerSingle::NetPacketProcMoveStop(Character* target, unsigned char direction, unsigned short x, unsigned short y)
 {
 	//여기서 처리. 클라의 좌표를 인정해준다.64
 
-	//여기서 한번 돌려줘야함. run을.. 
+	//여기서 한번 돌려줘야함. run을..
 
-	if ((abs(Target->x_ - X) > ErrorRange) || (abs(Target->y_ - Y) > ErrorRange))
+	if ((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange))
 	{
-		//Disconnect(Target->CharacterSession);
-		//wprintf(L"MoveStop OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
-		CPacket* SyncPacket = CPacket::Alloc();
-		MakePacketSync(Target, SyncPacket, Target->SessionIDForContents, Target->x_, Target->y_);
-		CPacket::Free(SyncPacket);
+		//Disconnect(target->CharacterSession);
+		//wprintf(L"MoveStop OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
+		CPacket* syncPacket = CPacket::Alloc();
+		MakePacketSync(target, syncPacket, target->sessionIdForContents_, target->x_, target->y_);
+		CPacket::Free(syncPacket);
 
 
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 
 	}
 	else
 	{
 
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); 
+			SectorUpdate(target);
 		}
 
 
 	}
 
-	//wprintf(L"## StopPacket : X  %d   Y  %d  \n", X, Y);
+	//wprintf(L"## Stoppacket : x  %d   y  %d  \n", x, y);
 
-	Target->isMove_ = false;
+	target->isMove_ = false;
 
 
-	Target->action_ = Direction;
+	target->action_ = direction;
 
-	switch (Direction)
+	switch (direction)
 	{
 	case PacketMoveDirectionRR:
 	case PacketMoveDirectionRU:
 	case PacketMoveDirectionRD:
-		Target->direction_ = PacketMoveDirectionRR;
+		target->direction_ = PacketMoveDirectionRR;
 		break;
 
 	case PacketMoveDirectionLU:
 	case PacketMoveDirectionLL:
 	case PacketMoveDirectionLD:
-		Target->direction_ = PacketMoveDirectionLL;
+		target->direction_ = PacketMoveDirectionLL;
 		break;
 
 	}
 
 
-	CPacket* MoveStopPacket = CPacket::Alloc();
-	MakePacketMoveStop(Target, MoveStopPacket, Target->SessionIDForContents, Direction, Target->x_, Target->y_);
-	CPacket::Free(MoveStopPacket);
+	CPacket* moveStopPacket = CPacket::Alloc();
+	MakePacketMoveStop(target, moveStopPacket, target->sessionIdForContents_, direction, target->x_, target->y_);
+	CPacket::Free(moveStopPacket);
 
 
 	return true;
 }
 
-bool MMOTCPServer_Single::NetPacketProc_Attack1(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y)
+bool MMOTCPServerSingle::NetPacketProcAttack1(Character* target, unsigned char direction, unsigned short x, unsigned short y)
 {
-	unsigned int ID;
+	unsigned int id;
 
-	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
+	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
-		//Disconnect(Target->CharacterSession);
+		//Disconnect(target->CharacterSession);
 
 
-		CPacket* SyncPacket = CPacket::Alloc();
-		MakePacketSync(Target, SyncPacket, Target->SessionIDForContents, Target->x_, Target->y_);
-		CPacket::Free(SyncPacket);
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		CPacket* syncPacket = CPacket::Alloc();
+		MakePacketSync(target, syncPacket, target->sessionIdForContents_, target->x_, target->y_);
+		CPacket::Free(syncPacket);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 
 
 	}
 	else
 	{
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); // 지연처리 해주자.. 
+			SectorUpdate(target); // 지연처리 해주자..
 		}
 
 		//섹터 업데이트 지연처리 해줘야함.,.
@@ -684,44 +682,44 @@ bool MMOTCPServer_Single::NetPacketProc_Attack1(Character* Target, unsigned char
 
 
 
-	ID = Target->SessionIDForContents;
-	Target->direction_ = Direction;
+	id = target->sessionIdForContents_;
+	target->direction_ = direction;
 
-	CPacket* Attack1Packet = CPacket::Alloc();
-	MakePacketAttack1(Target, Attack1Packet, ID, Direction, Target->x_, Target->y_);
-	CPacket::Free(Attack1Packet);
+	CPacket* attack1Packet = CPacket::Alloc();
+	MakePacketAttack1(target, attack1Packet, id, direction, target->x_, target->y_);
+	CPacket::Free(attack1Packet);
 
 
-	HitCheck(Target, 1);
+	HitCheck(target, 1);
 
 	return true;
 }
 
-bool MMOTCPServer_Single::NetPacketProc_Attack2(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y)
+bool MMOTCPServerSingle::NetPacketProcAttack2(Character* target, unsigned char direction, unsigned short x, unsigned short y)
 {
-	unsigned int ID;
+	unsigned int id;
 
-	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
+	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
-		//Disconnect(Target->CharacterSession);
+		//Disconnect(target->CharacterSession);
 
 
-		CPacket* SyncPacket = CPacket::Alloc();
-		MakePacketSync(Target, SyncPacket, Target->SessionIDForContents, Target->x_, Target->y_);
-		CPacket::Free(SyncPacket);
+		CPacket* syncPacket = CPacket::Alloc();
+		MakePacketSync(target, syncPacket, target->sessionIdForContents_, target->x_, target->y_);
+		CPacket::Free(syncPacket);
 
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 
 	}
 	else
 	{
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); // 지연처리 해주자.. 
+			SectorUpdate(target); // 지연처리 해주자..
 		}
 
 		//섹터 업데이트 지연처리 해줘야함.,.
@@ -729,86 +727,86 @@ bool MMOTCPServer_Single::NetPacketProc_Attack2(Character* Target, unsigned char
 
 
 
-	ID = Target->SessionIDForContents;
-	Target->direction_ = Direction;
+	id = target->sessionIdForContents_;
+	target->direction_ = direction;
 
-	CPacket* Attack2Packet = CPacket::Alloc();
-	MakePacketAttack2(Target, Attack2Packet, ID, Direction, Target->x_, Target->y_);
-	CPacket::Free(Attack2Packet);
+	CPacket* attack2Packet = CPacket::Alloc();
+	MakePacketAttack2(target, attack2Packet, id, direction, target->x_, target->y_);
+	CPacket::Free(attack2Packet);
 
-	HitCheck(Target, 2);
+	HitCheck(target, 2);
 
 	return true;
 }
 
-bool MMOTCPServer_Single::NetPacketProc_Attack3(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y)
+bool MMOTCPServerSingle::NetPacketProcAttack3(Character* target, unsigned char direction, unsigned short x, unsigned short y)
 {
 
-	if (abs(Target->x_ - X) > ErrorRange || abs(Target->y_ - Y) > ErrorRange)
+	if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
 	{
 
-		CPacket* SyncPacket = CPacket::Alloc();
-		MakePacketSync(Target, SyncPacket, Target->SessionIDForContents, Target->x_, Target->y_);
-		CPacket::Free(SyncPacket);
+		CPacket* syncPacket = CPacket::Alloc();
+		MakePacketSync(target, syncPacket, target->sessionIdForContents_, target->x_, target->y_);
+		CPacket::Free(syncPacket);
 
 
-		//wprintf(L"MoveStart OutOfRange  Server X Y  :  %d   %d  /   Client X Y  :   %d   %d  \n", Target->X, Target->Y, X, Y);
+		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 	}
 	else
 	{
 
-		Target->x_ = X;
-		Target->y_ = Y;
+		target->x_ = x;
+		target->y_ = y;
 
-		if (SectorUpdateCharacter(Target))
+		if (SectorUpdateCharacter(target))
 		{
-			SectorUpdate(Target); // 지연처리 해주자.. 
+			SectorUpdate(target); // 지연처리 해주자..
 		}
 
 		//섹터 업데이트 지연처리 해줘야함.,.
 	}
 
 
-	unsigned int ID;
-	ID = Target->SessionIDForContents;
-	Target->direction_ = Direction;
+	unsigned int id;
+	id = target->sessionIdForContents_;
+	target->direction_ = direction;
 
-	CPacket* Attack3Packet = CPacket::Alloc();
-	MakePacketAttack3(Target, Attack3Packet, ID, Direction, Target->x_, Target->y_);
-	CPacket::Free(Attack3Packet);
+	CPacket* attack3Packet = CPacket::Alloc();
+	MakePacketAttack3(target, attack3Packet, id, direction, target->x_, target->y_);
+	CPacket::Free(attack3Packet);
 
-	HitCheck(Target, 3);
+	HitCheck(target, 3);
 	return true;
 }
 
-bool MMOTCPServer_Single::NetPacketProc_Echo(Character* Target, unsigned int Time)
+bool MMOTCPServerSingle::NetPacketProcEcho(Character* target, unsigned int time)
 {
 
-	CPacket* EchoPacket = CPacket::Alloc();
-	MakePacketEcho(Target, EchoPacket, Time);
-	CPacket::Free(EchoPacket);
+	CPacket* echoPacket = CPacket::Alloc();
+	MakePacketEcho(target, echoPacket, time);
+	CPacket::Free(echoPacket);
 
 	return false;
 
 
 }
 
-bool MMOTCPServer_Single::SectorUpdateCharacter(Character* Target)
+bool MMOTCPServerSingle::SectorUpdateCharacter(Character* target)
 {
-	int TargetCurPosX = (Target->x_ / SectorXSize);
-	int TargetCurPosY = (Target->y_ / SectorYSize);
+	int targetCurPosX = (target->x_ / SectorXSize);
+	int targetCurPosY = (target->y_ / SectorYSize);
 
-	if ((Target->characterSectorPos_.x_ != TargetCurPosX) || (Target->characterSectorPos_.y_ != TargetCurPosY))
+	if ((target->characterSectorPos_.x_ != targetCurPosX) || (target->characterSectorPos_.y_ != targetCurPosY))
 	{
 
-		Target->oldSectorPos_.x_ = Target->characterSectorPos_.x_;
-		Target->oldSectorPos_.y_ = Target->characterSectorPos_.y_;
-		Target->characterSectorPos_.x_ = TargetCurPosX;
-		Target->characterSectorPos_.y_ = TargetCurPosY;
+		target->oldSectorPos_.x_ = target->characterSectorPos_.x_;
+		target->oldSectorPos_.y_ = target->characterSectorPos_.y_;
+		target->characterSectorPos_.x_ = targetCurPosX;
+		target->characterSectorPos_.y_ = targetCurPosY;
 
-		Sector[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_].remove(Target);
-		Sector[Target->characterSectorPos_.y_][Target->characterSectorPos_.x_].push_back(Target);
-		//printf("섹터 변경 \nOld : %d  %d Cur  : %d  %d \n" , Target->OldSectorPos.X, Target->OldSectorPos.Y,TargetCurPosX, TargetCurPosY);
+		sector_[target->oldSectorPos_.y_][target->oldSectorPos_.x_].remove(target);
+		sector_[target->characterSectorPos_.y_][target->characterSectorPos_.x_].push_back(target);
+		//printf("섹터 변경 \nOld : %d  %d Cur  : %d  %d \n" , target->OldSectorPos.x, target->OldSectorPos.y,targetCurPosX, targetCurPosY);
 
 
 
@@ -819,77 +817,77 @@ bool MMOTCPServer_Single::SectorUpdateCharacter(Character* Target)
 
 }
 
-void MMOTCPServer_Single::SectorUpdate(Character* Target)
+void MMOTCPServerSingle::SectorUpdate(Character* target)
 {
 
 	SectorAround Remove;
 	SectorAround Add;
 
-	GetUpdateSectorAround(Target, &Remove, &Add);
+	GetUpdateSectorAround(target, &Remove, &Add);
 
 	//PrintUpdateSector(&Remove, &Add);
 
-	CPacket* DeleteCharacterRemoveSectorPacket = CPacket::Alloc();
-	MakePacketDeleteCharacterRemoveSector(Target, DeleteCharacterRemoveSectorPacket, &Remove, Target->SessionIDForContents); //패킷 만들어서 Remove 시켜줘야하는데.. 
-	CPacket::Free(DeleteCharacterRemoveSectorPacket);
+	CPacket* deleteCharacterRemoveSectorPacket = CPacket::Alloc();
+	MakePacketDeleteCharacterRemoveSector(target, deleteCharacterRemoveSectorPacket, &Remove, target->sessionIdForContents_); //패킷 만들어서 Remove 시켜줘야하는데..
+	CPacket::Free(deleteCharacterRemoveSectorPacket);
 
 
 
-	//Remove에 있는 애들의 삭제를 나에게 보냄. 
+	//Remove에 있는 애들의 삭제를 나에게 보냄.
 	for (unsigned int i = 0; i < Remove.count_; i++)
 	{
-		std::list<Character*>::iterator Iter;
-		for (Iter = Sector[Remove.around_[i].y_][Remove.around_[i].x_].begin(); Iter != Sector[Remove.around_[i].y_][Remove.around_[i].x_].end(); ++Iter)
+		std::list<Character*>::iterator iter;
+		for (iter = sector_[Remove.around_[i].y_][Remove.around_[i].x_].begin(); iter != sector_[Remove.around_[i].y_][Remove.around_[i].x_].end(); ++iter)
 		{
-			CPacket* DeleteCharacterForMePacket = CPacket::Alloc();
-			MakePacketDeleteCharacterForMe(Target, DeleteCharacterForMePacket, (*Iter)->SessionIDForContents);
-			CPacket::Free(DeleteCharacterForMePacket);
+			CPacket* deleteCharacterForMePacket = CPacket::Alloc();
+			MakePacketDeleteCharacterForMe(target, deleteCharacterForMePacket, (*iter)->sessionIdForContents_);
+			CPacket::Free(deleteCharacterForMePacket);
 
 
 
-			//printf("Remove에 있는 애들의 삭제를 나에게 보냄. 지움 당하는 아이디 %d  : 받는 아이디 %d \n\n", Target->CharacterSession->SessionID, (*Iter)->SessionID);
+			//printf("Remove에 있는 애들의 삭제를 나에게 보냄. 지움 당하는 아이디 %d  : 받는 아이디 %d \n\n", target->CharacterSession->SessionID, (*iter)->SessionID);
 
 		}
 	}
 
 
-	//add에 있는 애들에게 나의 생성을 보냄. 
-	CPacket* CreateCharacterAddSectorPacket = CPacket::Alloc();
-	MakePacketCreateCharacterAddSector(Target, CreateCharacterAddSectorPacket, &Add, Target->SessionIDForContents, Target->direction_, Target->x_, Target->y_, Target->hp_);
-	CPacket::Free(CreateCharacterAddSectorPacket);
+	//add에 있는 애들에게 나의 생성을 보냄.
+	CPacket* createCharacterAddSectorPacket = CPacket::Alloc();
+	MakePacketCreateCharacterAddSector(target, createCharacterAddSectorPacket, &Add, target->sessionIdForContents_, target->direction_, target->x_, target->y_, target->hp_);
+	CPacket::Free(createCharacterAddSectorPacket);
 
 
-	//이동 정보도 보내줘야함. 
-		// 
-		// 
-	CPacket* MoveStartAddSectoroPacket = CPacket::Alloc();
-	MakePacketMoveStartAddSector(Target, MoveStartAddSectoroPacket, &Add, Target->SessionIDForContents, Target->action_, Target->x_, Target->y_);
-	CPacket::Free(MoveStartAddSectoroPacket);
+	//이동 정보도 보내줘야함.
+		//
+		//
+	CPacket* moveStartAddSectorPacket = CPacket::Alloc();
+	MakePacketMoveStartAddSector(target, moveStartAddSectorPacket, &Add, target->sessionIdForContents_, target->action_, target->x_, target->y_);
+	CPacket::Free(moveStartAddSectorPacket);
 
 
 
 	for (unsigned int i = 0; i < Add.count_; i++)
 	{
-		std::list<Character*>::iterator IterCreate;
-		for (IterCreate = Sector[Add.around_[i].y_][Add.around_[i].x_].begin();
-			IterCreate != Sector[Add.around_[i].y_][Add.around_[i].x_].end(); ++IterCreate)
+		std::list<Character*>::iterator iterCreate;
+		for (iterCreate = sector_[Add.around_[i].y_][Add.around_[i].x_].begin();
+			iterCreate != sector_[Add.around_[i].y_][Add.around_[i].x_].end(); ++iterCreate)
 		{
-			Character* CreateCharacter = *IterCreate;
-			if ((CreateCharacter->sessionId_ == Target->sessionId_) || (CreateCharacter->IsDelete == 1))
+			Character* createCharacter = *iterCreate;
+			if ((createCharacter->sessionId_ == target->sessionId_) || (createCharacter->isDelete_ == 1))
 			{
 				continue;
 			}
 
-			CPacket* CreateOtherCharacterForMePacket = CPacket::Alloc();
-			MakePacketCreateOtherCharacterForMe(Target, CreateOtherCharacterForMePacket, CreateCharacter->SessionIDForContents, CreateCharacter->direction_, CreateCharacter->x_, CreateCharacter->y_, CreateCharacter->hp_);
-			CPacket::Free(CreateOtherCharacterForMePacket);
+			CPacket* createOtherCharacterForMePacket = CPacket::Alloc();
+			MakePacketCreateOtherCharacterForMe(target, createOtherCharacterForMePacket, createCharacter->sessionIdForContents_, createCharacter->direction_, createCharacter->x_, createCharacter->y_, createCharacter->hp_);
+			CPacket::Free(createOtherCharacterForMePacket);
 
-			if (CreateCharacter->isMove_ == true)
+			if (createCharacter->isMove_ == true)
 			{
 
-				CPacket* MoveStartForMePacket = CPacket::Alloc();
-				MakePacketMoveStartForMe(Target, MoveStartForMePacket, CreateCharacter->SessionIDForContents, CreateCharacter->action_, CreateCharacter->x_, CreateCharacter->y_);
-				CPacket::Free(MoveStartForMePacket);
+				CPacket* moveStartForMePacket = CPacket::Alloc();
+				MakePacketMoveStartForMe(target, moveStartForMePacket, createCharacter->sessionIdForContents_, createCharacter->action_, createCharacter->x_, createCharacter->y_);
+				CPacket::Free(moveStartForMePacket);
 			}
 
 
@@ -899,86 +897,86 @@ void MMOTCPServer_Single::SectorUpdate(Character* Target)
 
 }
 
-void MMOTCPServer_Single::HitCheck(Character* AttackCharacter, int AttackNumber)
+void MMOTCPServerSingle::HitCheck(Character* attackCharacter, int attackNumber)
 {
-	int BoundaryX = 0;
-	int BoundaryY = 0;
+	int boundaryX = 0;
+	int boundaryY = 0;
 
-	int Damage = 0;
+	int damage = 0;
 
 
 
-	switch (AttackNumber)
+	switch (attackNumber)
 	{
 
 	case 1:
-		BoundaryX = Attack1RangeX;
-		BoundaryY = Attack1RangeY;
-		Damage = Attack1Damage;
+		boundaryX = Attack1RangeX;
+		boundaryY = Attack1RangeY;
+		damage = Attack1Damage;
 		break;
 
 	case 2:
-		BoundaryX = Attack2RangeX;
-		BoundaryY = Attack2RangeY;
-		Damage = Attack2Damage;
+		boundaryX = Attack2RangeX;
+		boundaryY = Attack2RangeY;
+		damage = Attack2Damage;
 		break;
 
 	case 3:
-		BoundaryX = Attack3RangeX;
-		BoundaryY = Attack3RangeY;
-		Damage = Attack3Damage;
+		boundaryX = Attack3RangeX;
+		boundaryY = Attack3RangeY;
+		damage = Attack3Damage;
 		break;
 
 	default:
 		DebugBreak();
 	}
 
-	//섹터기준 처리로 바꾸기. 
+	//섹터기준 처리로 바꾸기.
 
 
-	SectorAround HitCheckSector;
+	SectorAround hitCheckSector;
 
-	if (AttackCharacter->direction_ == PacketMoveDirectionLL)
+	if (attackCharacter->direction_ == PacketMoveDirectionLL)
 	{
-		GetSectorAroundForHitLeft(AttackCharacter, BoundaryX, BoundaryY, &HitCheckSector);
+		GetSectorAroundForHitLeft(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
 
-		//PrintHitCheckSector(&HitCheckSector);
+		//PrinthitCheckSector(&hitCheckSector);
 
-		for (unsigned int i = 0; i < HitCheckSector.count_; ++i)
+		for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
 		{
-			std::list<Character*>::iterator Iter;
-			for (Iter = Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].begin(); Iter != Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].end(); ++Iter)
+			std::list<Character*>::iterator iter;
+			for (iter = sector_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sector_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
 			{
-				Character* Target = *Iter;
+				Character* target = *iter;
 
-				if ((AttackCharacter == Target) || (Target->IsDelete == 1) || (AttackCharacter->x_ < Target->x_))
+				if ((attackCharacter == target) || (target->isDelete_ == 1) || (attackCharacter->x_ < target->x_))
 				{
 					continue;
 				}
 
 
-				if (abs(AttackCharacter->y_ - Target->y_) <= BoundaryY && abs(AttackCharacter->x_ - Target->x_) <= BoundaryX)
+				if (abs(attackCharacter->y_ - target->y_) <= boundaryY && abs(attackCharacter->x_ - target->x_) <= boundaryX)
 				{
 
-					if (Damage >= Target->hp_)
+					if (damage >= target->hp_)
 					{
-						Target->hp_ = 0;
+						target->hp_ = 0;
 					}
 					else
 					{
-						Target->hp_ -= Damage;
+						target->hp_ -= damage;
 					}
 
-					CPacket* DamagePacket = CPacket::Alloc();
-					MakePacketDamage(Target, DamagePacket, AttackCharacter->SessionIDForContents, Target->SessionIDForContents, Target->hp_);
-					CPacket::Free(DamagePacket);
+					CPacket* damagePacket = CPacket::Alloc();
+					MakePacketDamage(target, damagePacket, attackCharacter->sessionIdForContents_, target->sessionIdForContents_, target->hp_);
+					CPacket::Free(damagePacket);
 
 
 
-					if (Target->hp_ == 0)
+					if (target->hp_ == 0)
 					{
-						Disconnect(Target->sessionId_);
-						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(Target->CharacterSession->SessionID, HP));
+						Disconnect(target->sessionId_);
+						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(target->CharacterSession->SessionID, hp));
 
 					}
 
@@ -992,43 +990,43 @@ void MMOTCPServer_Single::HitCheck(Character* AttackCharacter, int AttackNumber)
 	}
 	else
 	{
-		GetSectorAroundForHitRight(AttackCharacter, BoundaryX, BoundaryY, &HitCheckSector);
-		//PrintHitCheckSector(&HitCheckSector);
-		for (unsigned int i = 0; i < HitCheckSector.count_; ++i)
+		GetSectorAroundForHitRight(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
+		//PrinthitCheckSector(&hitCheckSector);
+		for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
 		{
-			std::list<Character*>::iterator Iter;
-			for (Iter = Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].begin(); Iter != Sector[HitCheckSector.around_[i].y_][HitCheckSector.around_[i].x_].end(); ++Iter)
+			std::list<Character*>::iterator iter;
+			for (iter = sector_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sector_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
 			{
-				Character* Target = *Iter;
+				Character* target = *iter;
 
-				if ((AttackCharacter == Target) || (Target->IsDelete == 1) || (AttackCharacter->x_ > Target->x_))
+				if ((attackCharacter == target) || (target->isDelete_ == 1) || (attackCharacter->x_ > target->x_))
 				{
 					continue;
 				}
 
 
-				if (abs(AttackCharacter->y_ - Target->y_) <= BoundaryY && abs(AttackCharacter->x_ - Target->x_) <= BoundaryX)
+				if (abs(attackCharacter->y_ - target->y_) <= boundaryY && abs(attackCharacter->x_ - target->x_) <= boundaryX)
 				{
 
-					if (Damage >= Target->hp_)
+					if (damage >= target->hp_)
 					{
-						Target->hp_ = 0;
+						target->hp_ = 0;
 					}
 					else
 					{
-						Target->hp_ -= Damage;
+						target->hp_ -= damage;
 					}
 
-					CPacket* DamagePacket = CPacket::Alloc();
-					MakePacketDamage(Target, DamagePacket, AttackCharacter->SessionIDForContents, Target->SessionIDForContents, Target->hp_);
-					CPacket::Free(DamagePacket);
+					CPacket* damagePacket = CPacket::Alloc();
+					MakePacketDamage(target, damagePacket, attackCharacter->sessionIdForContents_, target->sessionIdForContents_, target->hp_);
+					CPacket::Free(damagePacket);
 
-					if (Target->hp_ == 0)
+					if (target->hp_ == 0)
 					{
-						//printf(" HP가 0 이라 종료 당하는 녀석 : %d \n\n", Target->SessionID);
-						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(Target->CharacterSession->SessionID, TIMEOUT));
+						//printf(" HP가 0 이라 종료 당하는 녀석 : %d \n\n", target->SessionID);
+						//whydelete.insert(std::unordered_map<unsigned int, unsigned int>::value_type(target->CharacterSession->SessionID, TIMEOUT));
 
-						Disconnect(Target->sessionId_);
+						Disconnect(target->sessionId_);
 					}
 
 					return;
@@ -1041,16 +1039,16 @@ void MMOTCPServer_Single::HitCheck(Character* AttackCharacter, int AttackNumber)
 	}
 
 
-	//std::unordered_map<unsigned int, CHARACTER*>::iterator Iter;
-	//for (Iter = CharacterMap.begin(); Iter != CharacterMap.end(); ++Iter)
+	//std::unordered_map<unsigned int, CHARACTER*>::iterator iter;
+	//for (iter = characterMap_.begin(); iter != characterMap_.end(); ++iter)
 	//{
-	//	CHARACTER* Target = Iter->second;
+	//	CHARACTER* target = iter->second;
 
-	//	if ((AttackCharacter == Target) || Target->CharacterSession->IsDelete == 1)
+	//	if ((attackCharacter == target) || target->CharacterSession->isDelete_ == 1)
 	//	{
 	//		continue;
 	//	}
-	//	
+	//
 	//}
 
 
@@ -1059,241 +1057,241 @@ void MMOTCPServer_Single::HitCheck(Character* AttackCharacter, int AttackNumber)
 }
 
 
-void MMOTCPServer_Single::GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, SectorAround* AroundSector)
+void MMOTCPServerSingle::GetSectorAroundForHitLeft(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
 {
-	int SectorX = Target->characterSectorPos_.x_;
-	int SectorY = Target->characterSectorPos_.y_;
+	int sectorX = target->characterSectorPos_.x_;
+	int sectorY = target->characterSectorPos_.y_;
 
 
 
-	AroundSector->count_ = 0;
+	aroundSector->count_ = 0;
 
-	AroundSector->around_[AroundSector->count_].x_ = SectorX;
-	AroundSector->around_[AroundSector->count_].y_ = SectorY;
-	AroundSector->count_++;
+	aroundSector->around_[aroundSector->count_].x_ = sectorX;
+	aroundSector->around_[aroundSector->count_].y_ = sectorY;
+	aroundSector->count_++;
 
-	int TargetValidPosX = ((Target->x_ - BoundaryX) / SectorXSize);
-	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SectorYSize);
-	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SectorYSize);
+	int targetValidPosX = ((target->x_ - boundaryX) / SectorXSize);
+	int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
+	int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
 
 
 
-	if (SectorX - 1 >= 0 && TargetValidPosX != SectorX)
+	if (sectorX - 1 >= 0 && targetValidPosX != sectorX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && TargetValidPosYBelow != SectorY)
+	if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && TargetValidPosYAbove != SectorY)
+	if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
+	if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
-	if (SectorY - 1 >= 0 && SectorX - 1 >= 0 && TargetValidPosX != SectorX && TargetValidPosYAbove != SectorY)
+	if (sectorY - 1 >= 0 && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
 }
 
-void MMOTCPServer_Single::GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY, SectorAround* AroundSector)
+void MMOTCPServerSingle::GetSectorAroundForHitRight(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
 {
-	int SectorX = Target->characterSectorPos_.x_;
-	int SectorY = Target->characterSectorPos_.y_;
+	int sectorX = target->characterSectorPos_.x_;
+	int sectorY = target->characterSectorPos_.y_;
 
-	AroundSector->count_ = 0;
+	aroundSector->count_ = 0;
 
-	AroundSector->around_[AroundSector->count_].x_ = SectorX;
-	AroundSector->around_[AroundSector->count_].y_ = SectorY;
-	AroundSector->count_++;
+	aroundSector->around_[aroundSector->count_].x_ = sectorX;
+	aroundSector->around_[aroundSector->count_].y_ = sectorY;
+	aroundSector->count_++;
 
-	int TargetValidPosX = ((Target->x_ + BoundaryX) / SectorXSize);
-	int TargetValidPosYAbove = ((Target->y_ - BoundaryY) / SectorYSize);
-	int TargetValidPosYBelow = ((Target->y_ + BoundaryY) / SectorYSize);
+	int targetValidPosX = ((target->x_ + boundaryX) / SectorXSize);
+	int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
+	int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
 
-	if (SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX)
+	if (sectorX + 1 < SectorMaxX && targetValidPosX != sectorX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && TargetValidPosYBelow != SectorY)
+	if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && TargetValidPosYAbove != SectorY)
+	if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX && TargetValidPosYBelow != SectorY)
+	if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < SectorMaxX && TargetValidPosX != SectorX && TargetValidPosYAbove != SectorY)
+	if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
 }
 
-SectorAround CacheAround[SectorMaxY][SectorMaxX];
+SectorAround cachearound[SectorMaxY][SectorMaxX];
 
 
-void MMOTCPServer_Single::GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector)
+void MMOTCPServerSingle::GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector)
 {
 
-	if (CacheAround[SectorY][SectorX].Flag)
+	if (cachearound[sectorY][sectorX].flag_)
 	{
-		*AroundSector = CacheAround[SectorY][SectorX];
+		*aroundSector = cachearound[sectorY][sectorX];
 		return;
 	}
 
-	AroundSector->count_ = 0;
-	AroundSector->around_[AroundSector->count_].x_ = SectorX;
-	AroundSector->around_[AroundSector->count_].y_ = SectorY;
-	AroundSector->count_++;
+	aroundSector->count_ = 0;
+	aroundSector->around_[aroundSector->count_].x_ = sectorX;
+	aroundSector->around_[aroundSector->count_].y_ = sectorY;
+	aroundSector->count_++;
 
 
 
-	if (SectorX + 1 < SectorMaxX)
+	if (sectorX + 1 < SectorMaxX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY;
+		aroundSector->count_++;
 
 	}
-	if (SectorX - 1 >= 0)
+	if (sectorX - 1 >= 0)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY;
+		aroundSector->count_++;
 	}
 
 
-	if (SectorY + 1 < SectorMaxY)
+	if (sectorY + 1 < SectorMaxY)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0)
+	if (sectorY - 1 >= 0)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && SectorX + 1 < SectorMaxX)
+	if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < SectorMaxX)
+	if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX + 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
-	if (SectorY + 1 < SectorMaxY && SectorX - 1 >= 0)
+	if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY + 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+		aroundSector->count_++;
 	}
-	if (SectorY - 1 >= 0 && SectorX - 1 >= 0)
+	if (sectorY - 1 >= 0 && sectorX - 1 >= 0)
 	{
-		AroundSector->around_[AroundSector->count_].x_ = SectorX - 1;
-		AroundSector->around_[AroundSector->count_].y_ = SectorY - 1;
-		AroundSector->count_++;
+		aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+		aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+		aroundSector->count_++;
 	}
 
-	CacheAround[SectorY][SectorX] = *AroundSector;
-	CacheAround[SectorY][SectorX].Flag = 1;
+	cachearound[sectorY][sectorX] = *aroundSector;
+	cachearound[sectorY][sectorX].flag_ = 1;
 
 }
 
 
-////메모리를  너무 많이 사용하는 것 같은데 이걸 최적화라고 할 수 있는가? 
+////메모리를  너무 많이 사용하는 것 같은데 이걸 최적화라고 할 수 있는가?
 
-SectorAround CacheUpdateAround[SectorMaxY][SectorMaxX][SectorMaxY][SectorMaxX][2];
+SectorAround cacheUpdatearound[SectorMaxY][SectorMaxX][SectorMaxY][SectorMaxX][2];
 
-void MMOTCPServer_Single::GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, SectorAround* AddSector)
+void MMOTCPServerSingle::GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector)
 {
 	//로직은 좀 더 생각해봐야 함
 
-	if (CacheUpdateAround[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_][Target->characterSectorPos_.y_][Target->characterSectorPos_.x_][0].Flag)
+	if (cacheUpdatearound[target->oldSectorPos_.y_][target->oldSectorPos_.x_][target->characterSectorPos_.y_][target->characterSectorPos_.x_][0].flag_)
 	{
-		*RemoveSector = CacheUpdateAround[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_][Target->characterSectorPos_.y_][Target->characterSectorPos_.x_][0];
-		*AddSector = CacheUpdateAround[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_][Target->characterSectorPos_.y_][Target->characterSectorPos_.x_][1];
+		*removeSector = cacheUpdatearound[target->oldSectorPos_.y_][target->oldSectorPos_.x_][target->characterSectorPos_.y_][target->characterSectorPos_.x_][0];
+		*addSector = cacheUpdatearound[target->oldSectorPos_.y_][target->oldSectorPos_.x_][target->characterSectorPos_.y_][target->characterSectorPos_.x_][1];
 		return;
 
 	}
 
 
-	RemoveSector->count_ = 0;
-	AddSector->count_ = 0;
+	removeSector->count_ = 0;
+	addSector->count_ = 0;
 
 
 	SectorAround Old;
 	SectorAround Cur;
 
-	GetSectorAround(Target->oldSectorPos_.x_, Target->oldSectorPos_.y_, &Old);
-	GetSectorAround(Target->characterSectorPos_.x_, Target->characterSectorPos_.y_, &Cur);
+	GetSectorAround(target->oldSectorPos_.x_, target->oldSectorPos_.y_, &Old);
+	GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &Cur);
 
 
-	unsigned int RemoveIndex;
+	unsigned int removeIndex;
 	for (unsigned int i = 0; i < Old.count_; i++)
 	{
-		for (RemoveIndex = 0; RemoveIndex < Cur.count_; RemoveIndex++)
+		for (removeIndex = 0; removeIndex < Cur.count_; removeIndex++)
 		{
-			if (Old.around_[i].x_ == Cur.around_[RemoveIndex].x_ && Old.around_[i].y_ == Cur.around_[RemoveIndex].y_)
+			if (Old.around_[i].x_ == Cur.around_[removeIndex].x_ && Old.around_[i].y_ == Cur.around_[removeIndex].y_)
 			{
 				break;
 			}
 		}
-		if (RemoveIndex == Cur.count_)
+		if (removeIndex == Cur.count_)
 		{
-			RemoveSector->around_[RemoveSector->count_].x_ = Old.around_[i].x_;
-			RemoveSector->around_[RemoveSector->count_].y_ = Old.around_[i].y_;
-			RemoveSector->count_++;
+			removeSector->around_[removeSector->count_].x_ = Old.around_[i].x_;
+			removeSector->around_[removeSector->count_].y_ = Old.around_[i].y_;
+			removeSector->count_++;
 		}
 	}
 
-	AddSector->count_ = 0;
+	addSector->count_ = 0;
 	unsigned int j;
 	for (unsigned int i = 0; i < Cur.count_; i++)
 	{
@@ -1306,66 +1304,66 @@ void MMOTCPServer_Single::GetUpdateSectorAround(Character* Target, SectorAround*
 		}
 		if (j == Old.count_)
 		{
-			AddSector->around_[AddSector->count_].x_ = Cur.around_[i].x_;
-			AddSector->around_[AddSector->count_].y_ = Cur.around_[i].y_;
-			AddSector->count_++;
+			addSector->around_[addSector->count_].x_ = Cur.around_[i].x_;
+			addSector->around_[addSector->count_].y_ = Cur.around_[i].y_;
+			addSector->count_++;
 		}
 	}
 
-	CacheUpdateAround[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_][Target->characterSectorPos_.y_][Target->characterSectorPos_.x_][0] = *RemoveSector;
-	CacheUpdateAround[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_][Target->characterSectorPos_.y_][Target->characterSectorPos_.x_][1] = *AddSector;
-	CacheUpdateAround[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_][Target->characterSectorPos_.y_][Target->characterSectorPos_.x_][0].Flag = 1;
-	CacheUpdateAround[Target->oldSectorPos_.y_][Target->oldSectorPos_.x_][Target->characterSectorPos_.y_][Target->characterSectorPos_.x_][1].Flag = 1;
+	cacheUpdatearound[target->oldSectorPos_.y_][target->oldSectorPos_.x_][target->characterSectorPos_.y_][target->characterSectorPos_.x_][0] = *removeSector;
+	cacheUpdatearound[target->oldSectorPos_.y_][target->oldSectorPos_.x_][target->characterSectorPos_.y_][target->characterSectorPos_.x_][1] = *addSector;
+	cacheUpdatearound[target->oldSectorPos_.y_][target->oldSectorPos_.x_][target->characterSectorPos_.y_][target->characterSectorPos_.x_][0].flag_ = 1;
+	cacheUpdatearound[target->oldSectorPos_.y_][target->oldSectorPos_.x_][target->characterSectorPos_.y_][target->characterSectorPos_.x_][1].flag_ = 1;
 
 }
 
 
-#define FPS 40
 
-void MMOTCPServer_Single::Update()
+
+void MMOTCPServerSingle::Update()
 {
 
 	unsigned int Tick = timeGetTime();
-	unsigned int Frame = Tick - OldTick;
+	unsigned int Frame = Tick - oldTick_;
 
-	GlobalLoop++;
+	globalLoop_++;
 
-	//얘가 그냥 프레임. 
+	//얘가 그냥 프레임.
 
-	int FixUpdate = (Frame / FPS);
-	std::unordered_map<__int64, Character*>::iterator Iter;
-	for (Iter = CharacterMap.begin(); Iter != CharacterMap.end(); ++Iter)
+	int FixUpdate = (Frame / FixedUpdateFrameMs);
+	std::unordered_map<__int64, Character*>::iterator iter;
+	for (iter = characterMap_.begin(); iter != characterMap_.end(); ++iter)
 	{
-		Character* Target = Iter->second;
+		Character* target = iter->second;
 
-		if (Target->isMove_ && (Target->IsDelete == 0))
+		if (target->isMove_ && (target->isDelete_ == 0))
 		{
 			for (int i = 0; i < FixUpdate; ++i)
 			{
-				GameRun(Target);
+				GameRun(target);
 			}
 
 		}
 
 	}
-	OldTick += (FPS * (Frame / FPS));
+	oldTick_ += (FixedUpdateFrameMs * (Frame / FixedUpdateFrameMs));
 
-	if (Tick - OldTickforCheck >= 1000)
+	if (Tick - oldTickForCheck_ >= 1000)
 	{
-		//wprintf(L"Count : %d   Loop : %d \n", Count, GlobalLoop);
+		//wprintf(L"count_ : %d   Loop : %d \n", count_, globalLoop_);
 		if (FixUpdate > 1)
 		{
 
-			wprintf(L"FixedUpdate : %d   Loop : %d \n", FixUpdate, GlobalLoop);
+			wprintf(L"FixedUpdate : %d   Loop : %d \n", FixUpdate, globalLoop_);
 		}
-		OldTickforCheck += 1000;
-		GlobalLoop = 0;
+		oldTickForCheck_ += 1000;
+		globalLoop_ = 0;
 	}
 
-	Frame = timeGetTime() - OldTick;
-	if (Frame < FPS)
+	Frame = timeGetTime() - oldTick_;
+	if (Frame < FixedUpdateFrameMs)
 	{
-		Sleep(FPS - Frame);
+		Sleep(FixedUpdateFrameMs - Frame);
 	}
 
 
@@ -1374,143 +1372,143 @@ void MMOTCPServer_Single::Update()
 
 
 
-void MMOTCPServer_Single::GameRun(Character* Target)
+void MMOTCPServerSingle::GameRun(Character* target)
 {
-	switch (Target->action_)
+	switch (target->action_)
 	{
 	case PacketMoveDirectionLL:
-		if (Target->x_ - 6 < RangeMoveLeft)
+		if (target->x_ - 6 < RangeMoveLeft)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->x_ -= 6;
+		target->x_ -= 6;
 
 		break;
 
 	case PacketMoveDirectionLU:
-		if (Target->y_ - 4 < RangeMoveTop || Target->x_ - 6 < RangeMoveLeft)
+		if (target->y_ - 4 < RangeMoveTop || target->x_ - 6 < RangeMoveLeft)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->x_ -= 6;
-		Target->y_ -= 4;
+		target->x_ -= 6;
+		target->y_ -= 4;
 
 		break;
 
 
 
 	case PacketMoveDirectionUU:
-		if (Target->y_ - 4 < RangeMoveTop)
+		if (target->y_ - 4 < RangeMoveTop)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
 
-		Target->y_ -= 4;
+		target->y_ -= 4;
 
 		break;
 
 
 	case PacketMoveDirectionRU:
 
-		if ((Target->y_ - 4 < RangeMoveTop) || (Target->x_ + 6 >= RangeMoveRight))
+		if ((target->y_ - 4 < RangeMoveTop) || (target->x_ + 6 >= RangeMoveRight))
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->x_ += 6;
-		Target->y_ -= 4;
+		target->x_ += 6;
+		target->y_ -= 4;
 
 		break;
 
 
 	case PacketMoveDirectionRR:
 
-		if (Target->x_ + 6 >= RangeMoveRight)
+		if (target->x_ + 6 >= RangeMoveRight)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
-		Target->x_ += 6;
+		target->x_ += 6;
 
 		break;
 
 
 	case PacketMoveDirectionRD:
 
-		if (Target->y_ + 4 >= RangeMoveBottom || Target->x_ + 6 >= RangeMoveRight)
+		if (target->y_ + 4 >= RangeMoveBottom || target->x_ + 6 >= RangeMoveRight)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
 
-		Target->x_ += 6;
-		Target->y_ += 4;
+		target->x_ += 6;
+		target->y_ += 4;
 
 		break;
 
 
 
 	case PacketMoveDirectionDD:
-		if (Target->y_ + 4 >= RangeMoveBottom)
+		if (target->y_ + 4 >= RangeMoveBottom)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->y_ += 4;
+		target->y_ += 4;
 
 		break;
 
 	case PacketMoveDirectionLD:
-		if (Target->y_ + 4 >= RangeMoveBottom || Target->x_ - 6 < RangeMoveLeft)
+		if (target->y_ + 4 >= RangeMoveBottom || target->x_ - 6 < RangeMoveLeft)
 		{
-			Target->isMove_ = false;
+			target->isMove_ = false;
 			return;
 		}
 
-		Target->x_ -= 6;
-		Target->y_ += 4;
+		target->x_ -= 6;
+		target->y_ += 4;
 
 		break;
 	}
 
 
-	if (SectorUpdateCharacter(Target))
+	if (SectorUpdateCharacter(target))
 	{
 
-		SectorUpdate(Target);
+		SectorUpdate(target);
 
 	}
 }
 
-//지연삭제코드. 여기서 삭제하면 된다. 전체를 순회하며 하거나 DeleteList를 만들어도 된다. 
+//지연삭제코드. 여기서 삭제하면 된다. 전체를 순회하며 하거나 deleteList_를 만들어도 된다.
 
-void MMOTCPServer_Single::DeleteDisconnect()
+void MMOTCPServerSingle::DeleteDisconnect()
 {
-	/*if (DeleteList.size() > 0)
+	/*if (deleteList_.size() > 0)
 	{
 
 		SESSION* Session;
-		CHARACTER* DeleteTarget;
+		CHARACTER* Deletetarget;
 		unsigned int Session_ID;
-		std::list<unsigned int>::iterator Iter;
-		for (Iter = DeleteList.begin(); Iter != DeleteList.end(); ++Iter)
+		std::list<unsigned int>::iterator iter;
+		for (iter = deleteList_.begin(); iter != deleteList_.end(); ++iter)
 		{
-			Session_ID = *Iter;
+			Session_ID = *iter;
 			Session = Sessions.at(Session_ID);
-			DeleteTarget = CharacterMap.at(Session_ID);
+			Deletetarget = characterMap_.at(Session_ID);
 
-			FreeCharacter(DeleteTarget);
+			FreeCharacter(Deletetarget);
 
-			CharacterMap.erase(Session_ID);
+			characterMap_.erase(Session_ID);
 
 			closesocket(Session->Socket);
 			Session->ReceiveQ.ClearBuffer();
@@ -1521,28 +1519,27 @@ void MMOTCPServer_Single::DeleteDisconnect()
 
 		}
 
-		DeleteList.clear();
+		deleteList_.clear();
 	}*/
 
 }
 
-void MMOTCPServer_Single::DisconnectContents(Character* Target)
+void MMOTCPServerSingle::DisconnectContents(Character* target)
 {
-	//if (TargetSession->IsDelete == 1)
+	//if (targetSession->isDelete_ == 1)
 	//{
 	//	return;
 	//}
 
-	//DeleteList.push_back(TargetSession->SessionID);
-	//TargetSession->IsDelete = 1;
+	//deleteList_.push_back(targetSession->SessionID);
+	//targetSession->isDelete_ = 1;
 
-	//CHARACTER* Target = CharacterMap.at(TargetSession->SessionID);
+	//CHARACTER* target = characterMap_.at(targetSession->SessionID);
 
-	//Sector[Target->CharacterSectorPos.Y][Target->CharacterSectorPos.X].remove(Target);
+	//sector_[target->CharacterSectorPos.y][target->CharacterSectorPos.x].remove(target);
 
 	//GlobalCPacket.Clear();
-	//MakePacketDeleteCharacter(TargetSession, &GlobalCPacket, TargetSession->SessionID);
-	////wprintf(L"## Disconnect ID : %d \n", TargetSession->SessionID);
+	//MakePacketDeleteCharacter(targetSession, &GlobalCPacket, targetSession->SessionID);
+	////wprintf(L"## Disconnect id : %d \n", targetSession->SessionID);
 
 }
-

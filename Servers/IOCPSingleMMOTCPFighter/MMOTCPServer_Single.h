@@ -4,205 +4,126 @@
 #include "LockFreeQueue.h"
 #include "TLSObjectFreeList.h"
 #include "ObjectFreeList.h"
-#include <unordered_map>
-#include <list>
 #include "PacketDefine.h"
+#include <list>
+#include <unordered_map>
 
+using SessionId = __int64;
 
-
-enum Type
+enum MessageType
 {
-	ACCEPT,			// 货 立加
-	PACKET,
-	RELEASE,				// 立加 秦力
+	MessageTypeAccept,
+	MessageTypePacket,
+	MessageTypeRelease,
 };
 
 struct MessageData
 {
-	WORD type;
-	__int64 session_ID;
-	CPacket* contents_packet;
+	WORD type_;
+	SessionId sessionId_;
+	CPacket* contentsPacket_;
 };
 
 struct SectorPos
 {
 	unsigned int x_;
 	unsigned int y_;
-
 };
 
 struct SectorAround
 {
 	unsigned int count_;
 	SectorPos around_[9];
-	BYTE Flag = 0;
+	BYTE flag_ = 0;
 };
 
 struct Character
 {
-	__int64 sessionId_;
-	unsigned int SessionIDForContents;
+	SessionId sessionId_;
+	unsigned int sessionIdForContents_;
 	unsigned int action_;
 	unsigned char direction_;
-
 	short x_;
 	short y_;
 	unsigned char hp_;
 	bool isMove_;
-	bool IsDelete;
-
+	bool isDelete_;
 	SectorPos oldSectorPos_;
 	SectorPos characterSectorPos_;
-
-
 };
 
-
-
-
-
-class MMOTCPServer_Single : public LanNetworkLibraryServer
+class MMOTCPServerSingle : public LanNetworkLibraryServer
 {
 public:
+	MMOTCPServerSingle();
+	virtual ~MMOTCPServerSingle();
 
-	MMOTCPServer_Single();
-	virtual ~MMOTCPServer_Single();
+	virtual bool OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort) override;
+	virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, SessionId sessionId) override;
+	virtual void OnRelease(SessionId sessionId) override;
+	virtual void OnMessage(SessionId sessionId, CPacket* sendPacket) override;
+	virtual void OnError(int errorCode, const wchar_t* errorLog) override;
 
-	virtual bool OnConnectionRequest(const wchar_t* server_IP, unsigned short server_port);
-	virtual void OnAccept(const wchar_t* server_IP, unsigned short server_port, __int64 session_ID);
-	virtual void OnRelease(__int64 session_ID);
+	static unsigned int WINAPI LogicThread(LPVOID thisPtr);
 
-	virtual void OnMessage(__int64 session_ID, CPacket* send_packet);
-
-	virtual void OnError(int errorcode, const wchar_t* error_log);
-
-
-	TLockFreeQueue<MessageData*> MessageQueue;
-	TLSObjectFreeList<MessageData> MessageDataFreeList;
-	HANDLE LogicThreadHandle;
-	static unsigned int WINAPI LogicThread(LPVOID this_ptr);
-
-
-
-	void LoginProcess(MessageData* msg_data);
-	void messageProcess(MessageData* msg_data);
-
-
-	void CreateCharater(__int64 NewSession);
-	void ReleaseCharacter(__int64 NewSession);
-
-
-	void GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector);
-
+	void LoginProcess(MessageData* messageData);
+	void MessageProcess(MessageData* messageData);
+	void CreateCharacter(SessionId newSession);
+	void ReleaseCharacter(SessionId newSession);
+	void GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector);
 	int ServerControl();
-
-
-
-	ObjectFreeList<Character> CharacterFreeList;
-
-	std::list<Character*> Sector[SectorMaxY][SectorMaxX];
-	std::list<unsigned int> DeleteList;
-	std::unordered_map<__int64, Character*> CharacterMap;
-
-	unsigned int OldTick;
-	unsigned int OldTickforCheck;
-
-
-	int GlobalLoop = 0;
-
-	int Count = 0;
-
-
-
-
-
-	bool MessageProc(MessageData* msg);
-
-
-
-	// MAKEPACKET
-	void MakePacketMoveStart(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-	void MakePacketMoveStartForMe(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-	void MakePacketMoveStop(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-	void MakePacketCreateMyCharacter(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
-
-	void MakePacketCreateOtherCharacterForMe(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
-
-	void MakePacketCreateOtherCharacter(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
-
-	void MakePacketDeleteCharacter(Character* Target, CPacket* Packet, unsigned int ID);
-
-	void MakePacketDamage(Character* Target, CPacket* Packet, unsigned int AttackID, unsigned int DamageID, unsigned char DamageHP);
-
-	void MakePacketAttack1(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-	void MakePacketAttack2(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-	void MakePacketAttack3(Character* Target, CPacket* Packet, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-	void MakePacketEcho(Character* Target, CPacket* Packet, unsigned int Time);
-
-	void MakePacketDeleteCharacterRemoveSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID);
-
-	void MakePacketDeleteCharacterForMe(Character* Target, CPacket* Packet, unsigned int ID);
-
-	void MakePacketCreateCharacterAddSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y, unsigned char HP);
-
-	void MakePacketMoveStartAddSector(Character* Target, CPacket* Packet, SectorAround* Around, unsigned int ID, unsigned char Direction, unsigned short X, unsigned short Y);
-
-	void MakePacketSync(Character* Target, CPacket* Packet, unsigned int ID, unsigned short X, unsigned short Y);
-
-	void SendPacketUnicast(Character* Target, CPacket* Packet);
-
-	void SendPacketAround(Character* Target, CPacket* Packet, bool SendMe = false);
-
-	void SendPacketAroundRemoveSector(CPacket* Packet, SectorAround* Around);
-
-	void SendPacketAroundAddSector(CPacket* Packet, SectorAround* Around);
-
-	void SendPacketSectorOne(int SectorX, int SectorY, unsigned int ExceptSessionID, CPacket* Packet);
-
-
-
-	//Stub
-
-	bool PacketProc(MessageData* msg);
-
-	bool NetPacketProc_MoveStart(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_MoveStop(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_Attack1(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_Attack2(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_Attack3(Character* Target, unsigned char Direction, unsigned short X, unsigned short Y);
-	bool NetPacketProc_Echo(Character* Target, unsigned int Time);
-
-
-
-	bool SectorUpdateCharacter(Character* Target);
-
-	void SectorUpdate(Character* Target);
-
-	void HitCheck(Character* TargetSession, int AttackNumber);
-
-	void GetSectorAroundForHitLeft(Character* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
-
-	void GetSectorAroundForHitRight(Character* Target, int BoundaryX, int BoundaryY, SectorAround* Around);
-
-	void GetUpdateSectorAround(Character* Target, SectorAround* RemoveSector, SectorAround* AddSector);
-
+	bool MessageProc(MessageData* messageData);
+	void MakePacketMoveStart(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
+	void MakePacketMoveStartForMe(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
+	void MakePacketMoveStop(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
+	void MakePacketCreateMyCharacter(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
+	void MakePacketCreateOtherCharacterForMe(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
+	void MakePacketCreateOtherCharacter(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
+	void MakePacketDeleteCharacter(Character* target, CPacket* packet, unsigned int id);
+	void MakePacketDamage(Character* target, CPacket* packet, unsigned int attackId, unsigned int damageId, unsigned char damageHp);
+	void MakePacketAttack1(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
+	void MakePacketAttack2(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
+	void MakePacketAttack3(Character* target, CPacket* packet, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
+	void MakePacketEcho(Character* target, CPacket* packet, unsigned int time);
+	void MakePacketDeleteCharacterRemoveSector(Character* target, CPacket* packet, SectorAround* around, unsigned int id);
+	void MakePacketDeleteCharacterForMe(Character* target, CPacket* packet, unsigned int id);
+	void MakePacketCreateCharacterAddSector(Character* target, CPacket* packet, SectorAround* around, unsigned int id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
+	void MakePacketMoveStartAddSector(Character* target, CPacket* packet, SectorAround* around, unsigned int id, unsigned char direction, unsigned short x, unsigned short y);
+	void MakePacketSync(Character* target, CPacket* packet, unsigned int id, unsigned short x, unsigned short y);
+	void SendPacketUnicast(Character* target, CPacket* packet);
+	void SendPacketAround(Character* target, CPacket* packet, bool sendMe = false);
+	void SendPacketAroundRemoveSector(CPacket* packet, SectorAround* around);
+	void SendPacketAroundAddSector(CPacket* packet, SectorAround* around);
+	void SendPacketSectorOne(int sectorX, int sectorY, unsigned int exceptSessionId, CPacket* packet);
+	bool PacketProc(MessageData* messageData);
+	bool NetPacketProcMoveStart(Character* target, unsigned char direction, unsigned short x, unsigned short y);
+	bool NetPacketProcMoveStop(Character* target, unsigned char direction, unsigned short x, unsigned short y);
+	bool NetPacketProcAttack1(Character* target, unsigned char direction, unsigned short x, unsigned short y);
+	bool NetPacketProcAttack2(Character* target, unsigned char direction, unsigned short x, unsigned short y);
+	bool NetPacketProcAttack3(Character* target, unsigned char direction, unsigned short x, unsigned short y);
+	bool NetPacketProcEcho(Character* target, unsigned int time);
+	bool SectorUpdateCharacter(Character* target);
+	void SectorUpdate(Character* target);
+	void HitCheck(Character* attackCharacter, int attackNumber);
+	void GetSectorAroundForHitLeft(Character* target, int boundaryX, int boundaryY, SectorAround* around);
+	void GetSectorAroundForHitRight(Character* target, int boundaryX, int boundaryY, SectorAround* around);
+	void GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector);
 	void Update();
-
-	void GameRun(Character* Target);
-
+	void GameRun(Character* target);
 	void DeleteDisconnect();
-
-	void DisconnectContents(Character* Target);
-
+	void DisconnectContents(Character* target);
 	void MessageLoop();
 
-
+	TLockFreeQueue<MessageData*> messageQueue_;
+	TLSObjectFreeList<MessageData> messageDataFreeList_;
+	HANDLE logicThreadHandle_;
+	ObjectFreeList<Character> characterFreeList_;
+	std::list<Character*> sector_[SectorMaxY][SectorMaxX];
+	std::list<unsigned int> deleteList_;
+	std::unordered_map<SessionId, Character*> characterMap_;
+	unsigned int oldTick_;
+	unsigned int oldTickForCheck_;
+	int globalLoop_ = 0;
+	int count_ = 0;
 };
-
 

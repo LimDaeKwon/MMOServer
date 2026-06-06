@@ -1,4 +1,4 @@
-ï»¿// NetworkLibrary.cpp : ì´ íŒŒì¼ì—ëŠ” 'main' í•¨ìˆ˜ê°€ í¬í•¨ë©ë‹ˆë‹¤. ê±°ê¸°ì„œ í”„ë¡œê·¸ë¨ ì‹¤í–‰ì´ ì‹œì‘ë˜ê³  ì¢…ë£Œë©ë‹ˆë‹¤.
+// NetworkLibrary.cpp : ÀÌ ÆÄÀÏ¿¡´Â 'main' ÇÔ¼ö°¡ Æ÷ÇÔµË´Ï´Ù. °Å±â¼­ ÇÁ·Î±×·¥ ½ÇÇàÀÌ ½ÃÀÛµÇ°í Á¾·áµË´Ï´Ù.
 //
 
 #include <iostream>
@@ -14,24 +14,24 @@ CrashDump zz;
 
 #pragma comment(lib, "winmm.lib")
 
-#define THREADFILENAME "MMOTCPFighterThreadSetting.config"
-#define GAMEFILENAME "GameSetting.config"
+constexpr const char* ThreadFileName = "MMOTCPFighterThreadSetting.config";
+constexpr const char* GameFileName = "GameSetting.config";
 
 
 
-enum thread_setting_enum
+enum ThreadSettingType
 {
-	IP, PORT, THREADS, CONCURRENT, NAGLE, SESSIONS, HEADERSIZE
+	ThreadSettingIp, ThreadSettingPort, ThreadSettingThreads, ThreadSettingConcurrent, ThreadSettingNagle, ThreadSettingSessions, ThreadSettingHeaderSize
 };
 unsigned int GlobalChecksum;
 
 
-bool ParseThreadDataFile(const char* file_name);
-bool ParseGameDataFile(const char* file_name);
+bool ParseThreadDataFile(const char* fileName);
+bool ParseGameDataFile(const char* fileName);
 
-char ThreadData[7][200];
+char threadData[7][200];
 
-char GameData[7][200];
+char gameData[7][200];
 
 int main()
 {
@@ -39,17 +39,17 @@ int main()
 
 	InitProfile();
 
-	ParseThreadDataFile(THREADFILENAME);
-	ParseGameDataFile(GAMEFILENAME);
+	ParseThreadDataFile(ThreadFileName);
+	ParseGameDataFile(GameFileName);
 
-	//ë¡œì§ì´ ì‹±ê¸€ì¸ì§€ ì•„ë‹Œì§€. 
+	//·ÎÁ÷ÀÌ ½Ì±ÛÀÎÁö ¾Æ´ÑÁö.
 
 
-	MMOTCPServer_Single game_instance;
+	MMOTCPServerSingle gameInstance;
 
-	unsigned int Port1 = atoi(ThreadData[PORT]);
+	unsigned int port = atoi(threadData[ThreadSettingPort]);
 
-	game_instance.Start(ThreadData[IP], Port1, atoi(ThreadData[THREADS]), atoi(ThreadData[CONCURRENT]), atoi(ThreadData[NAGLE]), atoi(ThreadData[SESSIONS]), atoi(ThreadData[HEADERSIZE]));
+	gameInstance.Start(threadData[ThreadSettingIp], port, atoi(threadData[ThreadSettingThreads]), atoi(threadData[ThreadSettingConcurrent]), atoi(threadData[ThreadSettingNagle]), atoi(threadData[ThreadSettingSessions]), atoi(threadData[ThreadSettingHeaderSize]));
 
 
 	while (1)
@@ -68,10 +68,10 @@ int main()
 				ProfileReset();
 			}
 		}
-		//ì„œë²„ ì»¨íŠ¸ë¡¤
-		//ê·¸ ìˆœê°„ ì„œë²„ì˜ ë¤í”„ë¥¼ ë‚¨ê¸´ë‹¤ -> ë©”ëª¨ë¦¬ë¥´ ìë£Œêµ¬ì¡°ë¼ê³  ë´¤ì„ ë•Œ 
-		// ëˆ„êµ°ê°€ê°€ ì“°ê³ ìˆì„ ë•Œ ì½ì–´ë„ ë˜ëŠ”ê°€?>
-		// 
+		//¼­¹ö ÄÁÆ®·Ñ
+		//±× ¼ø°£ ¼­¹öÀÇ ´ıÇÁ¸¦ ³²±ä´Ù -> ¸Ş¸ğ¸®¸£ ÀÚ·á±¸Á¶¶ó°í ºÃÀ» ¶§
+		// ´©±º°¡°¡ ¾²°íÀÖÀ» ¶§ ÀĞ¾îµµ µÇ´Â°¡?>
+		//
 
 	}
 
@@ -83,93 +83,94 @@ int main()
 }
 
 
-bool ParseThreadDataFile(const char* file_name)
+bool ParseThreadDataFile(const char* fileName)
 {
-	FILE* worker_information;
-	int file_size;
-	char* file_buffer;
+	FILE* workerInformation;
+	int fileSize;
+	char* fileBuffer;
 
-	if (fopen_s(&worker_information, file_name, "rb") == 0)
+	if (fopen_s(&workerInformation, fileName, "rb") == 0)
 	{
-		if (worker_information == NULL)
+		if (workerInformation == nullptr)
 		{
 			return false;
 		}
 
 
-		fseek(worker_information, 0, SEEK_END);
-		file_size = ftell(worker_information);
-		rewind(worker_information);
+		fseek(workerInformation, 0, SEEK_END);
+		fileSize = ftell(workerInformation);
+		rewind(workerInformation);
 
 
-		file_buffer = (char*)malloc(file_size);
-		if (file_buffer == NULL) {
+		fileBuffer = static_cast<char*>(malloc(fileSize));
+		if (fileBuffer == nullptr)
+		{
 			printf("Error: Memory allocation failed.\n");
 			DebugBreak();
 			return false;
 		}
 
-		size_t bytesRead = fread_s(file_buffer, file_size, 1, file_size, worker_information);
-		if (bytesRead != file_size)
+		size_t bytesRead = fread_s(fileBuffer, fileSize, 1, fileSize, workerInformation);
+		if (bytesRead != fileSize)
 		{
 
-			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", file_size, bytesRead);
+			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", fileSize, bytesRead);
 
 			return false;
 		}
 
-		int start_position = 0;
-		int end_postiion = 0;
+		int startPosition = 0;
+		int endPosition = 0;
 
-		//ì‹œì‘ìœ„ì¹˜ + 0d 0a ë„˜ê¸°ê¸°. 
+		//½ÃÀÛÀ§Ä¡ + 0d 0a ³Ñ±â±â.
 
-		for (int i = 0; i < file_size; ++i)
+		for (int i = 0; i < fileSize; ++i)
 		{
-			if (file_buffer[i] == '{')
+			if (fileBuffer[i] == '{')
 			{
-				start_position = i + 2;
+				startPosition = i + 2;
 				break;
 			}
 		}
 
-		for (int i = file_size - 1; i >= 0; --i)
+		for (int i = fileSize - 1; i >= 0; --i)
 		{
 
 
-			if (file_buffer[i] == '}')
+			if (fileBuffer[i] == '}')
 			{
-				end_postiion = i;
+				endPosition = i;
 				break;
 			}
 		}
 
-		int Index = 0;
+		int index = 0;
 
 		int size;
-		for (int i = start_position; i < end_postiion; ++i)
+		for (int i = startPosition; i < endPosition; ++i)
 		{
 
 
-			if (file_buffer[i] == ':')
+			if (fileBuffer[i] == ':')
 			{
 				for (int j = i + 1; ; ++j)
 				{
-					if (file_buffer[j] == 0x0d)
+					if (fileBuffer[j] == 0x0d)
 					{
 						size = j - i - 1;
-						memcpy_s(ThreadData[Index], size, file_buffer + i + 1, size);
-						ThreadData[Index][size] = '\0';
-						Index++;
+						memcpy_s(threadData[index], size, fileBuffer + i + 1, size);
+						threadData[index][size] = '\0';
+						index++;
 						break;
 					}
 				}
-				start_position = i + size;
+				startPosition = i + size;
 			}
 		}
 
-		free(file_buffer);
+		free(fileBuffer);
 
-		fclose(worker_information);
+		fclose(workerInformation);
 	}
 
 
@@ -178,93 +179,94 @@ bool ParseThreadDataFile(const char* file_name)
 }
 
 
-bool ParseGameDataFile(const char* file_name)
+bool ParseGameDataFile(const char* fileName)
 {
-	FILE* worker_information;
-	int file_size;
-	char* file_buffer;
+	FILE* workerInformation;
+	int fileSize;
+	char* fileBuffer;
 
-	if (fopen_s(&worker_information, file_name, "rb") == 0)
+	if (fopen_s(&workerInformation, fileName, "rb") == 0)
 	{
-		if (worker_information == NULL)
+		if (workerInformation == nullptr)
 		{
 			return false;
 		}
 
 
-		fseek(worker_information, 0, SEEK_END);
-		file_size = ftell(worker_information);
-		rewind(worker_information);
+		fseek(workerInformation, 0, SEEK_END);
+		fileSize = ftell(workerInformation);
+		rewind(workerInformation);
 
 
-		file_buffer = (char*)malloc(file_size);
-		if (file_buffer == NULL) {
+		fileBuffer = static_cast<char*>(malloc(fileSize));
+		if (fileBuffer == nullptr)
+		{
 			printf("Error: Memory allocation failed.\n");
 			DebugBreak();
 			return false;
 		}
 
-		size_t bytesRead = fread_s(file_buffer, file_size, 1, file_size, worker_information);
-		if (bytesRead != file_size)
+		size_t bytesRead = fread_s(fileBuffer, fileSize, 1, fileSize, workerInformation);
+		if (bytesRead != fileSize)
 		{
 
-			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", file_size, bytesRead);
+			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", fileSize, bytesRead);
 
 			return false;
 		}
 
-		int start_position = 0;
-		int end_postiion = 0;
+		int startPosition = 0;
+		int endPosition = 0;
 
-		//ì‹œì‘ìœ„ì¹˜ + 0d 0a ë„˜ê¸°ê¸°. 
+		//½ÃÀÛÀ§Ä¡ + 0d 0a ³Ñ±â±â.
 
-		for (int i = 0; i < file_size; ++i)
+		for (int i = 0; i < fileSize; ++i)
 		{
-			if (file_buffer[i] == '{')
+			if (fileBuffer[i] == '{')
 			{
-				start_position = i + 2;
+				startPosition = i + 2;
 				break;
 			}
 		}
 
-		for (int i = file_size - 1; i >= 0; --i)
+		for (int i = fileSize - 1; i >= 0; --i)
 		{
 
 
-			if (file_buffer[i] == '}')
+			if (fileBuffer[i] == '}')
 			{
-				end_postiion = i;
+				endPosition = i;
 				break;
 			}
 		}
 
-		int Index = 0;
+		int index = 0;
 
 		int size;
-		for (int i = start_position; i < end_postiion; ++i)
+		for (int i = startPosition; i < endPosition; ++i)
 		{
 
 
-			if (file_buffer[i] == ':')
+			if (fileBuffer[i] == ':')
 			{
 				for (int j = i + 1; ; ++j)
 				{
-					if (file_buffer[j] == 0x0d)
+					if (fileBuffer[j] == 0x0d)
 					{
 						size = j - i - 1;
-						memcpy_s(GameData[Index], size, file_buffer + i + 1, size);
-						GameData[Index][size] = '\0';
-						Index++;
+						memcpy_s(gameData[index], size, fileBuffer + i + 1, size);
+						gameData[index][size] = '\0';
+						index++;
 						break;
 					}
 				}
-				start_position = i + size;
+				startPosition = i + size;
 			}
 		}
 
-		free(file_buffer);
+		free(fileBuffer);
 
-		fclose(worker_information);
+		fclose(workerInformation);
 	}
 
 
