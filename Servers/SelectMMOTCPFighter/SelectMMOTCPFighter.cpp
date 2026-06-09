@@ -1053,119 +1053,119 @@ void SelectMMOTCPFighter::SectorUpdate(Character* target)
 
 void SelectMMOTCPFighter::MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStart) << id << direction << x << y;
+    *packet << static_cast<unsigned char>(PacketScMoveStart) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketMoveStartForMe(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStart) << id << direction << x << y;
+    *packet << static_cast<unsigned char>(PacketScMoveStart) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacket(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketMoveStop(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStop) << id << direction << x << y;
+    *packet << static_cast<unsigned char>(PacketScMoveStop) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketCreateMyCharacter(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateMyCharacter) << id << direction << x << y << hp;
+    *packet << static_cast<unsigned char>(PacketScCreateMyCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
     SendPacket(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketCreateOtherCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateOtherCharacter) << id << direction << x << y << hp;
+    *packet << static_cast<unsigned char>(PacketScCreateOtherCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
     SendPacket(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketCreateOtherCharacter(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateOtherCharacter) << id << direction << x << y << hp;
+    *packet << static_cast<unsigned char>(PacketScCreateOtherCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
     SelectMMOTCPFighter::SendPacketAround(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketDeleteCharacter(SessionId sessionId, CPacket* packet, SessionId id)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScDeleteCharacter) << id;
+    *packet << static_cast<unsigned char>(PacketScDeleteCharacter) << static_cast<unsigned int>(id);
 
     SendPacketAround(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketDamage(SessionId sessionId, CPacket* packet, SessionId attackId, SessionId damageId, unsigned char damageHp)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScDamage) << attackId << damageId << damageHp;
+    *packet << static_cast<unsigned char>(PacketScDamage) << static_cast<unsigned int>(attackId) << static_cast<unsigned int>(damageId) << damageHp;
 
     SendPacketAround(sessionId, packet, true);
 }
 
 void SelectMMOTCPFighter::MakePacketAttack1(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScAttack1) << id << direction << x << y;
+    *packet << static_cast<unsigned char>(PacketScAttack1) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketAttack2(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScAttack2) << id << direction << x << y;
+    *packet << static_cast<unsigned char>(PacketScAttack2) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketAttack3(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScAttack3) << id << direction << x << y;
+    *packet << static_cast<unsigned char>(PacketScAttack3) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketEcho(SessionId sessionId, CPacket* packet, unsigned int time)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScEcho) << time;
+    *packet << static_cast<unsigned char>(PacketScEcho) << time;
 
     SendPacket(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketDeleteCharacterRemoveSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScDeleteCharacter) << id;
+    *packet << static_cast<unsigned char>(PacketScDeleteCharacter) << static_cast<unsigned int>(id);
 
     SendPacketAroundRemoveSector(sessionId, packet, around);
 }
 
 void SelectMMOTCPFighter::MakePacketDeleteCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(4) << static_cast<unsigned char>(PacketScDeleteCharacter) << id;
+    *packet << static_cast<unsigned char>(PacketScDeleteCharacter) << static_cast<unsigned int>(id);
 
     SendPacket(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketCreateCharacterAddSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(10) << static_cast<unsigned char>(PacketScCreateOtherCharacter) << id << direction << x << y << hp;
+    *packet << static_cast<unsigned char>(PacketScCreateOtherCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
     SendPacketAroundAddSector(sessionId, packet, around);
 }
 
 void SelectMMOTCPFighter::MakePacketMoveStartAddSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(9) << static_cast<unsigned char>(PacketScMoveStart) << id << direction << x << y;
+    *packet << static_cast<unsigned char>(PacketScMoveStart) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAroundAddSector(sessionId, packet, around);
 }
 
 void SelectMMOTCPFighter::MakePacketSync(SessionId sessionId, CPacket* packet, SessionId id, unsigned short x, unsigned short y)
 {
-    *packet << static_cast<unsigned char>(PacketCode) << static_cast<unsigned char>(8) << static_cast<unsigned char>(PacketScSync) << id << x << y;
+    *packet << static_cast<unsigned char>(PacketScSync) << static_cast<unsigned int>(id) << x << y;
 
     SendPacket(sessionId, packet);
 }

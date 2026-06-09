@@ -6,7 +6,7 @@
 struct Session
 {
     unsigned int lastRecvTime_;
-    unsigned int sessionId_;
+    unsigned __int64 sessionId_;
 
     SOCKET socket_;
     RingBuffer sendQueue_;

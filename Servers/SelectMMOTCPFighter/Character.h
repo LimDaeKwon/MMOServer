@@ -2,7 +2,7 @@
 
 #include "Sector.h"
 
-using SessionId = unsigned int;
+using SessionId = unsigned __int64;
 
 struct Character
 {

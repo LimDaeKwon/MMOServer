@@ -140,14 +140,14 @@ void SelectServer::Network()
 
     int count = 0;
 
-    unsigned int startId;
+    SessionId startId;
 
     if (!sessions_.size())
     {
         AcceptClient();
     }
 
-    std::unordered_map<unsigned int, Session*>::iterator iter;
+    std::unordered_map<SessionId, Session*>::iterator iter;
     iter = sessions_.begin();
 
     FD_ZERO(&readSet);
@@ -196,7 +196,7 @@ void SelectServer::Network()
                     AcceptClient();
                 }
 
-                std::unordered_map<unsigned int, Session*>::iterator iterSession = sessions_.find(startId);
+                std::unordered_map<SessionId, Session*>::iterator iterSession = sessions_.find(startId);
 
                 for (; iterSession != sessions_.end(); ++iterSession)
                 {
@@ -256,7 +256,7 @@ void SelectServer::Network()
                 AcceptClient();
             }
 
-            std::unordered_map<unsigned int, Session*>::iterator iterSession = sessions_.find(startId);
+            std::unordered_map<SessionId, Session*>::iterator iterSession = sessions_.find(startId);
 
             for (; iterSession != sessions_.end(); ++iterSession)
             {
@@ -315,7 +315,7 @@ void SelectServer::AcceptClient()
 
     WCHAR clientIp[16] = { 0 };
 
-    if (InetNtop(AF_INET, &clientAddr.sin_addr, clientIp, 16) == nullptr)
+    if (InetNtopW(AF_INET, &clientAddr.sin_addr, clientIp, 16) == nullptr)
     {
         wprintf(L"InetNtop Error \n");
         DebugBreak();
@@ -334,7 +334,7 @@ void SelectServer::AcceptClient()
     newSession->isDelete_ = 0;
     newSession->lastRecvTime_ = timeGetTime();
 
-    sessions_.insert(std::unordered_map<unsigned int, Session*>::value_type(newSession->sessionId_, newSession));
+    sessions_.insert(std::unordered_map<SessionId, Session*>::value_type(newSession->sessionId_, newSession));
 
 	OnAccept(newSession->sessionId_);
 }
@@ -348,12 +348,36 @@ void SelectServer::SendPacket(SessionId sessionId, CPacket* packet)
         return;
     }
 
-    int dataSize = packet->GetDataSize();
-    int enqueueHeaderReturn = target->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize, dataSize);
+    PacketHeader header;
+    header.byCode_ = packetCode_;
+    header.bySize_ = static_cast<unsigned char>(packet->GetDataSize() - sizeof(header.byType_));
+    header.byType_ = *reinterpret_cast<unsigned char*>(packet->GetBufferPtr() + LibraryHeaderSize);
 
-    if (enqueueHeaderReturn != dataSize)
+    int dataSize = packet->GetDataSize() - sizeof(header.byType_);
+
+    if (target->sendQueue_.GetFreeSize() < sizeof(header) + dataSize)
     {
-        wprintf(L"EnqueueFail in SendPacketUnicast %d \n ", target->sessionId_);
+        wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
+
+        Disconnect(target->sessionId_);
+        return;
+    }
+
+    int enqueueHeaderReturn = target->sendQueue_.Enqueue(reinterpret_cast<char*>(&header), sizeof(header));
+
+    if (enqueueHeaderReturn != sizeof(header))
+    {
+        wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
+
+        Disconnect(target->sessionId_);
+        return;
+    }
+
+    int enqueuePacketReturn = target->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize + sizeof(header.byType_), dataSize);
+
+    if (enqueuePacketReturn != dataSize)
+    {
+        wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
 
         Disconnect(target->sessionId_);
     }
@@ -371,7 +395,7 @@ void SelectServer::Disconnect(SessionId sessionId)
 
 void SelectServer::DeleteDisconnect()
 {
-    std::unordered_map<unsigned int, Session*>::iterator iter = sessions_.begin();
+    std::unordered_map<SessionId, Session*>::iterator iter = sessions_.begin();
 
     while (iter != sessions_.end())
     {
@@ -396,7 +420,7 @@ void SelectServer::DeleteDisconnect()
 void SelectServer::TimeOut()
 {
     unsigned int currentTime = timeGetTime();
-    std::unordered_map<unsigned int, Session*>::iterator iter;
+    std::unordered_map<SessionId, Session*>::iterator iter;
     for (iter = sessions_.begin(); iter != sessions_.end(); ++iter)
     {
         Session* target = iter->second;
@@ -480,8 +504,7 @@ void SelectServer::Receive(Session* target)
             
             CPacket* packetBuffer = CPacket::Alloc();
 
-            unsigned int receiveQueueDequeuePacketSize =
-                target->receiveQueue_.Dequeue(packetBuffer->GetBufferPtr() + LibraryHeaderSize, header.bySize_);
+            unsigned int receiveQueueDequeuePacketSize = target->receiveQueue_.Dequeue(packetBuffer->GetBufferPtr() + LibraryHeaderSize, header.bySize_);
 
             if (receiveQueueDequeuePacketSize != header.bySize_)
             {
@@ -582,4 +605,3 @@ unsigned int __stdcall SelectServer::GameLoopThread(void* thisPointer)
 
 
 }
-

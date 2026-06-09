@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include "ObjectFreeList.h"
 
-using SessionId = unsigned int;
+using SessionId = unsigned __int64;
 class CPacket;
 
 class SelectServer
@@ -40,7 +40,7 @@ private:
     static unsigned int WINAPI GameLoopThread(void* thisPointer);
     HANDLE gameLoopThread_;
 	SOCKET listenSocket_;
-    std::unordered_map<unsigned int, Session*> sessions_;
+    std::unordered_map<SessionId, Session*> sessions_;
     ObjectFreeList<Session> sessionFreeList_;
 	SessionId sessionId_;
     unsigned int frameMs_;
