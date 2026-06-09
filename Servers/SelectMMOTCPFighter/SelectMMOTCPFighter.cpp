@@ -5,13 +5,15 @@
 #include "PacketDefine.h"
 
 
-SelectMMOTCPFighter::SelectMMOTCPFighter() :characterFreeList_(10000)
+SelectMMOTCPFighter::SelectMMOTCPFighter() : characterFreeList_(10000), cPacketBuffer_(nullptr)
 {
+    cPacketBuffer_ = CPacket::Alloc();
 
 }
 
 SelectMMOTCPFighter::~SelectMMOTCPFighter()
 {
+    CPacket::Free(cPacketBuffer_);
 }
 
 void SelectMMOTCPFighter::OnAccept(SessionId sessionId)

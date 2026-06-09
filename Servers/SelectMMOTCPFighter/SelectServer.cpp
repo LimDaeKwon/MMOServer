@@ -10,19 +10,15 @@ SelectServer::SelectServer() :
     listenSocket_(INVALID_SOCKET),
     sessionFreeList_(DefaultMaxSessionCount),
     sessionId_(1),
-    cPacketBuffer_(nullptr),
     frameMs_(0),
     oldTick_(0),
     maxSessionCount_(DefaultMaxSessionCount),
     packetCode_(PacketCode)
 {
-	cPacketBuffer_ = CPacket::Alloc();
-
 }
 
 SelectServer::~SelectServer()
 {
-	CPacket::Free(cPacketBuffer_);
 }
 
 bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned int nagle, unsigned int maxSessionCount, unsigned char packetCode, unsigned int frameMs)
@@ -371,31 +367,29 @@ void SelectServer::Disconnect(SessionId sessionId)
         return;
     }
     target->isDelete_ = 1;
-    deleteList_.push_back(target->sessionId_);
 }
 
 void SelectServer::DeleteDisconnect()
 {
-    if (deleteList_.size() > 0)
+    std::unordered_map<unsigned int, Session*>::iterator iter = sessions_.begin();
+
+    while (iter != sessions_.end())
     {
-        Session* session;
-        SessionId sessionId;
+        Session* session = iter->second;
 
-        std::list<unsigned int>::iterator iter;
-
-        for (iter = deleteList_.begin(); iter != deleteList_.end(); ++iter)
+        if (session->isDelete_ == 0)
         {
-            sessionId = *iter;
-            session = sessions_.at(sessionId);
-            closesocket(session->socket_);
-            session->receiveQueue_.ClearBuffer();
-            session->sendQueue_.ClearBuffer();
-			OnRelease(sessionId);
-            sessionFreeList_.Free(session);
-            sessions_.erase(sessionId);
+            ++iter;
+            continue;
         }
 
-        deleteList_.clear();
+        SessionId sessionId = session->sessionId_;
+        closesocket(session->socket_);
+        session->receiveQueue_.ClearBuffer();
+        session->sendQueue_.ClearBuffer();
+		OnRelease(sessionId);
+        sessionFreeList_.Free(session);
+        iter = sessions_.erase(iter);
     }
 }
 
@@ -484,24 +478,26 @@ void SelectServer::Receive(Session* target)
 
             target->receiveQueue_.MoveFront(sizeof(header));
             
-            cPacketBuffer_->Clear();
+            CPacket* packetBuffer = CPacket::Alloc();
 
             unsigned int receiveQueueDequeuePacketSize =
-                target->receiveQueue_.Dequeue(cPacketBuffer_->GetBufferPtr() + LibraryHeaderSize, header.bySize_);
+                target->receiveQueue_.Dequeue(packetBuffer->GetBufferPtr() + LibraryHeaderSize, header.bySize_);
 
             if (receiveQueueDequeuePacketSize != header.bySize_)
             {
                 wprintf(L"## ReceiveQDequeuePacketSize != header.bySize_ : %d \n", receiveQueueDequeuePacketSize);
 
+                CPacket::Free(packetBuffer);
                 Disconnect(target->sessionId_);
                 break;
             }
 
-            cPacketBuffer_->MoveWritePosition(receiveQueueDequeuePacketSize);
+            packetBuffer->MoveWritePosition(receiveQueueDequeuePacketSize);
 
             target->lastRecvTime_ = timeGetTime();
 
-			OnMessage(target->sessionId_, header.byType_, cPacketBuffer_);
+			OnMessage(target->sessionId_, header.byType_, packetBuffer);
+            CPacket::Free(packetBuffer);
         }
     }
 
@@ -586,5 +582,4 @@ unsigned int __stdcall SelectServer::GameLoopThread(void* thisPointer)
 
 
 }
-
 

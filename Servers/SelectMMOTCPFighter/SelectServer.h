@@ -3,7 +3,6 @@
 #include <WinSock2.h>
 #include "Session.h"
 #include <unordered_map>
-#include <list>
 #include "ObjectFreeList.h"
 
 using SessionId = unsigned int;
@@ -28,8 +27,6 @@ protected:
     virtual void OnRelease(SessionId sessionId) = 0;
     virtual void OnUpdate() = 0;
 
-	CPacket* cPacketBuffer_;
-
 private:
     void AcceptClient();
     void DeleteDisconnect();
@@ -44,7 +41,6 @@ private:
     HANDLE gameLoopThread_;
 	SOCKET listenSocket_;
     std::unordered_map<unsigned int, Session*> sessions_;
-    std::list<unsigned int> deleteList_;
     ObjectFreeList<Session> sessionFreeList_;
 	SessionId sessionId_;
     unsigned int frameMs_;

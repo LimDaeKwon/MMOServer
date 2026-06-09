@@ -104,6 +104,7 @@ private:
 
 	ObjectFreeList<Character> characterFreeList_;
 
+	CPacket* cPacketBuffer_;
+
 
 };
-
