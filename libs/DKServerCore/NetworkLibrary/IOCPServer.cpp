@@ -1,4 +1,4 @@
-#include "LanNetworkLibraryServer.h"
+#include "IOCPServer.h"
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -16,9 +16,9 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-unsigned int __stdcall LanNetworkLibraryServer::AcceptThread(void* thisPointer)
+unsigned int __stdcall IOCPServer::AcceptThread(void* thisPointer)
 {
-	LanNetworkLibraryServer* thisForAccept = static_cast<LanNetworkLibraryServer*>(thisPointer);
+	IOCPServer* thisForAccept = static_cast<IOCPServer*>(thisPointer);
 
 	while (true)
 	{
@@ -54,9 +54,9 @@ unsigned int __stdcall LanNetworkLibraryServer::AcceptThread(void* thisPointer)
 	return 0;
 }
 
-unsigned int __stdcall LanNetworkLibraryServer::WorkerThread(void* thisPointer)
+unsigned int __stdcall IOCPServer::WorkerThread(void* thisPointer)
 {
-	LanNetworkLibraryServer* thisForWorker = static_cast<LanNetworkLibraryServer*>(thisPointer);
+	IOCPServer* thisForWorker = static_cast<IOCPServer*>(thisPointer);
 
 	while (true)
 	{
@@ -104,9 +104,9 @@ unsigned int __stdcall LanNetworkLibraryServer::WorkerThread(void* thisPointer)
 	return 0;
 }
 
-unsigned int __stdcall LanNetworkLibraryServer::MonitorThread(void* thisPointer)
+unsigned int __stdcall IOCPServer::MonitorThread(void* thisPointer)
 {
-	LanNetworkLibraryServer* thisForMonitor = static_cast<LanNetworkLibraryServer*>(thisPointer);
+	IOCPServer* thisForMonitor = static_cast<IOCPServer*>(thisPointer);
 
 	while (true)
 	{
@@ -120,9 +120,9 @@ unsigned int __stdcall LanNetworkLibraryServer::MonitorThread(void* thisPointer)
 	return 0;
 }
 
-unsigned int __stdcall LanNetworkLibraryServer::HeartbeatThread(void* thisPointer)
+unsigned int __stdcall IOCPServer::HeartbeatThread(void* thisPointer)
 {
-	LanNetworkLibraryServer* thisForHeartbeat = static_cast<LanNetworkLibraryServer*>(thisPointer);
+	IOCPServer* thisForHeartbeat = static_cast<IOCPServer*>(thisPointer);
 
 	unsigned int localCount = 0;
 
@@ -185,7 +185,7 @@ unsigned int __stdcall LanNetworkLibraryServer::HeartbeatThread(void* thisPointe
 	return 0;
 }
 
-LanNetworkLibraryServer::LanNetworkLibraryServer()
+IOCPServer::IOCPServer()
 	: acceptTps_(0)
 	, recvMessageTps_(0)
 	, sendMessageTps_(0)
@@ -200,16 +200,17 @@ LanNetworkLibraryServer::LanNetworkLibraryServer()
 {
 }
 
-LanNetworkLibraryServer::~LanNetworkLibraryServer()
+IOCPServer::~IOCPServer()
 {
 }
 
-bool LanNetworkLibraryServer::Start(const char* serverIp, unsigned int serverPort, unsigned int workerNum, unsigned int concurrentThreads, unsigned int nagle, unsigned int sessions, unsigned int header)
+bool IOCPServer::Start(const char* serverIp, unsigned int serverPort, unsigned int workerNum, unsigned int concurrentThreads, unsigned int nagle, unsigned int sessions, unsigned int header)
 {
 	maxSession_ = sessions;
 	sessionNum_ = 0;
 	sessionArray_ = new Session[maxSession_];
-	headerSize_ = header;
+	headerSize_ = sizeof(PacketHeader);
+	UNREFERENCED_PARAMETER(header);
 
 	int** temp = new int* [maxSession_];
 
@@ -345,7 +346,7 @@ bool LanNetworkLibraryServer::Start(const char* serverIp, unsigned int serverPor
 	return true;
 }
 
-bool LanNetworkLibraryServer::Stop()
+bool IOCPServer::Stop()
 {
 	PostQueuedCompletionStatus(handleIocp_, 0, 0, nullptr);
 
@@ -358,12 +359,12 @@ bool LanNetworkLibraryServer::Stop()
 	return true;
 }
 
-int LanNetworkLibraryServer::GetSessionCount()
+int IOCPServer::GetSessionCount()
 {
 	return sessionNum_;
 }
 
-void LanNetworkLibraryServer::Disconnect(__int64 sessionId)
+void IOCPServer::Disconnect(__int64 sessionId)
 {
 	Session* target;
 	unsigned int i = FindSession(sessionId);
@@ -396,7 +397,7 @@ void LanNetworkLibraryServer::Disconnect(__int64 sessionId)
 
 }
 
-LanNetworkLibraryServer::Session* LanNetworkLibraryServer::SessionAlloc(int* emptyIndex, unsigned long long clientSock)
+IOCPServer::Session* IOCPServer::SessionAlloc(int* emptyIndex, unsigned long long clientSock)
 {
 
 	if (InterlockedIncrement(&sessionNum_) > maxSession_)
@@ -430,7 +431,7 @@ LanNetworkLibraryServer::Session* LanNetworkLibraryServer::SessionAlloc(int* emp
 	return newSession;
 }
 
-void LanNetworkLibraryServer::SendCompletion(Session* target)
+void IOCPServer::SendCompletion(Session* target)
 {
 	for (int i = 0; i < target->bufferCount_.count_; ++i)
 	{
@@ -442,7 +443,7 @@ void LanNetworkLibraryServer::SendCompletion(Session* target)
 	SendPost(target);
 }
 
-void LanNetworkLibraryServer::RecvCompletion(Session* target, DWORD cbTransferred)
+void IOCPServer::RecvCompletion(Session* target, DWORD cbTransferred)
 {
 	target->loginFlag_ = true;
 	target->recvBuffer_.MoveRear(cbTransferred);
@@ -451,7 +452,7 @@ void LanNetworkLibraryServer::RecvCompletion(Session* target, DWORD cbTransferre
 	Receive(target);
 }
 
-void LanNetworkLibraryServer::SendPacket(__int64 sessionId, CPacket* sendPacket)
+void IOCPServer::SendPacket(__int64 sessionId, CPacket* sendPacket)
 {
 	Session* target;
 	unsigned int i = FindSession(sessionId);
@@ -472,7 +473,7 @@ void LanNetworkLibraryServer::SendPacket(__int64 sessionId, CPacket* sendPacket)
 		return;
 	}
 
-	NetAddHeader(sendPacket);
+	AddHeader(sendPacket);
 
 	sendPacket->IncreaseRefCount();
 
@@ -493,7 +494,7 @@ void LanNetworkLibraryServer::SendPacket(__int64 sessionId, CPacket* sendPacket)
 	ReturnReference(target);
 }
 
-void LanNetworkLibraryServer::SendPost(Session* target)
+void IOCPServer::SendPost(Session* target)
 {
 	if (InterlockedOr8(reinterpret_cast<volatile char*>(&target->disconnectFlag_), 0) == 1)
 	{
@@ -515,7 +516,7 @@ void LanNetworkLibraryServer::SendPost(Session* target)
 
 	if (InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 1) == 0)
 	{
-		WSABUF localWsaBuf[DKServerCore::LanNetworkMaxBatchSize];
+		WSABUF localWsaBuf[DKServerCore::LanNetworkMaxBatchSize * 2];
 
 		int bufCount = SetWSABUF(target, localWsaBuf);
 
@@ -536,7 +537,7 @@ void LanNetworkLibraryServer::SendPost(Session* target)
 	}
 }
 
-void LanNetworkLibraryServer::ReceiveFirst(Session* newSession)
+void IOCPServer::ReceiveFirst(Session* newSession)
 {
 	WSABUF wsaBuf;
 	wsaBuf.buf = newSession->recvBuffer_.GetRearBufferPtr();
@@ -562,12 +563,12 @@ void LanNetworkLibraryServer::ReceiveFirst(Session* newSession)
 	}
 }
 
-void LanNetworkLibraryServer::RecvProc(Session* target)
+void IOCPServer::RecvProc(Session* target)
 {
 	while (true)
 	{
 		int targetRecvBufferSize = target->recvBuffer_.GetUseSize();
-		LanPacketHeader header;
+		PacketHeader header;
 
 		if (targetRecvBufferSize < sizeof(header))
 		{
@@ -579,7 +580,13 @@ void LanNetworkLibraryServer::RecvProc(Session* target)
 			break;
 		}
 
-		if (targetRecvBufferSize < sizeof(header) + header.length_)
+		if (CheckLibraryPacketCode(header.code_) == false)
+		{
+			Disconnect(target->sessionId_);
+			break;
+		}
+
+		if (targetRecvBufferSize < sizeof(header) + header.size_)
 		{
 			break;
 		}
@@ -588,25 +595,26 @@ void LanNetworkLibraryServer::RecvProc(Session* target)
 
 		CPacket* packetBuffer = CPacket::Alloc();
 
-		unsigned int receiveDequeuePacketSize = target->recvBuffer_.Dequeue(packetBuffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize, header.length_);
+		unsigned int receiveDequeuePacketSize = target->recvBuffer_.Dequeue(packetBuffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize, header.size_);
 
-		if (receiveDequeuePacketSize != header.length_)
+		if (receiveDequeuePacketSize != header.size_)
 		{
 			wprintf(L"## ReceiveQDequeuePacketSize != Header.BySize : %d \n", receiveDequeuePacketSize);
 
+			CPacket::Free(packetBuffer);
 			break;
 		}
 
 		packetBuffer->MoveWritePosition(receiveDequeuePacketSize);
 
-		OnMessage(target->sessionId_, packetBuffer);
+		OnMessage(target->sessionId_, header.type_, packetBuffer);
 
 		CPacket::Free(packetBuffer);
 	}
 
 }
 
-void LanNetworkLibraryServer::Receive(Session* target)
+void IOCPServer::Receive(Session* target)
 {
 	if (target->disconnectFlag_ == 1)
 	{
@@ -631,34 +639,20 @@ void LanNetworkLibraryServer::Receive(Session* target)
 	CheckRecvReturn(target, retval);
 }
 
-void LanNetworkLibraryServer::LanAddHeader(CPacket* packetBuffer)
+void IOCPServer::AddHeader(CPacket* packetBuffer)
 {
 	char* temp = packetBuffer->GetBufferPtr();
 	temp += DKServerCore::PacketLibHeaderSize - headerSize_;
 
-	LanPacketHeader libHeader;
-	libHeader.length_ = static_cast<unsigned short>(packetBuffer->GetDataSize());
+	PacketHeader packetHeader;
+	packetHeader.code_ = DKServerCore::LibraryPacketCode;
+	packetHeader.size_ = static_cast<BYTE>(packetBuffer->GetDataSize() - sizeof(packetHeader.type_));
+	packetHeader.type_ = *reinterpret_cast<BYTE*>(packetBuffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize);
 
-	*reinterpret_cast<unsigned short*>(temp) = libHeader.length_;
+	memcpy_s(temp, headerSize_, &packetHeader, sizeof(packetHeader));
 }
 
-void LanNetworkLibraryServer::NetAddHeader(CPacket* packetBuffer)
-{
-	char* temp = packetBuffer->GetBufferPtr();
-	temp += DKServerCore::PacketLibHeaderSize - headerSize_;
-
-
-	NetPacketHeader netLibHeader;
-	netLibHeader.size_ = static_cast<BYTE>(packetBuffer->GetDataSize()-1);
-	netLibHeader.code_ = DKServerCore::LibraryPacketCode;
-
-
-	*(temp) = netLibHeader.code_;
-	temp++;
-	*(temp) = netLibHeader.size_;
-}
-
-void LanNetworkLibraryServer::Release(Session* target)
+void IOCPServer::Release(Session* target)
 {
 	if (InterlockedCompareExchange(&target->ioCount_, DKServerCore::ReleaseFlag, 0) != 0)
 	{
@@ -689,23 +683,23 @@ void LanNetworkLibraryServer::Release(Session* target)
 	return;
 }
 
-void LanNetworkLibraryServer::RegisterIOCP(HANDLE newSocket, ULONG_PTR key)
+void IOCPServer::RegisterIOCP(HANDLE newSocket, ULONG_PTR key)
 {
 	CreateIoCompletionPort(newSocket, handleIocp_, key, 0);
 }
 
-HANDLE LanNetworkLibraryServer::CreateIOCP(DWORD concurrent)
+HANDLE IOCPServer::CreateIOCP(DWORD concurrent)
 {
 	return CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, concurrent);
 }
 
-int* LanNetworkLibraryServer::FindEmptySession()
+int* IOCPServer::FindEmptySession()
 {
 	int* tempIndex = indexList_.Alloc();
 	return tempIndex;
 }
 
-void LanNetworkLibraryServer::ClearSendBuffer(Session* target)
+void IOCPServer::ClearSendBuffer(Session* target)
 {
 	while (true)
 	{
@@ -720,7 +714,7 @@ void LanNetworkLibraryServer::ClearSendBuffer(Session* target)
 	}
 }
 
-void LanNetworkLibraryServer::ReturnReference(Session* target)
+void IOCPServer::ReturnReference(Session* target)
 {
 	if (InterlockedDecrement(&target->ioCount_) == 0)
 	{
@@ -728,11 +722,13 @@ void LanNetworkLibraryServer::ReturnReference(Session* target)
 	}
 }
 
-int LanNetworkLibraryServer::SetWSABUF(Session* target, WSABUF* wsaBuf)
+int IOCPServer::SetWSABUF(Session* target, WSABUF* wsaBuf)
 {
 	int bufCount = 0;
 
-	while (bufCount < DKServerCore::LanNetworkMaxBatchSize)
+	int packetCount = 0;
+
+	while (packetCount < DKServerCore::LanNetworkMaxBatchSize)
 	{
 		CPacket* temp = nullptr;
 
@@ -741,18 +737,22 @@ int LanNetworkLibraryServer::SetWSABUF(Session* target, WSABUF* wsaBuf)
 			break;
 		}
 
-		target->bufferCount_.buffers_[bufCount] = temp;
+		target->bufferCount_.buffers_[packetCount] = temp;
 		wsaBuf[bufCount].buf = temp->GetBufferPtr() + DKServerCore::PacketLibHeaderSize - headerSize_;
-		wsaBuf[bufCount].len = temp->GetDataSize() + headerSize_;
+		wsaBuf[bufCount].len = headerSize_;
 		bufCount++;
+		wsaBuf[bufCount].buf = temp->GetBufferPtr() + DKServerCore::PacketLibHeaderSize + sizeof(BYTE);
+		wsaBuf[bufCount].len = temp->GetDataSize() - sizeof(BYTE);
+		bufCount++;
+		packetCount++;
 	}
 
-	target->bufferCount_.count_ = bufCount;
+	target->bufferCount_.count_ = packetCount;
 
 	return bufCount;
 }
 
-void LanNetworkLibraryServer::GetClientAddress(SOCKET clientSocket, sockaddr_in& clientAddr, WCHAR* addr)
+void IOCPServer::GetClientAddress(SOCKET clientSocket, sockaddr_in& clientAddr, WCHAR* addr)
 {
 	int addrLen = sizeof(clientAddr);
 
@@ -765,7 +765,7 @@ void LanNetworkLibraryServer::GetClientAddress(SOCKET clientSocket, sockaddr_in&
 	}
 }
 
-void LanNetworkLibraryServer::RecursiveCheck(Session* target)
+void IOCPServer::RecursiveCheck(Session* target)
 {
 	InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 0);
 
@@ -775,7 +775,7 @@ void LanNetworkLibraryServer::RecursiveCheck(Session* target)
 	}
 }
 
-void LanNetworkLibraryServer::CheckSendReturn(Session* target, int sendReturn)
+void IOCPServer::CheckSendReturn(Session* target, int sendReturn)
 {
 	if (sendReturn == SOCKET_ERROR)
 	{
@@ -800,7 +800,7 @@ void LanNetworkLibraryServer::CheckSendReturn(Session* target, int sendReturn)
 	}
 }
 
-void LanNetworkLibraryServer::CheckRecvReturn(Session* target, int recvReturn)
+void IOCPServer::CheckRecvReturn(Session* target, int recvReturn)
 {
 	if (recvReturn == SOCKET_ERROR)
 	{
@@ -820,7 +820,7 @@ void LanNetworkLibraryServer::CheckRecvReturn(Session* target, int recvReturn)
 	}
 }
 
-bool LanNetworkLibraryServer::CheckLibraryPacketCode(BYTE code)
+bool IOCPServer::CheckLibraryPacketCode(BYTE code)
 {
 	if (code != DKServerCore::LibraryPacketCode)
 	{
@@ -830,22 +830,22 @@ bool LanNetworkLibraryServer::CheckLibraryPacketCode(BYTE code)
 	return true;
 }
 
-int LanNetworkLibraryServer::FindSession(__int64 sessionId)
+int IOCPServer::FindSession(__int64 sessionId)
 {
 	return static_cast<int>(sessionId >> 48);
 }
 
-int LanNetworkLibraryServer::GetAcceptTPS()
+int IOCPServer::GetAcceptTPS()
 {
 	return acceptTps_;
 }
 
-int LanNetworkLibraryServer::GetRecvMessageTPS()
+int IOCPServer::GetRecvMessageTPS()
 {
 	return recvMessageTps_;
 }
 
-int LanNetworkLibraryServer::GetSendMessageTPS()
+int IOCPServer::GetSendMessageTPS()
 {
 	return sendMessageTps_;
 }

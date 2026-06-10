@@ -8,22 +8,18 @@
 #include "LockFreeQueueCas2.h"
 #include "RingBuffer.h"
 
-class LanNetworkLibraryServer
+class IOCPServer
 {
 public:
-    LanNetworkLibraryServer();
-    virtual ~LanNetworkLibraryServer();
-
-    struct LanPacketHeader
-    {
-        unsigned short length_;
-    };
+    IOCPServer();
+    virtual ~IOCPServer();
 
 #pragma pack(push, 1)
-    struct NetPacketHeader
+    struct PacketHeader
     {
         BYTE code_;
         BYTE size_;
+        BYTE type_;
     };
 #pragma pack(pop)
 
@@ -80,8 +76,7 @@ public:
     void ReceiveFirst(Session* newSession);
     void RecvProc(Session* target);
     void Receive(Session* target);
-    void LanAddHeader(CPacket* packetBuffer);
-    void NetAddHeader(CPacket* packetBuffer);
+    void AddHeader(CPacket* packetBuffer);
 
     void Release(Session* target);
 
@@ -109,7 +104,7 @@ public:
     virtual bool OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort) = 0;
     virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId) = 0;
     virtual void OnRelease(__int64 sessionId) = 0;
-    virtual void OnMessage(__int64 sessionId, CPacket* sendPacket) = 0;
+    virtual void OnMessage(__int64 sessionId, BYTE packetType, CPacket* sendPacket) = 0;
     virtual void OnError(int errorCode, const wchar_t* errorLog) = 0;
 
     int GetAcceptTPS();
@@ -130,8 +125,6 @@ public:
     __int64 uniqueId_ = 1;
 
     unsigned int headerSize_;
-    unsigned int packetType_ = 1;
-
     unsigned long long timeout_;
     unsigned long long unloginTimeout_;
 

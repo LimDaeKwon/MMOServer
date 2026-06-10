@@ -34,6 +34,7 @@ void MMOTCPServerSingle::OnAccept(const wchar_t* serverIp, unsigned short server
 	MessageData* messageData = messageDataFreeList_.Alloc();
 	messageData->sessionId_ = sessionId;
 	messageData->contentsPacket_ = nullptr;
+	messageData->packetType_ = 0;
 	messageData->type_ = MessageTypeAccept;
 
 	messageQueue_.Enqueue(messageData);
@@ -47,6 +48,7 @@ void MMOTCPServerSingle::OnRelease(__int64 sessionId)
 	MessageData* messageData = messageDataFreeList_.Alloc();
 	messageData->sessionId_ = sessionId;
 	messageData->contentsPacket_ = nullptr;
+	messageData->packetType_ = 0;
 	messageData->type_ = MessageTypeRelease;
 
 	messageQueue_.Enqueue(messageData);
@@ -54,7 +56,7 @@ void MMOTCPServerSingle::OnRelease(__int64 sessionId)
 
 }
 
-void MMOTCPServerSingle::OnMessage(__int64 sessionId, CPacket* contentsSendPacket)
+void MMOTCPServerSingle::OnMessage(__int64 sessionId, BYTE packetType, CPacket* contentsSendPacket)
 {
 
 
@@ -62,6 +64,7 @@ void MMOTCPServerSingle::OnMessage(__int64 sessionId, CPacket* contentsSendPacke
 	messageData->sessionId_ = sessionId;
 	contentsSendPacket->IncreaseRefCount();
 	messageData->contentsPacket_ = contentsSendPacket;
+	messageData->packetType_ = packetType;
 	messageData->type_ = MessageTypePacket;
 
 	messageQueue_.Enqueue(messageData);
@@ -168,14 +171,11 @@ void MMOTCPServerSingle::ReleaseCharacter(__int64 newSession)
 
 bool MMOTCPServerSingle::PacketProc(MessageData* msg)
 {
-	BYTE packetType;
-	*msg->contentsPacket_ >> packetType;
-
 	Character* target;
 	target = characterMap_.at(msg->sessionId_);
 
 
-	switch (packetType)
+	switch (msg->packetType_)
 	{
 	case PacketCsMoveStart:
 	{

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "LanNetworkLibraryServer.h"
+#include "IOCPServer.h"
 #include "LockFreeQueue.h"
 #include "TLSObjectFreeList.h"
 #include "ObjectFreeList.h"
@@ -21,6 +21,7 @@ struct MessageData
 {
 	WORD type_;
 	SessionId sessionId_;
+	BYTE packetType_;
 	CPacket* contentsPacket_;
 };
 
@@ -52,7 +53,7 @@ struct Character
 	SectorPos characterSectorPos_;
 };
 
-class MMOTCPServerSingle : public LanNetworkLibraryServer
+class MMOTCPServerSingle : public IOCPServer
 {
 public:
 	MMOTCPServerSingle();
@@ -61,7 +62,7 @@ public:
 	virtual bool OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort) override;
 	virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, SessionId sessionId) override;
 	virtual void OnRelease(SessionId sessionId) override;
-	virtual void OnMessage(SessionId sessionId, CPacket* sendPacket) override;
+	virtual void OnMessage(SessionId sessionId, BYTE packetType, CPacket* sendPacket) override;
 	virtual void OnError(int errorCode, const wchar_t* errorLog) override;
 
 	static unsigned int WINAPI LogicThread(LPVOID thisPtr);

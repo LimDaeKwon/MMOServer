@@ -12,7 +12,7 @@ private:
     CPacket(int newBufferSize);
 
 public:
-    friend class LanNetworkLibraryServer;
+    friend class IOCPServer;
     friend class ContentsCPacket;
     friend class TLSObjectFreeList<CPacket>;
     friend class ContentsNetLibrary;

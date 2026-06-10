@@ -1,7 +1,7 @@
-ï»¿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="í—¤ë” íŒŒì¼">
+    <Filter Include="Çì´õ ÆÄÀÏ">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
@@ -27,10 +27,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
-      <Filter>í—¤ë” íŒŒì¼</Filter>
+      <Filter>Çì´õ ÆÄÀÏ</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
-      <Filter>í—¤ë” íŒŒì¼</Filter>
+      <Filter>Çì´õ ÆÄÀÏ</Filter>
     </ClInclude>
     <ClInclude Include="Packet\ContentsCPacket.h">
       <Filter>Packet</Filter>
@@ -95,7 +95,7 @@
     <ClInclude Include="Utils\SpinLock.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="NetworkLibrary\LanNetworkLibraryServer.h">
+    <ClInclude Include="NetworkLibrary\IOCPServer.h">
       <Filter>NetworkLibaray</Filter>
     </ClInclude>
     <ClInclude Include="NetworkLibrary\LanLibrary.h">
@@ -157,7 +157,7 @@
     <ClCompile Include="Utils\SpinLock.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="NetworkLibrary\LanNetworkLibraryServer.cpp">
+    <ClCompile Include="NetworkLibrary\IOCPServer.cpp">
       <Filter>NetworkLibaray</Filter>
     </ClCompile>
     <ClCompile Include="NetworkLibrary\LanLibrary.cpp">
