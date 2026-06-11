@@ -92,6 +92,7 @@ unsigned int __stdcall NetLibrary::WorkerThread(void* thisPointer)
 
         if (cbTransferred == 0)
         {
+
         }
         else if (retval == 0)
         {

@@ -72,7 +72,12 @@ unsigned int __stdcall IOCPServer::WorkerThread(void* thisPointer)
 			break;
 		}
 
-		if (retval == 0)
+
+		if (cbTransferred == 0) //정상 종료
+		{
+
+		}
+		else if (retval == 0)
 		{
 			int error = WSAGetLastError();
 
@@ -83,7 +88,7 @@ unsigned int __stdcall IOCPServer::WorkerThread(void* thisPointer)
 		}
 		else
 		{
-			if (overlapPointer == nullptr && cbTransferred == 0 && target != nullptr)
+			if (overlapPointer == nullptr && cbTransferred == 2 && target != nullptr)
 			{
 				thisForWorker->SendPost(target);
 				continue;
@@ -490,13 +495,13 @@ void IOCPServer::SendPacket(__int64 sessionId, CPacket* sendPacket)
 		return;
 	}
 
-	PostQueuedCompletionStatus(handleIocp_, 0, reinterpret_cast<ULONG_PTR>(target), nullptr);
+	PostQueuedCompletionStatus(handleIocp_, 2, reinterpret_cast<ULONG_PTR>(target), nullptr);
 	ReturnReference(target);
 }
 
 void IOCPServer::SendPost(Session* target)
 {
-	if (InterlockedOr8(reinterpret_cast<volatile char*>(&target->disconnectFlag_), 0) == 1)
+	/*if (InterlockedOr8(reinterpret_cast<volatile char*>(&target->disconnectFlag_), 0) == 1)
 	{
 		return;
 	}
@@ -534,7 +539,112 @@ void IOCPServer::SendPost(Session* target)
 		int wsaSendReturn = WSASend(target->sock_, localWsaBuf, bufCount, &sendBytes, 0, &target->sendOverlapped_.overlapped_, nullptr);
 
 		CheckSendReturn(target, wsaSendReturn);
+	}*/
+
+
+	if (InterlockedOr8(reinterpret_cast<volatile char*>(&target->disconnectFlag_), 0) == 1)
+	{
+		return;
 	}
+
+	long localCount = InterlockedIncrement(&target->ioCount_);
+
+	if ((localCount & DKServerCore::ReleaseFlag) == DKServerCore::ReleaseFlag)
+	{
+		if (InterlockedDecrement(&target->ioCount_) == 0)
+		{
+			Release(target);
+		}
+
+		return;
+	}
+
+	int wsaSendReturn;
+
+	if (InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 1) == 0)
+	{
+		WSABUF localWsaBuf[DKServerCore::MaxBatchSize];
+
+		int bufCount = 0;
+
+		while (bufCount < DKServerCore::LanNetworkMaxBatchSize)
+		{
+			CPacket* temp = nullptr;
+
+			if (target->sendBuffer_.Dequeue(&temp) == false)
+			{
+				break;
+			}
+			target->bufferCount_.buffers_[bufCount] = temp;
+			localWsaBuf[bufCount].buf = temp->GetBufferPtr() + (DKServerCore::PacketLibHeaderSize - 2);
+			localWsaBuf[bufCount].len = temp->GetDataSize() + 2;
+			bufCount++;
+		}
+
+		target->bufferCount_.count_ = bufCount;
+
+		if (bufCount == 0)
+		{
+			InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 0);
+
+			if (target->sendBuffer_.GetSize() != 0)
+			{
+				SendPost(target);
+			}
+
+			if (InterlockedDecrement(&target->ioCount_) == 0)
+			{
+				Release(target);
+			}
+
+			return;
+		}
+
+		InterlockedAdd(&sendMessageCount_, target->sendCount_);
+		InterlockedExchange(&target->sendCount_, 0);
+
+		DWORD sendBytes = 0;
+		ZeroMemory(&target->sendOverlapped_.overlapped_, sizeof(target->sendOverlapped_.overlapped_));
+
+		wsaSendReturn = WSASend(target->sock_, localWsaBuf, bufCount, &sendBytes, 0, &target->sendOverlapped_.overlapped_, nullptr);
+
+		if (wsaSendReturn == SOCKET_ERROR)
+		{
+			int wsaSendError = WSAGetLastError();
+
+			if (wsaSendError == WSA_IO_PENDING)
+			{
+				//비동기를 사용하지 않을거니까. 
+				if (InterlockedOr8(reinterpret_cast<volatile char*>(&target->disconnectFlag_), 0) == 1)
+				{
+					CancelIoEx(reinterpret_cast<HANDLE>(target->sock_), nullptr);
+				}
+
+				Disconnect(target->sessionId_);
+			}
+
+			if (wsaSendError != WSA_IO_PENDING)
+			{
+				if (wsaSendError == 10038)
+				{
+				}
+
+				if (InterlockedDecrement(&target->ioCount_) == 0)
+				{
+					Release(target);
+					return;
+				}
+			}
+		}
+	}
+	else
+	{
+		if (InterlockedDecrement(&target->ioCount_) == 0)
+		{
+			Release(target);
+		}
+	}
+
 }
 
 void IOCPServer::ReceiveFirst(Session* newSession)
@@ -642,14 +752,19 @@ void IOCPServer::Receive(Session* target)
 void IOCPServer::AddHeader(CPacket* packetBuffer)
 {
 	char* temp = packetBuffer->GetBufferPtr();
-	temp += DKServerCore::PacketLibHeaderSize - headerSize_;
+	temp += DKServerCore::PacketLibHeaderSize - 2;
 
-	PacketHeader packetHeader;
+	struct tempHeader
+	{
+		BYTE code_;
+		BYTE size_;
+	};
+
+	tempHeader packetHeader;
 	packetHeader.code_ = DKServerCore::LibraryPacketCode;
-	packetHeader.size_ = static_cast<BYTE>(packetBuffer->GetDataSize() - sizeof(packetHeader.type_));
-	packetHeader.type_ = *reinterpret_cast<BYTE*>(packetBuffer->GetBufferPtr() + DKServerCore::PacketLibHeaderSize);
+	packetHeader.size_ = static_cast<BYTE>(packetBuffer->GetDataSize() - 1);
 
-	memcpy_s(temp, headerSize_, &packetHeader, sizeof(packetHeader));
+	memcpy_s(temp, 2, &packetHeader, sizeof(packetHeader));
 }
 
 void IOCPServer::Release(Session* target)
@@ -665,7 +780,6 @@ void IOCPServer::Release(Session* target)
 	}
 
 	target->bufferCount_.count_ = 0;
-
 	target->recvBuffer_.ClearBuffer();
 	ClearSendBuffer(target);
 
@@ -726,9 +840,7 @@ int IOCPServer::SetWSABUF(Session* target, WSABUF* wsaBuf)
 {
 	int bufCount = 0;
 
-	int packetCount = 0;
-
-	while (packetCount < DKServerCore::LanNetworkMaxBatchSize)
+	while (bufCount < DKServerCore::LanNetworkMaxBatchSize)
 	{
 		CPacket* temp = nullptr;
 
@@ -736,18 +848,13 @@ int IOCPServer::SetWSABUF(Session* target, WSABUF* wsaBuf)
 		{
 			break;
 		}
-
-		target->bufferCount_.buffers_[packetCount] = temp;
-		wsaBuf[bufCount].buf = temp->GetBufferPtr() + DKServerCore::PacketLibHeaderSize - headerSize_;
-		wsaBuf[bufCount].len = headerSize_;
+		target->bufferCount_.buffers_[bufCount] = temp;
+		wsaBuf[bufCount].buf = temp->GetBufferPtr() + (DKServerCore::PacketLibHeaderSize - 2);
+		wsaBuf[bufCount].len = temp->GetDataSize() + 2;
 		bufCount++;
-		wsaBuf[bufCount].buf = temp->GetBufferPtr() + DKServerCore::PacketLibHeaderSize + sizeof(BYTE);
-		wsaBuf[bufCount].len = temp->GetDataSize() - sizeof(BYTE);
-		bufCount++;
-		packetCount++;
 	}
 
-	target->bufferCount_.count_ = packetCount;
+	target->bufferCount_.count_ = bufCount;
 
 	return bufCount;
 }
