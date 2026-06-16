@@ -351,6 +351,134 @@ bool IOCPServer::Start(const char* serverIp, unsigned int serverPort, unsigned i
 	return true;
 }
 
+bool IOCPServer::Start(const DKServerCore::IocpServerStartConfig& config)
+{
+	maxSession_ = config.maxSessionCount;
+	sessionNum_ = 0;
+	sessionArray_ = new Session[maxSession_];
+
+	headerSize_ = config.headerSize;
+	packetCode_ = config.packetCode;
+
+	if (headerSize_ != sizeof(PacketHeader))
+	{
+		return false;
+	}
+
+	int** temp = new int* [maxSession_];
+
+	timeout_ = 30;
+	unloginTimeout_ = 3;
+
+	for (unsigned int i = 0; i < maxSession_; ++i)
+	{
+		temp[i] = indexList_.Alloc();
+		*temp[i] = i;
+	}
+
+	for (unsigned int i = 0; i < maxSession_; ++i)
+	{
+		indexList_.Free(temp[i]);
+	}
+
+	WSADATA wsa;
+
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+	{
+		return false;
+	}
+
+	handleIocp_ = CreateIOCP(config.concurrentThreadCount);
+
+	if (handleIocp_ == nullptr)
+	{
+		return false;
+	}
+
+	listenSock_ = socket(AF_INET, SOCK_STREAM, 0);
+
+	if (listenSock_ == INVALID_SOCKET)
+	{
+		return false;
+	}
+
+	SOCKADDR_IN serverAddress;
+	ZeroMemory(&serverAddress, sizeof(serverAddress));
+	serverAddress.sin_family = AF_INET;
+	InetPtonA(AF_INET, config.ip.c_str(), &serverAddress.sin_addr);
+	serverAddress.sin_port = htons(config.port);
+
+	int bindReturn = bind(listenSock_, reinterpret_cast<const sockaddr*>(&serverAddress), sizeof(serverAddress));
+
+	if (bindReturn == SOCKET_ERROR)
+	{
+		return false;
+	}
+
+	LINGER linger;
+	linger.l_linger = 0;
+	linger.l_onoff = 1;
+
+	int socketOption = setsockopt(listenSock_, SOL_SOCKET, SO_LINGER, reinterpret_cast<const char*>(&linger), sizeof(linger));
+
+	if (socketOption == SOCKET_ERROR)
+	{
+		return false;
+	}
+
+	if (config.nagle)
+	{
+		DWORD noDelay = 1;
+
+		int noDelayOption = setsockopt(listenSock_, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&noDelay), sizeof(noDelay));
+
+		if (noDelayOption == SOCKET_ERROR)
+		{
+			return false;
+		}
+	}
+
+	int listenReturn = listen(listenSock_, SOMAXCONN_HINT(7000));
+
+	if (listenReturn == SOCKET_ERROR)
+	{
+		return false;
+	}
+
+	threadsNum_ = config.workerThreadCount;
+	threads_ = new HANDLE[threadsNum_];
+
+	for (unsigned int i = 0; i < threadsNum_; ++i)
+	{
+		threads_[i] = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, WorkerThread, this, 0, nullptr));
+
+		if (threads_[i] == nullptr)
+		{
+			return false;
+		}
+	}
+
+	acceptThread_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, AcceptThread, this, 0, nullptr));
+	if (acceptThread_ == nullptr)
+	{
+		return false;
+	}
+
+	monitorThread_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, MonitorThread, this, 0, nullptr));
+	if (monitorThread_ == nullptr)
+	{
+		return false;
+	}
+
+	heartbeatThread_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, HeartbeatThread, this, 0, nullptr));
+	if (heartbeatThread_ == nullptr)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 bool IOCPServer::Stop()
 {
 	PostQueuedCompletionStatus(handleIocp_, 0, 0, nullptr);

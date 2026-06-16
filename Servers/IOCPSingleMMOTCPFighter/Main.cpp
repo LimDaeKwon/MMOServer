@@ -8,6 +8,10 @@
 #include "Profiler.h"
 #include "CrashDump.h"
 #include "queue"
+#include "ServerStartConfig.h"
+#include "DKParser.h"
+
+
 
 CrashDump zz;
 
@@ -33,24 +37,33 @@ char threadData[7][200];
 
 char gameData[7][200];
 
+
+bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config);
+
+
 int main()
 {
 	timeBeginPeriod(1);
 
 	InitProfile();
 
-	ParseThreadDataFile(ThreadFileName);
-	ParseGameDataFile(GameFileName);
+	DKParser parser;
+	if (!parser.Load(ThreadFileName))
+	{
+		printf("Config load failed: %s\n", parser.GetLastError().c_str());
+		return 1;
+	}
 
-	//로직이 싱글인지 아닌지.
+	DKServerCore::IocpServerStartConfig config;
+	if (!SetConfigValue(parser, config))
+	{
+		return 1;
+	}
 
 
 	MMOTCPServerSingle gameInstance;
-
-	unsigned int port = atoi(threadData[ThreadSettingPort]);
-
-	gameInstance.Start(threadData[ThreadSettingIp], port, atoi(threadData[ThreadSettingThreads]), atoi(threadData[ThreadSettingConcurrent]), atoi(threadData[ThreadSettingNagle]), atoi(threadData[ThreadSettingSessions]), atoi(threadData[ThreadSettingHeaderSize]));
-
+	
+	gameInstance.Start(config);
 
 	while (1)
 	{
@@ -69,12 +82,11 @@ int main()
 			}
 		}
 		//서버 컨트롤
-		//그 순간 서버의 덤프를 남긴다 -> 메모리르 자료구조라고 봤을 때
+		//그 순간 서버의 덤프를 남긴다 -> 메모리를 자료구조라고 봤을 때
 		// 누군가가 쓰고있을 때 읽어도 되는가?>
 		//
 
 	}
-
 
 
 
@@ -83,192 +95,57 @@ int main()
 }
 
 
-bool ParseThreadDataFile(const char* fileName)
+bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config)
 {
-	FILE* workerInformation;
-	int fileSize;
-	char* fileBuffer;
 
-	if (fopen_s(&workerInformation, fileName, "rb") == 0)
+	if (!parser.GetString("IOCP", "IP", &config.ip))
 	{
-		if (workerInformation == nullptr)
-		{
-			return false;
-		}
+		printf("Missing config: [IOCP] Ip\n");
+		return false;
+	}
 
+	if (!parser.GetUnsignedInt("IOCP", "PORT", &config.port))
+	{
+		printf("Missing or invalid config: [IOCP] PORT\n");
+		return false;
+	}
 
-		fseek(workerInformation, 0, SEEK_END);
-		fileSize = ftell(workerInformation);
-		rewind(workerInformation);
+	if (!parser.GetUnsignedInt("IOCP", "WORKERTHREADS", &config.workerThreadCount))
+	{
+		printf("Missing or invalid config: [IOCP] WORKERTHREADS\n");
+		return false;
+	}
 
+	if (!parser.GetUnsignedInt("IOCP", "CONCURRENTTHREADS", &config.concurrentThreadCount))
+	{
+		printf("Missing or invalid config: [IOCP] CONCURRENTTHREADS\n");
+		return false;
+	}
 
-		fileBuffer = static_cast<char*>(malloc(fileSize));
-		if (fileBuffer == nullptr)
-		{
-			printf("Error: Memory allocation failed.\n");
-			DebugBreak();
-			return false;
-		}
+	if (!parser.GetUnsignedInt("IOCP", "NAGLE", &config.nagle))
+	{
+		printf("Missing or invalid config: [IOCP] NAGLE\n");
+		return false;
+	}
 
-		size_t bytesRead = fread_s(fileBuffer, fileSize, 1, fileSize, workerInformation);
-		if (bytesRead != fileSize)
-		{
+	if (!parser.GetUnsignedInt("IOCP", "SESSIONS", &config.maxSessionCount))
+	{
+		printf("Missing or invalid config: [IOCP] SESSIONS\n");
+		return false;
+	}
 
-			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", fileSize, bytesRead);
-
-			return false;
-		}
-
-		int startPosition = 0;
-		int endPosition = 0;
-
-		//시작위치 + 0d 0a 넘기기.
-
-		for (int i = 0; i < fileSize; ++i)
-		{
-			if (fileBuffer[i] == '{')
-			{
-				startPosition = i + 2;
-				break;
-			}
-		}
-
-		for (int i = fileSize - 1; i >= 0; --i)
-		{
-
-
-			if (fileBuffer[i] == '}')
-			{
-				endPosition = i;
-				break;
-			}
-		}
-
-		int index = 0;
-
-		int size;
-		for (int i = startPosition; i < endPosition; ++i)
-		{
-
-
-			if (fileBuffer[i] == ':')
-			{
-				for (int j = i + 1; ; ++j)
-				{
-					if (fileBuffer[j] == 0x0d)
-					{
-						size = j - i - 1;
-						memcpy_s(threadData[index], size, fileBuffer + i + 1, size);
-						threadData[index][size] = '\0';
-						index++;
-						break;
-					}
-				}
-				startPosition = i + size;
-			}
-		}
-
-		free(fileBuffer);
-
-		fclose(workerInformation);
+	if (!parser.GetUnsignedInt("IOCP", "HEADERSIZE", &config.headerSize))
+	{
+		printf("Missing or invalid config: [IOCP] HEADERSIZE\n");
+		return false;
 	}
 
 
-	return true;
-
-}
-
-
-bool ParseGameDataFile(const char* fileName)
-{
-	FILE* workerInformation;
-	int fileSize;
-	char* fileBuffer;
-
-	if (fopen_s(&workerInformation, fileName, "rb") == 0)
+	if (!parser.GetUnsignedChar("IOCP", "PACKETCODE", &config.packetCode))
 	{
-		if (workerInformation == nullptr)
-		{
-			return false;
-		}
-
-
-		fseek(workerInformation, 0, SEEK_END);
-		fileSize = ftell(workerInformation);
-		rewind(workerInformation);
-
-
-		fileBuffer = static_cast<char*>(malloc(fileSize));
-		if (fileBuffer == nullptr)
-		{
-			printf("Error: Memory allocation failed.\n");
-			DebugBreak();
-			return false;
-		}
-
-		size_t bytesRead = fread_s(fileBuffer, fileSize, 1, fileSize, workerInformation);
-		if (bytesRead != fileSize)
-		{
-
-			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", fileSize, bytesRead);
-
-			return false;
-		}
-
-		int startPosition = 0;
-		int endPosition = 0;
-
-		//시작위치 + 0d 0a 넘기기.
-
-		for (int i = 0; i < fileSize; ++i)
-		{
-			if (fileBuffer[i] == '{')
-			{
-				startPosition = i + 2;
-				break;
-			}
-		}
-
-		for (int i = fileSize - 1; i >= 0; --i)
-		{
-
-
-			if (fileBuffer[i] == '}')
-			{
-				endPosition = i;
-				break;
-			}
-		}
-
-		int index = 0;
-
-		int size;
-		for (int i = startPosition; i < endPosition; ++i)
-		{
-
-
-			if (fileBuffer[i] == ':')
-			{
-				for (int j = i + 1; ; ++j)
-				{
-					if (fileBuffer[j] == 0x0d)
-					{
-						size = j - i - 1;
-						memcpy_s(gameData[index], size, fileBuffer + i + 1, size);
-						gameData[index][size] = '\0';
-						index++;
-						break;
-					}
-				}
-				startPosition = i + size;
-			}
-		}
-
-		free(fileBuffer);
-
-		fclose(workerInformation);
+		printf("Missing or invalid config: [IOCP] PACKETCODE\n");
+		return false;
 	}
-
 
 	return true;
 

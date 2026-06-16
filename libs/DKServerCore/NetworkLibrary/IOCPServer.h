@@ -7,6 +7,8 @@
 #include "ContentsCPacket.h"
 #include "LockFreeQueueCas2.h"
 #include "RingBuffer.h"
+#include "ServerStartConfig.h"
+
 
 class IOCPServer
 {
@@ -61,6 +63,9 @@ public:
     };
 
     bool Start(const char* serverIp, unsigned int serverPort, unsigned int threadsCount, unsigned int concurrentThreads, unsigned int nagle, unsigned int sessions, unsigned int headerSize);
+    bool Start(const DKServerCore::IocpServerStartConfig& config);
+    
+    
     bool Stop();
     int GetSessionCount();
     void Disconnect(__int64 sessionId);
@@ -119,6 +124,7 @@ public:
     unsigned int recvMessageCount_;
     long sendMessageCount_;
 
+    unsigned char packetCode_;
     unsigned int maxSession_;
     unsigned int sessionNum_;
     unsigned int threadsNum_;
