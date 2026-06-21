@@ -23,16 +23,6 @@ void SelectMMOTCPFighterPQ::OnAccept(SessionId sessionId)
     RegisterCharacter(newPlayer);
     SendNewCharacterCreate(newPlayer);
     SendExistingCharactersToNewCharacter(newPlayer);
-
-   
-
-
-
-
-
-
-
-
 }
 
 void SelectMMOTCPFighterPQ::OnMessage(SessionId sessionId, unsigned char packetType, CPacket* packet)
@@ -116,13 +106,8 @@ void SelectMMOTCPFighterPQ::OnRelease(SessionId sessionId)
 {
     Character* target = characterMap_.at(sessionId);
 
-    CPacket* packetDeleteCharacter = CPacket::Alloc();
-    MakePacketDeleteCharacter(target->sessionId_, packetDeleteCharacter, target->sessionId_);
-    CPacket::Free(packetDeleteCharacter);
-
-    sectorCharacterList_[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
-    characterMap_.erase(sessionId);
-    characterFreeList_.Free(target);
+    SendCharacterDelete(target);
+    ReleaseCharacter(target);
 }
 
 void SelectMMOTCPFighterPQ::OnUpdate()
@@ -1147,40 +1132,13 @@ bool SelectMMOTCPFighterPQ::NetPacketProcMoveStart(SessionId sessionId, unsigned
 
     Character* target = characterMap_.at(sessionId);
 
-    if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
-    {
-        CPacket* packetSync = CPacket::Alloc();
-        MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
-        CPacket::Free(packetSync);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
+	SyncOrApplyClientPosition(target, x, y);
 
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-    }
 
     target->isMove_ = true;
     target->action_ = direction;
 
-    switch (direction)
-    {
-    case PacketMoveDirectionRR:
-    case PacketMoveDirectionRU:
-    case PacketMoveDirectionRD:
-        target->direction_ = PacketMoveDirectionRR;
-        break;
-
-    case PacketMoveDirectionLU:
-    case PacketMoveDirectionLL:
-    case PacketMoveDirectionLD:
-        target->direction_ = PacketMoveDirectionLL;
-        break;
-    }
+    UpdateCharacterFacingDirection(target, direction);
 
     CPacket* packetMoveStart = CPacket::Alloc();
     MakePacketMoveStart(target->sessionId_, packetMoveStart, target->sessionId_, direction, target->x_, target->y_);
@@ -1194,40 +1152,13 @@ bool SelectMMOTCPFighterPQ::NetPacketProcMoveStop(SessionId sessionId, unsigned 
     Profile profile(L"NetPacketProcMoveStop");
     Character* target = characterMap_.at(sessionId);
 
-    if ((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange))
-    {
-        CPacket* packetSync = CPacket::Alloc();
-        MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
-        CPacket::Free(packetSync);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
+    SyncOrApplyClientPosition(target, x, y);
 
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-    }
     target->isMove_ = false;
 
     target->action_ = direction;
 
-    switch (direction)
-    {
-    case PacketMoveDirectionRR:
-    case PacketMoveDirectionRU:
-    case PacketMoveDirectionRD:
-        target->direction_ = PacketMoveDirectionRR;
-        break;
-
-    case PacketMoveDirectionLU:
-    case PacketMoveDirectionLL:
-    case PacketMoveDirectionLD:
-        target->direction_ = PacketMoveDirectionLL;
-        break;
-    }
+    UpdateCharacterFacingDirection(target, direction);
 
     CPacket* packetMoveStop = CPacket::Alloc();
     MakePacketMoveStop(target->sessionId_, packetMoveStop, target->sessionId_, target->direction_, target->x_, target->y_);
@@ -1241,22 +1172,8 @@ bool SelectMMOTCPFighterPQ::NetPacketProcAttack1(SessionId sessionId, unsigned c
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
-    if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
-    {
-        CPacket* packetSync = CPacket::Alloc();
-        MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
-        CPacket::Free(packetSync);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
+    SyncOrApplyClientPosition(target, x, y);
 
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-    }
 
     target->direction_ = direction;
 
@@ -1273,25 +1190,10 @@ bool SelectMMOTCPFighterPQ::NetPacketProcAttack2(SessionId sessionId, unsigned c
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
-    if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
-    {
-        CPacket* packetSync = CPacket::Alloc();
-        MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
-        CPacket::Free(packetSync);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
-
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-
-    }
+    SyncOrApplyClientPosition(target, x, y);
 
     target->direction_ = direction;
+
     CPacket* packetAttack = CPacket::Alloc();
     MakePacketAttack2(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetAttack);
@@ -1305,23 +1207,7 @@ bool SelectMMOTCPFighterPQ::NetPacketProcAttack3(SessionId sessionId, unsigned c
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
-    if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
-    {
-        CPacket* packetSync = CPacket::Alloc();
-        MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
-        CPacket::Free(packetSync);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
-
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-
-    }
+    SyncOrApplyClientPosition(target, x, y);
 
     target->direction_ = direction;
 
@@ -1413,6 +1299,79 @@ void SelectMMOTCPFighterPQ::SendExistingCharactersToNewCharacter(Character* newP
                 CPacket::Free(packetMoveStartForMe);
             }
         }
+    }
+}
+
+void SelectMMOTCPFighterPQ::SendCharacterDelete(Character* character)
+{
+    CPacket* packetDeleteCharacter = CPacket::Alloc();
+
+    MakePacketDeleteCharacter(character->sessionId_, packetDeleteCharacter, character->sessionId_);
+
+    CPacket::Free(packetDeleteCharacter);
+}
+
+void SelectMMOTCPFighterPQ::UnregisterCharacter(Character* character)
+{
+    sectorCharacterList_[character->characterSectorPos_.y_][character->characterSectorPos_.x_].remove(character);
+    characterMap_.erase(character->sessionId_);
+}
+
+void SelectMMOTCPFighterPQ::ReleaseCharacter(Character* character)
+{
+    UnregisterCharacter(character);
+    characterFreeList_.Free(character);
+}
+
+bool SelectMMOTCPFighterPQ::IsClientPositionValid(Character* target, unsigned short x, unsigned short y)
+{
+    return !(abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange);
+}
+
+void SelectMMOTCPFighterPQ::SendSync(Character* target)
+{
+    CPacket* packetSync = CPacket::Alloc();
+    MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
+    CPacket::Free(packetSync);
+}
+
+void SelectMMOTCPFighterPQ::ApplyClientPosition(Character* target, unsigned short x, unsigned short y)
+{
+    target->x_ = x;
+    target->y_ = y;
+
+    if (SectorUpdateCharacter(target))
+    {
+        SectorUpdate(target);
+    }
+}
+
+void SelectMMOTCPFighterPQ::SyncOrApplyClientPosition(Character* target, unsigned short x, unsigned short y)
+{
+    if (IsClientPositionValid(target, x, y) == false)
+    {
+        SendSync(target);
+        return;
+    }
+
+    ApplyClientPosition(target, x, y);
+}
+
+void SelectMMOTCPFighterPQ::UpdateCharacterFacingDirection(Character* target, unsigned char direction)
+{
+    switch (direction)
+    {
+    case PacketMoveDirectionRR:
+    case PacketMoveDirectionRU:
+    case PacketMoveDirectionRD:
+        target->direction_ = PacketMoveDirectionRR;
+        break;
+
+    case PacketMoveDirectionLU:
+    case PacketMoveDirectionLL:
+    case PacketMoveDirectionLD:
+        target->direction_ = PacketMoveDirectionLL;
+        break;
     }
 }
 

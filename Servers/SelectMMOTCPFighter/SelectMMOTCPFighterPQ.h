@@ -103,6 +103,15 @@ private:
 	void SendNewCharacterCreate(Character* newPlayer);
 	void SendExistingCharactersToNewCharacter(Character* newPlayer);
 
+	void SendCharacterDelete(Character* character);
+	void UnregisterCharacter(Character* character);
+	void ReleaseCharacter(Character* character);
+
+	bool IsClientPositionValid(Character* target, unsigned short x, unsigned short y);
+	void SendSync(Character* target);
+	void ApplyClientPosition(Character* target, unsigned short x, unsigned short y);
+	void SyncOrApplyClientPosition(Character* target, unsigned short x, unsigned short y);
+	void UpdateCharacterFacingDirection(Character* target, unsigned char direction);
 
 
 	std::list<Character*> sectorCharacterList_[SectorMaxY][SectorMaxX];
