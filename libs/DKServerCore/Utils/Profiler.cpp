@@ -7,6 +7,7 @@
 
 DWORD tlsIndex;
 LARGE_INTEGER frequency;
+bool Enabled = true;
 
 std::vector<ProfileManagement*> profileList;
 
@@ -210,4 +211,9 @@ void InitProfile()
     tlsIndex = TlsAlloc();
 
     QueryPerformanceFrequency(&frequency);
+}
+
+void SetEnabled(bool enabled)
+{
+	Enabled = enabled;
 }

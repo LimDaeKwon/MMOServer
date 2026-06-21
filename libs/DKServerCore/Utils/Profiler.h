@@ -5,7 +5,7 @@
 
 #include "CoreDefines.h"
 
-//#define DK_ENABLE_PROFILE
+#define DK_ENABLE_PROFILE
 
 #ifdef DK_ENABLE_PROFILE
 #define PRO_BEGIN(tagName) ProfileBegin(tagName)
@@ -37,18 +37,30 @@ void ProfileDataOutText(const WCHAR* fileName);
 void ProfileReset();
 void InitProfile();
 
+extern bool Enabled;
+void SetEnabled(bool enabled);
+
+
 class Profile
 {
 public:
     Profile(const WCHAR* newTag)
         : tag_(newTag)
     {
-        PRO_BEGIN(newTag);
+        if (Enabled)
+        {
+            PRO_BEGIN(newTag);
+        }
+        
     }
 
     ~Profile()
     {
-        PRO_END(tag_);
+        if (Enabled)
+        {
+            PRO_END(tag_);
+        }
+        
     }
 
 private:

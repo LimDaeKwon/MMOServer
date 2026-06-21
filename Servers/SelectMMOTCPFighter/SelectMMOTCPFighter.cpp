@@ -1,7 +1,7 @@
 ﻿#include "SelectMMOTCPFighter.h"
 #include "Character.h"
 #include "CPacket.h"
-
+#include "Profiler.h"
 #include "PacketDefine.h"
 
 
@@ -166,6 +166,7 @@ void SelectMMOTCPFighter::OnRelease(SessionId sessionId)
 
 void SelectMMOTCPFighter::OnUpdate()
 {
+    Profile profile(L"OnUpdate");
     std::unordered_map<SessionId, Character*>::iterator iter;
     for (iter = characterMap_.begin(); iter != characterMap_.end(); ++iter)
     {
@@ -999,6 +1000,8 @@ bool SelectMMOTCPFighter::SectorUpdateCharacter(Character* target)
 
 void SelectMMOTCPFighter::SectorUpdate(Character* target)
 {
+    Profile profile(L"SectorUpdate");
+
     SectorAround removeSector;
     SectorAround addSector;
 
@@ -1174,6 +1177,8 @@ void SelectMMOTCPFighter::MakePacketSync(SessionId sessionId, CPacket* packet, S
 
 bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
+	Profile profile(L"NetPacketProcMoveStart");
+
     Character* target = characterMap_.at(sessionId);
 
     if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
@@ -1219,6 +1224,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned c
 
 bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
+    Profile profile(L"NetPacketProcMoveStop");
     Character* target = characterMap_.at(sessionId);
 
     if ((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange))
@@ -1264,6 +1270,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned ch
 
 bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
+    Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
     if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
@@ -1295,6 +1302,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned cha
 
 bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
+    Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
     if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
@@ -1325,6 +1333,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned cha
 
 bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
+    Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
     if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
@@ -1355,6 +1364,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned cha
 
 bool SelectMMOTCPFighter::NetPacketProcEcho(SessionId sessionId, unsigned int time)
 {
+    Profile profile(L"NetPacketEcho");
     Character* target = characterMap_.at(sessionId);
     cPacketBuffer_->Clear();
 
@@ -1398,6 +1408,8 @@ void SelectMMOTCPFighter::SendPacketAroundAddSector(SessionId sessionId, CPacket
 
 void SelectMMOTCPFighter::SendPacketAround(SessionId sessionId, CPacket* packet, bool sendMe)
 {
+	Profile profile(L"SendPacketAround");
+
     Character* target = characterMap_.at(sessionId);
     SectorAround around;
 

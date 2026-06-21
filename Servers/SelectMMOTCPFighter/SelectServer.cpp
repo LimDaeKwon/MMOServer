@@ -4,17 +4,21 @@
 #include <iostream>
 #include "GameDefine.h"
 #include "CPacket.h"
+#include "Profiler.h"
+
+constexpr int SelectSessionBatchSize = FD_SETSIZE - 1;
 
 SelectServer::SelectServer() :
-    gameLoopThread_(nullptr),
-    listenSocket_(INVALID_SOCKET),
-    sessionFreeList_(DefaultMaxSessionCount),
-    sessionId_(1),
-    frameMs_(0),
-    oldTick_(0),
-    maxSessionCount_(DefaultMaxSessionCount),
-    packetCode_(PacketCode)
+	gameLoopThread_(nullptr),
+	listenSocket_(INVALID_SOCKET),
+	sessionFreeList_(DefaultMaxSessionCount),
+	sessionId_(1),
+	frameMs_(0),
+	oldTick_(0),
+	maxSessionCount_(DefaultMaxSessionCount),
+	packetCode_(PacketCode)
 {
+	pendingAcceptSessions_.reserve(SelectSessionBatchSize);
 }
 
 SelectServer::~SelectServer()
@@ -23,104 +27,104 @@ SelectServer::~SelectServer()
 
 bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned int nagle, unsigned int maxSessionCount, unsigned char packetCode, unsigned int frameMs)
 {
-    WSADATA wsa;
+	WSADATA wsa;
 
-    int startupResult = WSAStartup(MAKEWORD(2, 2), &wsa);
+	int startupResult = WSAStartup(MAKEWORD(2, 2), &wsa);
 
-    if (startupResult != 0)
-    {
-        wprintf(L"WSAStartup %d \n", startupResult);
-        DebugBreak();
-    }
-    listenSocket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (startupResult != 0)
+	{
+		wprintf(L"WSAStartup %d \n", startupResult);
+		DebugBreak();
+	}
+	listenSocket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    if (listenSocket_ == INVALID_SOCKET)
-    {
-        int error = WSAGetLastError();
+	if (listenSocket_ == INVALID_SOCKET)
+	{
+		int error = WSAGetLastError();
 
-        wprintf(L"ListenSocket Error %d \n", error);
+		wprintf(L"ListenSocket Error %d \n", error);
 
-        DebugBreak();
-    }
+		DebugBreak();
+	}
 
-    SOCKADDR_IN serverAddr;
-    ZeroMemory(&serverAddr, sizeof(serverAddr));
+	SOCKADDR_IN serverAddr;
+	ZeroMemory(&serverAddr, sizeof(serverAddr));
 
-    serverAddr.sin_family = AF_INET;
-    InetPtonA(AF_INET, serverIp, &serverAddr.sin_addr);
-    serverAddr.sin_port = htons(serverPort);
+	serverAddr.sin_family = AF_INET;
+	InetPtonA(AF_INET, serverIp, &serverAddr.sin_addr);
+	serverAddr.sin_port = htons(serverPort);
 
-    int bindReturn = bind(listenSocket_, reinterpret_cast<const sockaddr*>(&serverAddr), sizeof(serverAddr));
+	int bindReturn = bind(listenSocket_, reinterpret_cast<const sockaddr*>(&serverAddr), sizeof(serverAddr));
 
-    if (bindReturn == SOCKET_ERROR)
-    {
-        bindReturn = WSAGetLastError();
+	if (bindReturn == SOCKET_ERROR)
+	{
+		bindReturn = WSAGetLastError();
 
-        wprintf(L"bind Error : %d \n", bindReturn);
+		wprintf(L"bind Error : %d \n", bindReturn);
 
-        DebugBreak();
-    }
+		DebugBreak();
+	}
 
-    LINGER linger;
-    linger.l_linger = 0;
-    linger.l_onoff = 1;
+	LINGER linger;
+	linger.l_linger = 0;
+	linger.l_onoff = 1;
 
-    int socketOption = setsockopt(listenSocket_, SOL_SOCKET, SO_LINGER, reinterpret_cast<const char*>(&linger), sizeof(linger));
+	int socketOption = setsockopt(listenSocket_, SOL_SOCKET, SO_LINGER, reinterpret_cast<const char*>(&linger), sizeof(linger));
 
-    if (socketOption == SOCKET_ERROR)
-    {
-        int error = WSAGetLastError();
+	if (socketOption == SOCKET_ERROR)
+	{
+		int error = WSAGetLastError();
 
-        printf("setsockopt Error %d ", error);
+		printf("setsockopt Error %d ", error);
 
-        DebugBreak();
-    }
+		DebugBreak();
+	}
 
-    DWORD noDelay = 0;
+	DWORD noDelay = 0;
 
-    if (nagle == 0)
-    {
-        noDelay = 1;
-    }
+	if (nagle == 0)
+	{
+		noDelay = 1;
+	}
 
-    int noDelayOption = setsockopt(listenSocket_, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&noDelay), sizeof(noDelay));
+	int noDelayOption = setsockopt(listenSocket_, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&noDelay), sizeof(noDelay));
 
-    if (noDelayOption == SOCKET_ERROR)
-    {
-        int error = WSAGetLastError();
+	if (noDelayOption == SOCKET_ERROR)
+	{
+		int error = WSAGetLastError();
 
-        printf("setsockopt Error %d ", error);
+		printf("setsockopt Error %d ", error);
 
-        DebugBreak();
-    }
+		DebugBreak();
+	}
 
-    int listenReturn = listen(listenSocket_, SOMAXCONN_HINT(7000));
+	int listenReturn = listen(listenSocket_, SOMAXCONN_HINT(7000));
 
-    if (listenReturn == SOCKET_ERROR)
-    {
-        listenReturn = WSAGetLastError();
+	if (listenReturn == SOCKET_ERROR)
+	{
+		listenReturn = WSAGetLastError();
 
-        wprintf(L"Listen Error : %d \n", listenReturn);
+		wprintf(L"Listen Error : %d \n", listenReturn);
 
-        DebugBreak();
-    }
+		DebugBreak();
+	}
 
-    u_long on = 1;
-    int ioctlSocketError = ioctlsocket(listenSocket_, FIONBIO, &on);
+	u_long on = 1;
+	int ioctlSocketError = ioctlsocket(listenSocket_, FIONBIO, &on);
 
-    if (ioctlSocketError == INVALID_SOCKET)
-    {
-        ioctlSocketError = WSAGetLastError();
+	if (ioctlSocketError == INVALID_SOCKET)
+	{
+		ioctlSocketError = WSAGetLastError();
 
-        wprintf(L"IoctlSocketError Error : %d \n", ioctlSocketError);
+		wprintf(L"IoctlSocketError Error : %d \n", ioctlSocketError);
 
-        DebugBreak();
-    }
+		DebugBreak();
+	}
 
-    maxSessionCount_ = maxSessionCount;
-    packetCode_ = packetCode;
+	maxSessionCount_ = maxSessionCount;
+	packetCode_ = packetCode;
 	frameMs_ = frameMs;
-    gameLoopThread_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, GameLoopThread, this, 0, nullptr));
+	gameLoopThread_ = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, GameLoopThread, this, 0, nullptr));
 
 
 
@@ -129,459 +133,475 @@ bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned
 	return true;
 }
 
+bool SelectServer::Start(const DKServerCore::SelectServerStartConfig& config)
+{
+	return Start(config.ip.c_str(), config.port, config.nagle, config.maxSessionCount, config.packetCode, config.frameMs);
+	;
+}
+
 void SelectServer::Network()
 {
-    fd_set readSet;
-    fd_set writeSet;
+	Session* sessionBatch[SelectSessionBatchSize];
+	int sessionCount = 0;
+	bool selectCalled = false;
 
-    timeval timeValue;
-    timeValue.tv_sec = 0;
-    timeValue.tv_usec = 0;
+	for (auto& sessionPair : sessions_)
+	{
+		Session* target = sessionPair.second;
 
-    int count = 0;
+		if (target->isDelete_ == 1)
+		{
+			continue;
+		}
 
-    SessionId startId;
+		sessionBatch[sessionCount] = target;
+		++sessionCount;
 
-    if (!sessions_.size())
-    {
-        AcceptClient();
-    }
+		if (sessionCount == SelectSessionBatchSize)
+		{
+			ProcessNetworkBatch(sessionBatch, sessionCount);
 
-    std::unordered_map<SessionId, Session*>::iterator iter;
-    iter = sessions_.begin();
+			sessionCount = 0;
+			selectCalled = true;
+		}
+	}
 
-    FD_ZERO(&readSet);
-    FD_ZERO(&writeSet);
-    FD_SET(listenSocket_, &readSet);
+	if (sessionCount > 0 || selectCalled == false)
+	{
+		ProcessNetworkBatch(sessionBatch, sessionCount);
+	}
 
-    Session* target;
-
-    for (; iter != sessions_.end(); ++iter)
-    {
-        target = iter->second;
-
-        if (count == 0)
-        {
-            startId = target->sessionId_;
-        }
-
-        FD_SET(target->socket_, &readSet);
-
-        if (target->sendQueue_.GetUseSize() > 0)
-        {
-            FD_SET(target->socket_, &writeSet);
-        }
-
-        ++count;
-
-        if (count == 63)
-        {
-            timeval timeValue;
-            timeValue.tv_sec = 0;
-            timeValue.tv_usec = 0;
-
-            int selectReturn = select(0, &readSet, &writeSet, nullptr, &timeValue);
-
-            if (selectReturn == SOCKET_ERROR)
-            {
-                selectReturn = WSAGetLastError();
-                wprintf(L"Select Error : %d", selectReturn);
-                DebugBreak();
-            }
-
-            if (selectReturn > 0)
-            {
-                if (FD_ISSET(listenSocket_, &readSet))
-                {
-                    AcceptClient();
-                }
-
-                std::unordered_map<SessionId, Session*>::iterator iterSession = sessions_.find(startId);
-
-                for (; iterSession != sessions_.end(); ++iterSession)
-                {
-                    if (selectReturn == 0)
-                    {
-                        break;
-                    }
-
-                    target = iterSession->second;
-
-                    if (target->isDelete_ == 1)
-                    {
-                        continue;
-                    }
-
-                    if (FD_ISSET(target->socket_, &readSet))
-                    {
-                        Receive(target);
-                        --selectReturn;
-                    }
-
-                    if (FD_ISSET(target->socket_, &writeSet))
-                    {
-                        SendAll(target);
-                        --selectReturn;
-                    }
-                }
-            }
-
-            FD_ZERO(&readSet);
-            FD_ZERO(&writeSet);
-            FD_SET(listenSocket_, &readSet);
-
-            count = 0;
-        }
-    }
-
-    if (count > 0)
-    {
-        timeval timeValue;
-        timeValue.tv_sec = 0;
-        timeValue.tv_usec = 0;
-
-        int selectReturn = select(0, &readSet, &writeSet, nullptr, &timeValue);
-
-        if (selectReturn == SOCKET_ERROR)
-        {
-            selectReturn = WSAGetLastError();
-            wprintf(L"Select Error : %d", selectReturn);
-            DebugBreak();
-        }
-
-        if (selectReturn > 0)
-        {
-            if (FD_ISSET(listenSocket_, &readSet))
-            {
-                AcceptClient();
-            }
-
-            std::unordered_map<SessionId, Session*>::iterator iterSession = sessions_.find(startId);
-
-            for (; iterSession != sessions_.end(); ++iterSession)
-            {
-                if (selectReturn == 0)
-                {
-                    break;
-                }
-
-                target = iterSession->second;
-
-                if (target->isDelete_ == 1)
-                {
-                    continue;
-                }
-
-                if (FD_ISSET(target->socket_, &readSet))
-                {
-                    Receive(target);
-                    --selectReturn;
-                }
-
-                if (FD_ISSET(target->socket_, &writeSet))
-                {
-                    SendAll(target);
-                    --selectReturn;
-                }
-            }
-        }
-    }
-
-    DeleteDisconnect();
-
+	CommitAcceptedClients();
+	DeleteDisconnect();
 
 }
 
 void SelectServer::AcceptClient()
 {
-    int acceptError;
-    SOCKADDR_IN clientAddr;
-    int addrLen = sizeof(clientAddr);
+	int acceptError;
+	SOCKADDR_IN clientAddr;
+	int addrLen = sizeof(clientAddr);
 
-    SOCKET clientSocket = accept(listenSocket_, reinterpret_cast<sockaddr*>(&clientAddr), &addrLen);
+	SOCKET clientSocket = accept(listenSocket_, reinterpret_cast<sockaddr*>(&clientAddr), &addrLen);
 
-    if (clientSocket == INVALID_SOCKET)
-    {
-        acceptError = WSAGetLastError();
+	if (clientSocket == INVALID_SOCKET)
+	{
+		acceptError = WSAGetLastError();
 
-        if (acceptError == WSAEWOULDBLOCK)
-        {
-            return;
-        }
+		if (acceptError == WSAEWOULDBLOCK)
+		{
+			return;
+		}
 
-        wprintf(L"Accept Error : %d", acceptError);
-        DebugBreak();
-    }
+		wprintf(L"Accept Error : %d", acceptError);
+		DebugBreak();
+		return;
+	}
 
-    WCHAR clientIp[16] = { 0 };
+	WCHAR clientIp[16] = { 0 };
 
-    if (InetNtopW(AF_INET, &clientAddr.sin_addr, clientIp, 16) == nullptr)
-    {
-        wprintf(L"InetNtop Error \n");
-        DebugBreak();
-    }
+	if (InetNtopW(AF_INET, &clientAddr.sin_addr, clientIp, 16) == nullptr)
+	{
+		wprintf(L"InetNtop Error \n");
+		DebugBreak();
+	}
 
-    if (sessions_.size() >= maxSessionCount_)
-    {
-        closesocket(clientSocket);
-        return;
-    }
+	if (sessions_.size() + pendingAcceptSessions_.size() >= maxSessionCount_)
+	{
+		closesocket(clientSocket);
+		return;
+	}
 
-    Session* newSession = sessionFreeList_.Alloc();
+	Session* newSession = sessionFreeList_.Alloc();
 
-    newSession->sessionId_ = sessionId_++;
-    newSession->socket_ = clientSocket;
-    newSession->isDelete_ = 0;
-    newSession->lastRecvTime_ = timeGetTime();
+	newSession->sessionId_ = sessionId_++;
+	newSession->socket_ = clientSocket;
+	newSession->isDelete_ = 0;
+	newSession->lastRecvTime_ = timeGetTime();
 
-    sessions_.insert(std::unordered_map<SessionId, Session*>::value_type(newSession->sessionId_, newSession));
+	pendingAcceptSessions_.push_back(newSession);
+}
 
-	OnAccept(newSession->sessionId_);
+void SelectServer::CommitAcceptedClients()
+{
+	for (Session* newSession : pendingAcceptSessions_)
+	{
+		sessions_.insert(std::unordered_map<SessionId, Session*>::value_type(newSession->sessionId_, newSession));
+
+		OnAccept(newSession->sessionId_);
+	}
+
+	pendingAcceptSessions_.clear();
 }
 
 void SelectServer::SendPacket(SessionId sessionId, CPacket* packet)
 {
-    Session* target = sessions_.at(sessionId);
+	Profile profile(L"SendPacket");
+	Session* target = sessions_.at(sessionId);
 
-    if (target->isDelete_)
-    {
-        return;
-    }
+	if (target->isDelete_)
+	{
+		return;
+	}
 
-    PacketHeader header;
-    header.byCode_ = packetCode_;
-    header.bySize_ = static_cast<unsigned char>(packet->GetDataSize() - sizeof(header.byType_));
-    header.byType_ = *reinterpret_cast<unsigned char*>(packet->GetBufferPtr() + LibraryHeaderSize);
+	PacketHeader header;
+	header.byCode_ = packetCode_;
+	header.bySize_ = static_cast<unsigned char>(packet->GetDataSize() - sizeof(header.byType_));
+	header.byType_ = *reinterpret_cast<unsigned char*>(packet->GetBufferPtr() + LibraryHeaderSize);
 
-    int dataSize = packet->GetDataSize() - sizeof(header.byType_);
+	int dataSize = packet->GetDataSize() - sizeof(header.byType_);
 
-    if (target->sendQueue_.GetFreeSize() < sizeof(header) + dataSize)
-    {
-        wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
+	if (target->sendQueue_.GetFreeSize() < sizeof(header) + dataSize)
+	{
+		wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
 
-        Disconnect(target->sessionId_);
-        return;
-    }
+		Disconnect(target->sessionId_);
+		return;
+	}
 
-    int enqueueHeaderReturn = target->sendQueue_.Enqueue(reinterpret_cast<char*>(&header), sizeof(header));
+	{
+		Profile profile(L"SendEnqueue");
+		int enqueueHeaderReturn = target->sendQueue_.Enqueue(reinterpret_cast<char*>(&header), sizeof(header));
 
-    if (enqueueHeaderReturn != sizeof(header))
-    {
-        wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
+		if (enqueueHeaderReturn != sizeof(header))
+		{
+			wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
 
-        Disconnect(target->sessionId_);
-        return;
-    }
+			Disconnect(target->sessionId_);
+			return;
+		}
 
-    int enqueuePacketReturn = target->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize + sizeof(header.byType_), dataSize);
+		int enqueuePacketReturn = target->sendQueue_.Enqueue(packet->GetBufferPtr() + LibraryHeaderSize + sizeof(header.byType_), dataSize);
 
-    if (enqueuePacketReturn != dataSize)
-    {
-        wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
+		if (enqueuePacketReturn != dataSize)
+		{
+			wprintf(L"EnqueueFail in SendPacketUnicast %lld \n ", target->sessionId_);
 
-        Disconnect(target->sessionId_);
-    }
+			Disconnect(target->sessionId_);
+		}
+	}
+	
 }
 
 void SelectServer::Disconnect(SessionId sessionId)
 {
-    Session* target = sessions_.at(sessionId);
-    if (target->isDelete_ == 1)
-    {
-        return;
-    }
-    target->isDelete_ = 1;
+	Session* target = sessions_.at(sessionId);
+	if (target->isDelete_ == 1)
+	{
+		return;
+	}
+	target->isDelete_ = 1;
 }
 
 void SelectServer::DeleteDisconnect()
 {
-    std::unordered_map<SessionId, Session*>::iterator iter = sessions_.begin();
+	std::unordered_map<SessionId, Session*>::iterator iter = sessions_.begin();
 
-    while (iter != sessions_.end())
-    {
-        Session* session = iter->second;
+	while (iter != sessions_.end())
+	{
+		Session* session = iter->second;
 
-        if (session->isDelete_ == 0)
-        {
-            ++iter;
-            continue;
-        }
+		if (session->isDelete_ == 0)
+		{
+			++iter;
+			continue;
+		}
 
-        SessionId sessionId = session->sessionId_;
-        closesocket(session->socket_);
-        session->receiveQueue_.ClearBuffer();
-        session->sendQueue_.ClearBuffer();
+		SessionId sessionId = session->sessionId_;
+		closesocket(session->socket_);
+		session->receiveQueue_.ClearBuffer();
+		session->sendQueue_.ClearBuffer();
 		OnRelease(sessionId);
-        sessionFreeList_.Free(session);
-        iter = sessions_.erase(iter);
-    }
+		sessionFreeList_.Free(session);
+		iter = sessions_.erase(iter);
+	}
 }
 
 void SelectServer::TimeOut()
 {
-    unsigned int currentTime = timeGetTime();
-    std::unordered_map<SessionId, Session*>::iterator iter;
-    for (iter = sessions_.begin(); iter != sessions_.end(); ++iter)
-    {
-        Session* target = iter->second;
-        if (target->isDelete_ == 1)
-        {
-            continue;
-        }
-        if (currentTime - target->lastRecvTime_ > NetworkPacketRecvTimeout)
-        {
-            Disconnect(target->sessionId_);
-        }
-    }
+	unsigned int currentTime = timeGetTime();
+	std::unordered_map<SessionId, Session*>::iterator iter;
+	for (iter = sessions_.begin(); iter != sessions_.end(); ++iter)
+	{
+		Session* target = iter->second;
+		if (target->isDelete_ == 1)
+		{
+			continue;
+		}
+		if (currentTime - target->lastRecvTime_ > NetworkPacketRecvTimeout)
+		{
+			Disconnect(target->sessionId_);
+		}
+	}
+}
+
+void SelectServer::ProcessNetworkBatch(Session** sessionBatch, int sessionCount)
+{
+
+	fd_set readSet;
+	fd_set writeSet;
+
+	FD_ZERO(&readSet);
+	FD_ZERO(&writeSet);
+	FD_SET(listenSocket_, &readSet);
+
+	for (int i = 0; i < sessionCount; ++i)
+	{
+		Session* target = sessionBatch[i];
+
+		FD_SET(target->socket_, &readSet);
+
+		if (target->sendQueue_.GetUseSize() > 0)
+		{
+			FD_SET(target->socket_, &writeSet);
+		}
+	}
+
+	timeval timeout;
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 0;
+
+	int selectResult = select(0, &readSet, &writeSet, nullptr, &timeout);
+
+	if (selectResult == SOCKET_ERROR)
+	{
+		int error = WSAGetLastError();
+		wprintf(L"Select Error : %d\n", error);
+		DebugBreak();
+		return;
+	}
+
+	if (selectResult == 0)
+	{
+		return;
+	}
+
+	if (FD_ISSET(listenSocket_, &readSet))
+	{
+		AcceptClient();
+	}
+
+	for (int i = 0; i < sessionCount; ++i)
+	{
+		Session* target = sessionBatch[i];
+
+		if (target->isDelete_ == 1)
+		{
+			continue;
+		}
+
+		if (FD_ISSET(target->socket_, &readSet))
+		{
+			Receive(target);
+		}
+
+		if (target->isDelete_ == 1)
+		{
+			continue;
+		}
+
+		if (FD_ISSET(target->socket_, &writeSet))
+		{
+
+			Profile profile(L"SendAll");
+			SendAll(target);
+
+		}
+	}
+
 }
 
 void SelectServer::Receive(Session* target)
 {
 
-    int directEnqueueSize = target->receiveQueue_.DirectEnqueueSize();
+	int directEnqueueSize = target->receiveQueue_.DirectEnqueueSize();
 
-    int recvError;
-    int recvReturn = recv(target->socket_, target->receiveQueue_.GetRearBufferPtr(), directEnqueueSize, 0);
+	int recvError;
+	int recvReturn = recv(target->socket_, target->receiveQueue_.GetRearBufferPtr(), directEnqueueSize, 0);
 
-    if (recvReturn == SOCKET_ERROR)
-    {
-        recvError = WSAGetLastError();
+	if (recvReturn == SOCKET_ERROR)
+	{
+		recvError = WSAGetLastError();
 
-        if (recvError != WSAEWOULDBLOCK)
-        {
-            Disconnect(target->sessionId_);
-            return;
-        }
-    }
+		if (recvError != WSAEWOULDBLOCK)
+		{
+			Disconnect(target->sessionId_);
+			return;
+		}
+	}
 
-    if (recvReturn == 0)
-    {
-        Disconnect(target->sessionId_);
-        return;
-    }
+	if (recvReturn == 0)
+	{
+		Disconnect(target->sessionId_);
+		return;
+	}
 
-    target->receiveQueue_.MoveRear(recvReturn);
+	target->receiveQueue_.MoveRear(recvReturn);
 
-    unsigned int receiveQueueSize;
+	unsigned int receiveQueueSize;
 
-    if (recvReturn > 0)
-    {
-        while (true)
-        {
-            receiveQueueSize = target->receiveQueue_.GetUseSize();
+	if (recvReturn > 0)
+	{
+		while (true)
+		{
+			receiveQueueSize = target->receiveQueue_.GetUseSize();
 
-            if (receiveQueueSize == 0)
-            {
-                break;
-            }
+			if (receiveQueueSize == 0)
+			{
+				break;
+			}
 
-            PacketHeader header;
+			PacketHeader header;
 
-            if (receiveQueueSize < sizeof(PacketHeader))
-            {
-                break;
-            }
+			if (receiveQueueSize < sizeof(PacketHeader))
+			{
+				break;
+			}
 
-            if (target->receiveQueue_.Peek(reinterpret_cast<char*>(&header), sizeof(header)) != sizeof(header))
-            {
-                break;
-            }
+			if (target->receiveQueue_.Peek(reinterpret_cast<char*>(&header), sizeof(header)) != sizeof(header))
+			{
+				break;
+			}
 
-            if (header.byCode_ != packetCode_)
-            {
-                wprintf(L"Header.byCode_ != PacketCode\n");
+			if (header.byCode_ != packetCode_)
+			{
+				wprintf(L"Header.byCode_ != PacketCode\n");
 
-                Disconnect(target->sessionId_);
-                break;
-            }
+				Disconnect(target->sessionId_);
+				break;
+			}
 
-            if (receiveQueueSize < sizeof(header) + header.bySize_)
-            {
-                break;
-            }
+			if (receiveQueueSize < sizeof(header) + header.bySize_)
+			{
+				break;
+			}
 
-            target->receiveQueue_.MoveFront(sizeof(header));
-            
-            CPacket* packetBuffer = CPacket::Alloc();
+			target->receiveQueue_.MoveFront(sizeof(header));
 
-            unsigned int receiveQueueDequeuePacketSize = target->receiveQueue_.Dequeue(packetBuffer->GetBufferPtr() + LibraryHeaderSize, header.bySize_);
+			CPacket* packetBuffer = CPacket::Alloc();
 
-            if (receiveQueueDequeuePacketSize != header.bySize_)
-            {
-                wprintf(L"## ReceiveQDequeuePacketSize != header.bySize_ : %d \n", receiveQueueDequeuePacketSize);
+			unsigned int receiveQueueDequeuePacketSize = target->receiveQueue_.Dequeue(packetBuffer->GetBufferPtr() + LibraryHeaderSize, header.bySize_);
 
-                CPacket::Free(packetBuffer);
-                Disconnect(target->sessionId_);
-                break;
-            }
+			if (receiveQueueDequeuePacketSize != header.bySize_)
+			{
+				wprintf(L"## ReceiveQDequeuePacketSize != header.bySize_ : %d \n", receiveQueueDequeuePacketSize);
 
-            packetBuffer->MoveWritePosition(receiveQueueDequeuePacketSize);
+				CPacket::Free(packetBuffer);
+				Disconnect(target->sessionId_);
+				break;
+			}
 
-            target->lastRecvTime_ = timeGetTime();
+			packetBuffer->MoveWritePosition(receiveQueueDequeuePacketSize);
+
+			target->lastRecvTime_ = timeGetTime();
 
 			OnMessage(target->sessionId_, header.byType_, packetBuffer);
-            CPacket::Free(packetBuffer);
-        }
-    }
+			CPacket::Free(packetBuffer);
+		}
+	}
 
 
 }
+
+//void SelectServer::SendAll(Session* target)
+//{
+//    int directDequeueSize = target->sendQueue_.DirectDequeueSize();
+//
+//    int sendReturn = send(target->socket_, target->sendQueue_.GetFrontBufferPtr(), directDequeueSize, 0);
+//
+//    if (sendReturn == SOCKET_ERROR)
+//    {
+//        int error = WSAGetLastError();
+//
+//        if (error != WSAEWOULDBLOCK)
+//        {
+//            Disconnect(target->sessionId_);
+//            return;
+//        }
+//    }
+//
+//    if (sendReturn != directDequeueSize)
+//    {
+//        wprintf(L"SendSize : %d , SendReturn : %d \n", directDequeueSize, sendReturn);
+//
+//        Disconnect(target->sessionId_);
+//        return;
+//    }
+//
+//    int moveFrontSize = target->sendQueue_.MoveFront(directDequeueSize);
+//
+//    if (moveFrontSize != directDequeueSize)
+//    {
+//        wprintf(L"MoveFrontSize : %d , DirectDequeueSize : %d \n", moveFrontSize, directDequeueSize);
+//        DebugBreak();
+//    }
+//}
 
 void SelectServer::SendAll(Session* target)
 {
-    int directDequeueSize = target->sendQueue_.DirectDequeueSize();
 
-    int sendReturn = send(target->socket_, target->sendQueue_.GetFrontBufferPtr(), directDequeueSize, 0);
+	int useSize = target->sendQueue_.GetUseSize();
+	int firstSize = target->sendQueue_.DirectDequeueSize();
+	int secondSize = useSize - firstSize;
 
-    if (sendReturn == SOCKET_ERROR)
-    {
-        int error = WSAGetLastError();
+	WSABUF buffers[2];
 
-        if (error != WSAEWOULDBLOCK)
-        {
-            Disconnect(target->sessionId_);
-            return;
-        }
-    }
+	buffers[0].buf = target->sendQueue_.GetFrontBufferPtr();
+	buffers[0].len = firstSize;
 
-    if (sendReturn != directDequeueSize)
-    {
-        wprintf(L"SendSize : %d , SendReturn : %d \n", directDequeueSize, sendReturn);
+	buffers[1].buf = target->sendQueue_.GetStartBufferPtr();
+	buffers[1].len = secondSize;
 
-        Disconnect(target->sessionId_);
-        return;
-    }
+	DWORD sentBytes = 0;
+	DWORD bufferCount = 1;
+	if (secondSize > 0)
+	{
+		bufferCount = 2;
+	}
+	
+	{
+		Profile profile(L"WSASend");
+		int result = WSASend(target->socket_, buffers, bufferCount, &sentBytes, 0, nullptr, nullptr);
 
-    int moveFrontSize = target->sendQueue_.MoveFront(directDequeueSize);
+		if (result == SOCKET_ERROR)
+		{
+			int error = WSAGetLastError();
 
-    if (moveFrontSize != directDequeueSize)
-    {
-        wprintf(L"MoveFrontSize : %d , DirectDequeueSize : %d \n", moveFrontSize, directDequeueSize);
-        DebugBreak();
-    }
+			if (error == WSAEWOULDBLOCK)
+			{
+				return;
+			}
 
+			Disconnect(target->sessionId_);
+			return;
+		}
+	}
+	
+
+	target->sendQueue_.MoveFront(sentBytes);
 }
+
 
 bool SelectServer::TryUpdate()
 {
 
-    DWORD tick = timeGetTime();
+	DWORD tick = timeGetTime();
 
-    unsigned int frame = tick - oldTick_;
-    if (frame > frameMs_)
-    {
+	unsigned int frame = tick - oldTick_;
+	if (frame > frameMs_)
+	{
 		TimeOut();
-        unsigned int fixUpdate = (frame / 40);
+		unsigned int fixUpdate = (frame / 40);
 
-        for (unsigned int i = 0; i < fixUpdate; ++i)
-        {
+		for (unsigned int i = 0; i < fixUpdate; ++i)
+		{
 			OnUpdate();
-        }
+		}
 
-        oldTick_ += (frameMs_ * (frame / frameMs_));
-    }
+		oldTick_ += (frameMs_ * (frame / frameMs_));
+	}
 
-    return false;
+	return false;
 }
 
 void SelectServer::InitOldTick()
@@ -589,19 +609,37 @@ void SelectServer::InitOldTick()
 	oldTick_ = timeGetTime();
 }
 
+void SelectServer::SetProfileEnabled()
+{
+	if (sessions_.size() >= 10000)
+	{
+		SetEnabled(true);
+	}
+	else
+	{
+		SetEnabled(false);
+	}
+}
+
 unsigned int __stdcall SelectServer::GameLoopThread(void* thisPointer)
 {
 	SelectServer* thisForGameLoop = static_cast<SelectServer*>(thisPointer);
-    thisForGameLoop->InitOldTick();
+	thisForGameLoop->InitOldTick();
 
-    while (true)
-    {
-        thisForGameLoop->Network();
-        
-        thisForGameLoop->TryUpdate();
-        //ServerControl();
+	while (true)
+	{
+		thisForGameLoop->SetProfileEnabled();
+		Profile profile(L"Frame");
+		{
+			Profile a(L"Network");
+			thisForGameLoop->Network();
+		}
 
-    }
+		thisForGameLoop->TryUpdate();
+
+		//ServerControl();
+
+	}
 
 
 }
