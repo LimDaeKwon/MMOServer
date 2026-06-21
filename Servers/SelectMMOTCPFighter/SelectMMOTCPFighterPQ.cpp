@@ -18,64 +18,19 @@ SelectMMOTCPFighterPQ::~SelectMMOTCPFighterPQ()
 
 void SelectMMOTCPFighterPQ::OnAccept(SessionId sessionId)
 {
-    Character* newPlayer = characterFreeList_.Alloc();
-    newPlayer->sessionId_ = sessionId;
+    Character* newPlayer = CreateCharacter(sessionId);
 
-    newPlayer->direction_ = PacketMoveDirectionRR;
-    newPlayer->action_ = PacketMoveDirectionRR;
+    RegisterCharacter(newPlayer);
+    SendNewCharacterCreate(newPlayer);
+    SendExistingCharactersToNewCharacter(newPlayer);
 
-    newPlayer->x_ = rand() % 6399;
-    newPlayer->y_ = rand() % 6399;
-
-    newPlayer->hp_ = DefaultHp;
-
-    newPlayer->characterSectorPos_.x_ = newPlayer->x_ / SectorXSize;
-    newPlayer->characterSectorPos_.y_ = newPlayer->y_ / SectorYSize;
-    newPlayer->oldSectorPos_.x_ = SectorMaxX;
-    newPlayer->oldSectorPos_.y_ = SectorMaxY;
-
-    newPlayer->isMove_ = false;
-
-    sectorCharacterList_[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
-    characterMap_.insert(std::unordered_map<SessionId, Character*>::value_type(newPlayer->sessionId_, newPlayer));
-
-	CPacket* packetCreateMyCharacter = CPacket::Alloc();
-
-    MakePacketCreateMyCharacter(newPlayer->sessionId_, packetCreateMyCharacter, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
-    CPacket::Free(packetCreateMyCharacter);
-
-    CPacket* packetCreateOtherCharacter = CPacket::Alloc();
-    MakePacketCreateOtherCharacter(newPlayer->sessionId_, packetCreateOtherCharacter, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
-	CPacket::Free(packetCreateOtherCharacter);
+   
 
 
-    SectorAround createForMe;
-    GetSectorAround(newPlayer->characterSectorPos_.x_, newPlayer->characterSectorPos_.y_, &createForMe);
 
-    for (unsigned int i = 0; i < createForMe.count_; ++i)
-    {
-        std::list<Character*>::iterator iter;
-        for (iter = sectorCharacterList_[createForMe.around_[i].y_][createForMe.around_[i].x_].begin();
-            iter != sectorCharacterList_[createForMe.around_[i].y_][createForMe.around_[i].x_].end(); ++iter)
-        {
-            Character* target = *iter;
-            if ((target->sessionId_ == newPlayer->sessionId_))
-            {
-                continue;
-            }
 
-            CPacket* packetCreateOtherCharacterForMe = CPacket::Alloc();
-            MakePacketCreateOtherCharacterForMe(newPlayer->sessionId_, packetCreateOtherCharacterForMe, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
-            CPacket::Free(packetCreateOtherCharacterForMe);
 
-            if (target->isMove_ == true)
-            {
-                CPacket* packetMoveStartForMe = CPacket::Alloc();
-                MakePacketMoveStartForMe(newPlayer->sessionId_, packetMoveStartForMe, target->sessionId_, target->action_, target->x_, target->y_);
-                CPacket::Free(packetMoveStartForMe);
-            }
-        }
-    }
+
 
 
 }
@@ -1387,6 +1342,78 @@ bool SelectMMOTCPFighterPQ::NetPacketProcEcho(SessionId sessionId, unsigned int 
     CPacket::Free(packetEcho);
 
     return true;
+}
+
+Character* SelectMMOTCPFighterPQ::CreateCharacter(SessionId sessionId)
+{
+    Character* newPlayer = characterFreeList_.Alloc();
+    newPlayer->sessionId_ = sessionId;
+
+    newPlayer->direction_ = PacketMoveDirectionRR;
+    newPlayer->action_ = PacketMoveDirectionRR;
+
+    newPlayer->x_ = rand() % 6399;
+    newPlayer->y_ = rand() % 6399;
+
+    newPlayer->hp_ = DefaultHp;
+
+    newPlayer->characterSectorPos_.x_ = newPlayer->x_ / SectorXSize;
+    newPlayer->characterSectorPos_.y_ = newPlayer->y_ / SectorYSize;
+    newPlayer->oldSectorPos_.x_ = SectorMaxX;
+    newPlayer->oldSectorPos_.y_ = SectorMaxY;
+
+    newPlayer->isMove_ = false;
+
+
+    return newPlayer;
+}
+
+void SelectMMOTCPFighterPQ::RegisterCharacter(Character* newPlayer)
+{
+    sectorCharacterList_[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
+    characterMap_.insert(std::unordered_map<SessionId, Character*>::value_type(newPlayer->sessionId_, newPlayer));
+}
+
+void SelectMMOTCPFighterPQ::SendNewCharacterCreate(Character* newPlayer)
+{
+    CPacket* packetCreateMyCharacter = CPacket::Alloc();
+    MakePacketCreateMyCharacter(newPlayer->sessionId_, packetCreateMyCharacter, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+    CPacket::Free(packetCreateMyCharacter);
+
+    CPacket* packetCreateOtherCharacter = CPacket::Alloc();
+    MakePacketCreateOtherCharacter(newPlayer->sessionId_, packetCreateOtherCharacter, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+    CPacket::Free(packetCreateOtherCharacter);
+}
+
+void SelectMMOTCPFighterPQ::SendExistingCharactersToNewCharacter(Character* newPlayer)
+{
+    SectorAround around;
+    GetSectorAround(newPlayer->characterSectorPos_.x_, newPlayer->characterSectorPos_.y_, &around);
+
+    for (unsigned int i = 0; i < around.count_; ++i)
+    {
+        std::list<Character*>::iterator iter;
+        for (iter = sectorCharacterList_[around.around_[i].y_][around.around_[i].x_].begin();
+            iter != sectorCharacterList_[around.around_[i].y_][around.around_[i].x_].end(); ++iter)
+        {
+            Character* target = *iter;
+            if ((target->sessionId_ == newPlayer->sessionId_))
+            {
+                continue;
+            }
+
+            CPacket* packetCreateOtherCharacterForMe = CPacket::Alloc();
+            MakePacketCreateOtherCharacterForMe(newPlayer->sessionId_, packetCreateOtherCharacterForMe, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
+            CPacket::Free(packetCreateOtherCharacterForMe);
+
+            if (target->isMove_ == true)
+            {
+                CPacket* packetMoveStartForMe = CPacket::Alloc();
+                MakePacketMoveStartForMe(newPlayer->sessionId_, packetMoveStartForMe, target->sessionId_, target->action_, target->x_, target->y_);
+                CPacket::Free(packetMoveStartForMe);
+            }
+        }
+    }
 }
 
 void SelectMMOTCPFighterPQ::SendPacketSectorOne(int sectorX, int sectorY, SessionId exceptSessionId, CPacket* packet)

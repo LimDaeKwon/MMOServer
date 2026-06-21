@@ -97,6 +97,14 @@ public:
 
 private:
 
+
+	Character* CreateCharacter(SessionId sessionId);
+	void RegisterCharacter(Character* newPlayer);
+	void SendNewCharacterCreate(Character* newPlayer);
+	void SendExistingCharactersToNewCharacter(Character* newPlayer);
+
+
+
 	std::list<Character*> sectorCharacterList_[SectorMaxY][SectorMaxX];
 
 	std::unordered_map<SessionId, Character*> characterMap_;
