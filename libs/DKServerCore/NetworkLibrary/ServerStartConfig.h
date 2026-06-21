@@ -15,4 +15,17 @@ namespace DKServerCore
         unsigned int headerSize;
         unsigned char packetCode;
     };
+
+    struct SelectServerStartConfig
+    {
+        std::string ip;
+        unsigned int port;
+        unsigned int nagle;
+        unsigned int maxSessionCount;
+        unsigned int frameMs;
+        unsigned char packetCode;
+    };
+
+
+
 }
