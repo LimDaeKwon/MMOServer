@@ -30,10 +30,8 @@ public:
 
 	void GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector);
 
-	void GetSectorAroundForHitLeft(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector);
-
-	void GetSectorAroundForHitRight(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector);
-
+	void GetSectorAroundForHit(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector);
+	
 	void GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector);
 
 	bool SectorUpdateCharacter(Character* target);
@@ -113,6 +111,7 @@ private:
 	void SyncOrApplyClientPosition(Character* target, unsigned short x, unsigned short y);
 	void UpdateCharacterFacingDirection(Character* target, unsigned char direction);
 
+	bool CanHitTarget(const Character* attackCharacter, const Character* target, int boundaryX, int boundaryY);
 
 	std::list<Character*> sectorCharacterList_[SectorMaxY][SectorMaxX];
 

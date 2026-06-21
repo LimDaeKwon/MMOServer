@@ -264,85 +264,43 @@ void SelectMMOTCPFighterPQ::HitCheck(Character* attackCharacter, int attackNumbe
 
     SectorAround hitCheckSector;
 
-    if (attackCharacter->direction_ == PacketMoveDirectionLL)
+    GetSectorAroundForHit(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
+
+    for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
     {
-        GetSectorAroundForHitLeft(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
+        int sectorX = hitCheckSector.around_[i].x_;
+        int sectorY = hitCheckSector.around_[i].y_;
 
-        for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
+        std::list<Character*>::iterator iter;
+
+        for (iter = sectorCharacterList_[sectorY][sectorX].begin(); iter != sectorCharacterList_[sectorY][sectorX].end(); ++iter)
         {
-            std::list<Character*>::iterator iter;
-            for (iter = sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
+            Character* target = *iter;
+
+            if (CanHitTarget(attackCharacter, target, boundaryX, boundaryY) == false)
             {
-                Character* target = *iter;
-
-                if ((attackCharacter == target) || (attackCharacter->x_ < target->x_))
-                {
-                    continue;
-                }
-
-                if (abs(attackCharacter->y_ - target->y_) <= boundaryY && abs(attackCharacter->x_ - target->x_) <= boundaryX)
-                {
-                    if (damage >= target->hp_)
-                    {
-                        target->hp_ = 0;
-                    }
-                    else
-                    {
-                        target->hp_ -= damage;
-                    }
-
-                    CPacket* packetDamage = CPacket::Alloc();
-                    MakePacketDamage(target->sessionId_, packetDamage, attackCharacter->sessionId_, target->sessionId_, target->hp_);
-                    CPacket::Free(packetDamage);
-
-                    if (target->hp_ == 0)
-                    {
-                        Disconnect(target->sessionId_);
-                    }
-
-                    return;
-                }
+                continue;
             }
-        }
-    }
-    else
-    {
-        GetSectorAroundForHitRight(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
-        for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
-        {
-            std::list<Character*>::iterator iter;
-            for (iter = sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
+
+            if (damage >= target->hp_)
             {
-                Character* target = *iter;
-
-                if ((attackCharacter == target) || (attackCharacter->x_ > target->x_))
-                {
-                    continue;
-                }
-
-                if (abs(attackCharacter->y_ - target->y_) <= boundaryY && abs(attackCharacter->x_ - target->x_) <= boundaryX)
-                {
-                    if (damage >= target->hp_)
-                    {
-                        target->hp_ = 0;
-                    }
-                    else
-                    {
-                        target->hp_ -= damage;
-                    }
-
-                    CPacket* packetDamage = CPacket::Alloc();
-                    MakePacketDamage(target->sessionId_, packetDamage, attackCharacter->sessionId_, target->sessionId_, target->hp_);
-                    CPacket::Free(packetDamage);
-
-                    if (target->hp_ == 0)
-                    {
-                        Disconnect(target->sessionId_);
-                    }
-
-                    return;
-                }
+                target->hp_ = 0;
             }
+            else
+            {
+                target->hp_ -= damage;
+            }
+
+            CPacket* packetDamage = CPacket::Alloc();
+            MakePacketDamage(target->sessionId_, packetDamage, attackCharacter->sessionId_, target->sessionId_, target->hp_);
+            CPacket::Free(packetDamage);
+
+            if (target->hp_ == 0)
+            {
+                Disconnect(target->sessionId_);
+            }
+
+            return;
         }
     }
 }
@@ -410,7 +368,7 @@ void SelectMMOTCPFighterPQ::GetSectorAround(int sectorX, int sectorY, SectorArou
     }
 }
 
-void SelectMMOTCPFighterPQ::GetSectorAroundForHitLeft(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
+void SelectMMOTCPFighterPQ::GetSectorAroundForHit(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
 {
     int sectorX = target->characterSectorPos_.x_;
     int sectorY = target->characterSectorPos_.y_;
@@ -421,13 +379,26 @@ void SelectMMOTCPFighterPQ::GetSectorAroundForHitLeft(Character* target, int bou
     aroundSector->around_[aroundSector->count_].y_ = sectorY;
     aroundSector->count_++;
 
-    int targetValidPosX = ((target->x_ - boundaryX) / SectorXSize);
-    int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
-    int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
+    int hitSectorX;
+    int targetValidPosX;
 
-    if (sectorX - 1 >= 0 && targetValidPosX != sectorX)
+    if (target->direction_ == PacketMoveDirectionLL)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+        hitSectorX = sectorX - 1;
+        targetValidPosX = (target->x_ - boundaryX) / SectorXSize;
+    }
+    else
+    {
+        hitSectorX = sectorX + 1;
+        targetValidPosX = (target->x_ + boundaryX) / SectorXSize;
+    }
+
+    int targetValidPosYAbove = (target->y_ - boundaryY) / SectorYSize;
+    int targetValidPosYBelow = (target->y_ + boundaryY) / SectorYSize;
+
+    if (hitSectorX >= 0 && hitSectorX < SectorMaxX && targetValidPosX != sectorX)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = hitSectorX;
         aroundSector->around_[aroundSector->count_].y_ = sectorY;
         aroundSector->count_++;
     }
@@ -446,70 +417,122 @@ void SelectMMOTCPFighterPQ::GetSectorAroundForHitLeft(Character* target, int bou
         aroundSector->count_++;
     }
 
-    if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
+    if (sectorY + 1 < SectorMaxY && hitSectorX >= 0 && hitSectorX < SectorMaxX && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+        aroundSector->around_[aroundSector->count_].x_ = hitSectorX;
         aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
         aroundSector->count_++;
     }
-    if (sectorY - 1 >= 0 && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
+
+    if (sectorY - 1 >= 0 && hitSectorX >= 0 && hitSectorX < SectorMaxX && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+        aroundSector->around_[aroundSector->count_].x_ = hitSectorX;
         aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
         aroundSector->count_++;
     }
+
 }
-
-void SelectMMOTCPFighterPQ::GetSectorAroundForHitRight(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
-{
-    int sectorX = target->characterSectorPos_.x_;
-    int sectorY = target->characterSectorPos_.y_;
-
-    aroundSector->count_ = 0;
-
-    aroundSector->around_[aroundSector->count_].x_ = sectorX;
-    aroundSector->around_[aroundSector->count_].y_ = sectorY;
-    aroundSector->count_++;
-
-    int targetValidPosX = ((target->x_ + boundaryX) / SectorXSize);
-    int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
-    int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
-
-    if (sectorX + 1 < SectorMaxX && targetValidPosX != sectorX)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY;
-        aroundSector->count_++;
-    }
-
-    if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
-    }
-
-    if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
-    }
-
-    if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
-    }
-
-    if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
-    }
-}
+//
+//void SelectMMOTCPFighterPQ::GetSectorAroundForHitLeft(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
+//{
+//    int sectorX = target->characterSectorPos_.x_;
+//    int sectorY = target->characterSectorPos_.y_;
+//
+//    aroundSector->count_ = 0;
+//
+//    aroundSector->around_[aroundSector->count_].x_ = sectorX;
+//    aroundSector->around_[aroundSector->count_].y_ = sectorY;
+//    aroundSector->count_++;
+//
+//    int targetValidPosX = ((target->x_ - boundaryX) / SectorXSize);
+//    int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
+//    int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
+//
+//    if (sectorX - 1 >= 0 && targetValidPosX != sectorX)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY;
+//        aroundSector->count_++;
+//    }
+//
+//    if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+//        aroundSector->count_++;
+//    }
+//
+//    if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+//        aroundSector->count_++;
+//    }
+//
+//    if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+//        aroundSector->count_++;
+//    }
+//    if (sectorY - 1 >= 0 && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+//        aroundSector->count_++;
+//    }
+//}
+//
+//void SelectMMOTCPFighterPQ::GetSectorAroundForHitRight(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
+//{
+//    int sectorX = target->characterSectorPos_.x_;
+//    int sectorY = target->characterSectorPos_.y_;
+//
+//    aroundSector->count_ = 0;
+//
+//    aroundSector->around_[aroundSector->count_].x_ = sectorX;
+//    aroundSector->around_[aroundSector->count_].y_ = sectorY;
+//    aroundSector->count_++;
+//
+//    int targetValidPosX = ((target->x_ + boundaryX) / SectorXSize);
+//    int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
+//    int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
+//
+//    if (sectorX + 1 < SectorMaxX && targetValidPosX != sectorX)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY;
+//        aroundSector->count_++;
+//    }
+//
+//    if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+//        aroundSector->count_++;
+//    }
+//
+//    if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+//        aroundSector->count_++;
+//    }
+//
+//    if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+//        aroundSector->count_++;
+//    }
+//
+//    if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
+//    {
+//        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+//        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+//        aroundSector->count_++;
+//    }
+//}
 
 void SelectMMOTCPFighterPQ::GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector)
 {
@@ -1373,6 +1396,41 @@ void SelectMMOTCPFighterPQ::UpdateCharacterFacingDirection(Character* target, un
         target->direction_ = PacketMoveDirectionLL;
         break;
     }
+}
+
+bool SelectMMOTCPFighterPQ::CanHitTarget(const Character* attackCharacter, const Character* target, int boundaryX, int boundaryY)
+{
+    if (attackCharacter == target)
+    {
+        return false;
+    }
+
+    if (attackCharacter->direction_ == PacketMoveDirectionLL)
+    {
+        if (attackCharacter->x_ < target->x_)
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (attackCharacter->x_ > target->x_)
+        {
+            return false;
+        }
+    }
+
+    if (abs(attackCharacter->x_ - target->x_) > boundaryX)
+    {
+        return false;
+    }
+
+    if (abs(attackCharacter->y_ - target->y_) > boundaryY)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 void SelectMMOTCPFighterPQ::SendPacketSectorOne(int sectorX, int sectorY, SessionId exceptSessionId, CPacket* packet)
