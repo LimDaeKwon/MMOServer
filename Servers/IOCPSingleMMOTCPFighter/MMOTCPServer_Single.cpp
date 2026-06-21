@@ -542,7 +542,6 @@ bool MMOTCPServerSingle::NetPacketProcMoveStart(Character* target, unsigned char
 		CPacket::Free(syncPacket);
 
 
-		//wprintf(L"MoveStart OutOfRange  Server x y  :  %d   %d  /   Client x y  :   %d   %d  \n", target->x, target->y, x, y);
 	}
 	else
 	{
@@ -1039,19 +1038,6 @@ void MMOTCPServerSingle::HitCheck(Character* attackCharacter, int attackNumber)
 	}
 
 
-	//std::unordered_map<unsigned int, CHARACTER*>::iterator iter;
-	//for (iter = characterMap_.begin(); iter != characterMap_.end(); ++iter)
-	//{
-	//	CHARACTER* target = iter->second;
-
-	//	if ((attackCharacter == target) || target->CharacterSession->isDelete_ == 1)
-	//	{
-	//		continue;
-	//	}
-	//
-	//}
-
-
 
 
 }
@@ -1487,59 +1473,4 @@ void MMOTCPServerSingle::GameRun(Character* target)
 		SectorUpdate(target);
 
 	}
-}
-
-//지연삭제코드. 여기서 삭제하면 된다. 전체를 순회하며 하거나 deleteList_를 만들어도 된다.
-
-void MMOTCPServerSingle::DeleteDisconnect()
-{
-	/*if (deleteList_.size() > 0)
-	{
-
-		SESSION* Session;
-		CHARACTER* Deletetarget;
-		unsigned int Session_ID;
-		std::list<unsigned int>::iterator iter;
-		for (iter = deleteList_.begin(); iter != deleteList_.end(); ++iter)
-		{
-			Session_ID = *iter;
-			Session = Sessions.at(Session_ID);
-			Deletetarget = characterMap_.at(Session_ID);
-
-			FreeCharacter(Deletetarget);
-
-			characterMap_.erase(Session_ID);
-
-			closesocket(Session->Socket);
-			Session->ReceiveQ.ClearBuffer();
-			Session->SendQ.ClearBuffer();
-
-			SessionFreeList.Free(Session);
-			Sessions.erase(Session_ID);
-
-		}
-
-		deleteList_.clear();
-	}*/
-
-}
-
-void MMOTCPServerSingle::DisconnectContents(Character* target)
-{
-	//if (targetSession->isDelete_ == 1)
-	//{
-	//	return;
-	//}
-
-	//deleteList_.push_back(targetSession->SessionID);
-	//targetSession->isDelete_ = 1;
-
-	//CHARACTER* target = characterMap_.at(targetSession->SessionID);
-
-	//sector_[target->CharacterSectorPos.y][target->CharacterSectorPos.x].remove(target);
-
-	//GlobalCPacket.Clear();
-	//MakePacketDeleteCharacter(targetSession, &GlobalCPacket, targetSession->SessionID);
-	////wprintf(L"## Disconnect id : %d \n", targetSession->SessionID);
-
 }

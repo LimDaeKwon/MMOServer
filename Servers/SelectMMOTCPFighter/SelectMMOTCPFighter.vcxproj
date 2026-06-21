@@ -140,16 +140,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Character.h" />
-    <ClCompile Include="MMOTCPFighterServer.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="Sector.h" />
     <ClCompile Include="SelectMMOTCPFighter.cpp" />
+    <ClCompile Include="SelectMMOTCPFighterPQ.cpp" />
     <ClCompile Include="SelectServer.cpp" />
+    <ClCompile Include="SelectServerPQ.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameDefine.h" />
     <ClInclude Include="PacketDefine.h" />
     <ClInclude Include="SelectMMOTCPFighter.h" />
+    <ClInclude Include="SelectMMOTCPFighterPQ.h" />
     <ClInclude Include="SelectServer.h" />
+    <ClInclude Include="SelectServerPQ.h" />
     <ClInclude Include="Session.h" />
   </ItemGroup>
   <ItemGroup>

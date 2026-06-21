@@ -78,6 +78,7 @@ int RingBuffer::GetFreeSize() const
 
 int RingBuffer::Enqueue(const char* data, int enqueueSize)
 {
+
     if (GetFreeSize() < enqueueSize)
     {
         return 0;

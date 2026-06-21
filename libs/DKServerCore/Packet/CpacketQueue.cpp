@@ -104,6 +104,7 @@ bool CPacketQueue::Dequeue(CPacket** out)
     return true;
 }
 
+
 void CPacketQueue::ClearBuffer()
 {
     front_ = 0;

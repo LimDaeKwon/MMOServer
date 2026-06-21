@@ -38,7 +38,7 @@
     <ClInclude Include="Packet\CPacket.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="Packet\CpacketQueue.h">
+    <ClInclude Include="Packet\CPacketQueue.h">
       <Filter>Packet</Filter>
     </ClInclude>
     <ClInclude Include="Packet\LockFreeQueue.h">
@@ -124,7 +124,7 @@
     <ClCompile Include="Packet\CPacket.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
-    <ClCompile Include="Packet\CpacketQueue.cpp">
+    <ClCompile Include="Packet\CPacketQueue.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
     <ClCompile Include="Packet\MessageDataQueue.cpp">

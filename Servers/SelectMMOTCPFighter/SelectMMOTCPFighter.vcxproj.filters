@@ -7,7 +7,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MMOTCPFighterServer.cpp">
+    <ClCompile Include="Main.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
     <ClCompile Include="Character.h">
@@ -22,6 +22,12 @@
     <ClCompile Include="SelectMMOTCPFighter.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
+    <ClCompile Include="SelectServerPQ.cpp">
+      <Filter>Contents</Filter>
+    </ClCompile>
+    <ClCompile Include="SelectMMOTCPFighterPQ.cpp">
+      <Filter>Contents</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PacketDefine.h">
@@ -33,5 +39,7 @@
     <ClInclude Include="GameDefine.h" />
     <ClInclude Include="SelectServer.h" />
     <ClInclude Include="SelectMMOTCPFighter.h" />
+    <ClInclude Include="SelectServerPQ.h" />
+    <ClInclude Include="SelectMMOTCPFighterPQ.h" />
   </ItemGroup>
 </Project>

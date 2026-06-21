@@ -41,6 +41,7 @@ constexpr int SectorYSize = 160;
 
 constexpr int DefaultHp = 100;
 
+constexpr int ProfileOver = 12000;
 
 constexpr unsigned char PacketMoveDirectionLL = 0;
 constexpr unsigned char PacketMoveDirectionLU = 1;
