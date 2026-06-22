@@ -42,9 +42,7 @@ public:
 
 	void SendPacketSectorOne(int sectorX, int sectorY, SessionId except, CPacket* packet);
 
-	void SendPacketAroundRemoveSector(SessionId target, CPacket* packet, SectorAround* around);
-
-	void SendPacketAroundAddSector(SessionId target, CPacket* packet, SectorAround* around);
+	void SendPacketToSectors(CPacket* packet, SectorAround* around, SessionId exceptSessionId = InvalidSessionId);
 
 	void MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y);
 
@@ -70,13 +68,13 @@ public:
 
 	void MakePacketEcho(SessionId sessionId, CPacket* packet, unsigned int time);
 
-	void MakePacketDeleteCharacterRemoveSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id);
+	void MakePacketDeleteCharacterRemoveSector(CPacket* packet, SectorAround* around, SessionId id);
 
 	void MakePacketDeleteCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id);
 
-	void MakePacketCreateCharacterAddSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
+	void MakePacketCreateCharacterAddSector(CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp);
 
-	void MakePacketMoveStartAddSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y);
+	void MakePacketMoveStartAddSector(CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y);
 
 	void MakePacketSync(SessionId sessionId, CPacket* packet, SessionId id, unsigned short x, unsigned short y);
 
@@ -112,6 +110,12 @@ private:
 	void UpdateCharacterFacingDirection(Character* target, unsigned char direction);
 
 	bool CanHitTarget(const Character* attackCharacter, const Character* target, int boundaryX, int boundaryY);
+
+	void AddSectorPosition(SectorAround* aroundSector, int sectorX, int sectorY);
+
+	void SendRemoveSectorUpdate(Character* target, SectorAround* removeSector);
+	void SendAddSectorUpdate(Character* target, SectorAround* addSector);
+
 
 	std::list<Character*> sectorCharacterList_[SectorMaxY][SectorMaxX];
 
