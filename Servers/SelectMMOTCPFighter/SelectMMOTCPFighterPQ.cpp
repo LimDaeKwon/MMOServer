@@ -8,7 +8,7 @@
 
 SelectMMOTCPFighterPQ::SelectMMOTCPFighterPQ() : characterFreeList_(10000)
 {
-
+    InitializeSectorUpdateAround();
 }
 
 SelectMMOTCPFighterPQ::~SelectMMOTCPFighterPQ()
@@ -120,6 +120,7 @@ void SelectMMOTCPFighterPQ::OnUpdate()
 
         if (target->isMove_)
         {
+            
             GameRun(target);
         }
     }
@@ -127,6 +128,7 @@ void SelectMMOTCPFighterPQ::OnUpdate()
 
 void SelectMMOTCPFighterPQ::GameRun(Character* target)
 {
+    Profile profile(L"GameRun");
     switch (target->action_)
     {
     case PacketMoveDirectionLL:
@@ -233,6 +235,7 @@ void SelectMMOTCPFighterPQ::GameRun(Character* target)
 
 void SelectMMOTCPFighterPQ::HitCheck(Character* attackCharacter, int attackNumber)
 {
+    Profile profile(L"HitCheck");
     int boundaryX = 0;
     int boundaryY = 0;
 
@@ -421,52 +424,15 @@ void SelectMMOTCPFighterPQ::GetSectorAroundForHit(Character* target, int boundar
 
 }
 
-void SelectMMOTCPFighterPQ::GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector)
+SectorUpdateAround* SelectMMOTCPFighterPQ::GetUpdateSectorAround(Character* target)
 {
-    SectorAround oldSectorAround;
-    SectorAround curSectorAround;
+    Profile profile(L"GetUpdateSectorAround");
 
-    GetSectorAround(target->oldSectorPos_.x_, target->oldSectorPos_.y_, &oldSectorAround);
-    GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &curSectorAround);
+    int moveIndexX = static_cast<int>(target->characterSectorPos_.x_) - static_cast<int>(target->oldSectorPos_.x_) + 1;
+    int moveIndexY = static_cast<int>(target->characterSectorPos_.y_) - static_cast<int>(target->oldSectorPos_.y_) + 1;
 
-    removeSector->count_ = 0;
-    addSector->count_ = 0;
+    return &sectorUpdateAround_[target->oldSectorPos_.y_][target->oldSectorPos_.x_][moveIndexY][moveIndexX];
 
-    unsigned int removeIndex;
-
-    for (unsigned int i = 0; i < oldSectorAround.count_; ++i)
-    {
-        for (removeIndex = 0; removeIndex < curSectorAround.count_; ++removeIndex)
-        {
-            if (oldSectorAround.around_[i].x_ == curSectorAround.around_[removeIndex].x_ && oldSectorAround.around_[i].y_ == curSectorAround.around_[removeIndex].y_)
-            {
-                break;
-            }
-        }
-
-        if (removeIndex == curSectorAround.count_)
-        {
-            AddSectorPosition(removeSector, oldSectorAround.around_[i].x_, oldSectorAround.around_[i].y_);
-        }
-    }
-
-    unsigned int addIndex;
-
-    for (unsigned int i = 0; i < curSectorAround.count_; ++i)
-    {
-        for (addIndex = 0; addIndex < oldSectorAround.count_; ++addIndex)
-        {
-            if (curSectorAround.around_[i].x_ == oldSectorAround.around_[addIndex].x_ && curSectorAround.around_[i].y_ == oldSectorAround.around_[addIndex].y_)
-            {
-                break;
-            }
-        }
-
-        if (addIndex == oldSectorAround.count_)
-        {
-            AddSectorPosition(addSector, curSectorAround.around_[i].x_, curSectorAround.around_[i].y_);
-        }
-    }
 
 
 }
@@ -496,13 +462,10 @@ void SelectMMOTCPFighterPQ::SectorUpdate(Character* target)
 {
     Profile profile(L"SectorUpdate");
 
-    SectorAround removeSector;
-    SectorAround addSector;
+    SectorUpdateAround* updateAround = GetUpdateSectorAround(target);
 
-    GetUpdateSectorAround(target, &removeSector, &addSector);
-
-    SendRemoveSectorUpdate(target, &removeSector);
-    SendAddSectorUpdate(target, &addSector);
+    SendRemoveSectorUpdate(target, &updateAround->removeSector_);
+    SendAddSectorUpdate(target, &updateAround->addSector_);
 }
 
 void SelectMMOTCPFighterPQ::MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
@@ -825,7 +788,7 @@ void SelectMMOTCPFighterPQ::ReleaseCharacter(Character* character)
 
 bool SelectMMOTCPFighterPQ::IsClientPositionValid(Character* target, unsigned short x, unsigned short y)
 {
-    return !(abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange);
+    return !((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange));
 }
 
 void SelectMMOTCPFighterPQ::SendSync(Character* target)
@@ -974,6 +937,98 @@ void SelectMMOTCPFighterPQ::SendAddSectorUpdate(Character* target, SectorAround*
     }
 }
 
+void SelectMMOTCPFighterPQ::InitializeSectorUpdateAround()
+{
+    for (int oldSectorY = 0; oldSectorY < SectorMaxY; ++oldSectorY)
+    {
+        for (int oldSectorX = 0; oldSectorX < SectorMaxX; ++oldSectorX)
+        {
+            for (int moveSectorY = -1; moveSectorY <= 1; ++moveSectorY)
+            {
+                for (int moveSectorX = -1; moveSectorX <= 1; ++moveSectorX)
+                {
+                    int moveIndexX = moveSectorX + 1;
+                    int moveIndexY = moveSectorY + 1;
+
+                    SectorUpdateAround* sectorUpdateAround = &sectorUpdateAround_[oldSectorY][oldSectorX][moveIndexY][moveIndexX];
+
+                    sectorUpdateAround->removeSector_.count_ = 0;
+                    sectorUpdateAround->addSector_.count_ = 0;
+
+                    if (moveSectorX == 0 && moveSectorY == 0)
+                    {
+                        continue;
+                    }
+
+                    int curSectorX = oldSectorX + moveSectorX;
+                    int curSectorY = oldSectorY + moveSectorY;
+
+                    if (curSectorX < 0 || curSectorX >= SectorMaxX)
+                    {
+                        continue;
+                    }
+
+                    if (curSectorY < 0 || curSectorY >= SectorMaxY)
+                    {
+                        continue;
+                    }
+
+                    BuildSectorUpdateAround(oldSectorX, oldSectorY, curSectorX, curSectorY, sectorUpdateAround);
+                }
+            }
+        }
+    }
+
+}
+
+void SelectMMOTCPFighterPQ::BuildSectorUpdateAround(int oldSectorX, int oldSectorY, int curSectorX, int curSectorY, SectorUpdateAround* sectorUpdateAround)
+{
+    SectorAround oldSectorAround;
+    SectorAround curSectorAround;
+
+    GetSectorAround(oldSectorX, oldSectorY, &oldSectorAround);
+    GetSectorAround(curSectorX, curSectorY, &curSectorAround);
+
+    sectorUpdateAround->removeSector_.count_ = 0;
+    sectorUpdateAround->addSector_.count_ = 0;
+
+    unsigned int removeIndex;
+
+    for (unsigned int i = 0; i < oldSectorAround.count_; ++i)
+    {
+        for (removeIndex = 0; removeIndex < curSectorAround.count_; ++removeIndex)
+        {
+            if (oldSectorAround.around_[i].x_ == curSectorAround.around_[removeIndex].x_ && oldSectorAround.around_[i].y_ == curSectorAround.around_[removeIndex].y_)
+            {
+                break;
+            }
+        }
+
+        if (removeIndex == curSectorAround.count_)
+        {
+            AddSectorPosition(&sectorUpdateAround->removeSector_, oldSectorAround.around_[i].x_, oldSectorAround.around_[i].y_);
+        }
+    }
+
+    unsigned int addIndex;
+
+    for (unsigned int i = 0; i < curSectorAround.count_; ++i)
+    {
+        for (addIndex = 0; addIndex < oldSectorAround.count_; ++addIndex)
+        {
+            if (curSectorAround.around_[i].x_ == oldSectorAround.around_[addIndex].x_ && curSectorAround.around_[i].y_ == oldSectorAround.around_[addIndex].y_)
+            {
+                break;
+            }
+        }
+
+        if (addIndex == oldSectorAround.count_)
+        {
+            AddSectorPosition(&sectorUpdateAround->addSector_, curSectorAround.around_[i].x_, curSectorAround.around_[i].y_);
+        }
+    }
+}
+
 
 
 void SelectMMOTCPFighterPQ::SendPacketSectorOne(int sectorX, int sectorY, SessionId exceptSessionId, CPacket* packet)
@@ -995,7 +1050,7 @@ void SelectMMOTCPFighterPQ::SendPacketSectorOne(int sectorX, int sectorY, Sessio
 
 void SelectMMOTCPFighterPQ::SendPacketToSectors(CPacket* packet, SectorAround* around, SessionId exceptSessionId)
 {
-
+    Profile profile(L"SendPacketToSectors");
     for (unsigned int index = 0; index < around->count_; ++index)
     {
         SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, exceptSessionId, packet);

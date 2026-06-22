@@ -6,9 +6,6 @@
 
 
 
-struct Character;
-struct SectorAround;
-
 class SelectMMOTCPFighterPQ : public SelectServerPQ
 {
 public:
@@ -32,7 +29,7 @@ public:
 
 	void GetSectorAroundForHit(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector);
 	
-	void GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector);
+	SectorUpdateAround* GetUpdateSectorAround(Character* target);
 
 	bool SectorUpdateCharacter(Character* target);
 
@@ -116,12 +113,19 @@ private:
 	void SendRemoveSectorUpdate(Character* target, SectorAround* removeSector);
 	void SendAddSectorUpdate(Character* target, SectorAround* addSector);
 
+	void InitializeSectorUpdateAround();
+
+	void BuildSectorUpdateAround(int oldSectorX, int oldSectorY, int curSectorX, int curSectorY, SectorUpdateAround* sectorUpdateAround);
+
 
 	std::list<Character*> sectorCharacterList_[SectorMaxY][SectorMaxX];
 
 	std::unordered_map<SessionId, Character*> characterMap_;
 
 	ObjectFreeList<Character> characterFreeList_;
+
+	SectorUpdateAround sectorUpdateAround_[SectorMaxY][SectorMaxX][3][3];
+
 
 
 };

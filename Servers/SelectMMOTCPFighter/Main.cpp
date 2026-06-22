@@ -45,13 +45,14 @@ int main()
 
     if (sendQueueTypeValue)
     {
-        SelectMMOTCPFighter* instance = new SelectMMOTCPFighter();
+        SelectMMOTCPFighterPQ* instance = new SelectMMOTCPFighterPQ();
         instance->Start(config);
     }
     else
     {
-        SelectMMOTCPFighterPQ* instance = new SelectMMOTCPFighterPQ();
+        SelectMMOTCPFighter* instance = new SelectMMOTCPFighter();
         instance->Start(config);
+       
     }
       
 

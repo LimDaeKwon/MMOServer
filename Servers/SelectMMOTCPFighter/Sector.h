@@ -12,3 +12,9 @@ struct SectorAround
     unsigned int count_;
     SectorPos around_[9];
 };
+
+struct SectorUpdateAround
+{
+    SectorAround removeSector_;
+    SectorAround addSector_;
+};
