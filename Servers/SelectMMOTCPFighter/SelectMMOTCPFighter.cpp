@@ -1,78 +1,28 @@
-﻿#include "SelectMMOTCPFighter.h"
+#include "SelectMMOTCPFighter.h"
 #include "Character.h"
 #include "CPacket.h"
 #include "Profiler.h"
 #include "PacketDefine.h"
+#include "ContentsCPacket.h"
 
 
-SelectMMOTCPFighter::SelectMMOTCPFighter() : characterFreeList_(10000), cPacketBuffer_(nullptr)
+SelectMMOTCPFighter::SelectMMOTCPFighter() : characterFreeList_(10000)
 {
-    cPacketBuffer_ = CPacket::Alloc();
-
+    InitializeSectorUpdateAround();
 }
 
 SelectMMOTCPFighter::~SelectMMOTCPFighter()
 {
-    CPacket::Free(cPacketBuffer_);
+
 }
 
 void SelectMMOTCPFighter::OnAccept(SessionId sessionId)
 {
-    Character* newPlayer = characterFreeList_.Alloc();
-    newPlayer->sessionId_ = sessionId;
+    Character* newPlayer = CreateCharacter(sessionId);
 
-    newPlayer->direction_ = PacketMoveDirectionRR;
-    newPlayer->action_ = PacketMoveDirectionRR;
-
-    newPlayer->x_ = rand() % 6399;
-    newPlayer->y_ = rand() % 6399;
-
-    newPlayer->hp_ = DefaultHp;
-
-    newPlayer->characterSectorPos_.x_ = newPlayer->x_ / SectorXSize;
-    newPlayer->characterSectorPos_.y_ = newPlayer->y_ / SectorYSize;
-    newPlayer->oldSectorPos_.x_ = SectorMaxX;
-    newPlayer->oldSectorPos_.y_ = SectorMaxY;
-
-    newPlayer->isMove_ = false;
-
-    sectorCharacterList_[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
-    characterMap_.insert(std::unordered_map<SessionId, Character*>::value_type(newPlayer->sessionId_, newPlayer));
-
-    cPacketBuffer_->Clear();
-
-    MakePacketCreateMyCharacter(newPlayer->sessionId_, cPacketBuffer_, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
-
-    cPacketBuffer_->Clear();
-    MakePacketCreateOtherCharacter(newPlayer->sessionId_, cPacketBuffer_, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
-
-    SectorAround createForMe;
-    GetSectorAround(newPlayer->characterSectorPos_.x_, newPlayer->characterSectorPos_.y_, &createForMe);
-
-    for (unsigned int i = 0; i < createForMe.count_; ++i)
-    {
-        std::list<Character*>::iterator iter;
-        for (iter = sectorCharacterList_[createForMe.around_[i].y_][createForMe.around_[i].x_].begin();
-            iter != sectorCharacterList_[createForMe.around_[i].y_][createForMe.around_[i].x_].end(); ++iter)
-        {
-            Character* target = *iter;
-            if ((target->sessionId_ == newPlayer->sessionId_))
-            {
-                continue;
-            }
-
-            cPacketBuffer_->Clear();
-            MakePacketCreateOtherCharacterForMe(newPlayer->sessionId_, cPacketBuffer_, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
-
-            if (target->isMove_ == true)
-            {
-                cPacketBuffer_->Clear();
-                MakePacketMoveStartForMe(newPlayer->sessionId_, cPacketBuffer_, target->sessionId_, target->action_, target->x_, target->y_);
-            }
-        }
-    }
-
-
+    RegisterCharacter(newPlayer);
+    SendNewCharacterCreate(newPlayer);
+    SendExistingCharactersToNewCharacter(newPlayer);
 }
 
 void SelectMMOTCPFighter::OnMessage(SessionId sessionId, unsigned char packetType, CPacket* packet)
@@ -156,12 +106,8 @@ void SelectMMOTCPFighter::OnRelease(SessionId sessionId)
 {
     Character* target = characterMap_.at(sessionId);
 
-    cPacketBuffer_->Clear();
-    MakePacketDeleteCharacter(target->sessionId_, cPacketBuffer_, target->sessionId_);
-
-    sectorCharacterList_[target->characterSectorPos_.y_][target->characterSectorPos_.x_].remove(target);
-    characterMap_.erase(sessionId);
-    characterFreeList_.Free(target);
+    SendCharacterDelete(target);
+    ReleaseCharacter(target);
 }
 
 void SelectMMOTCPFighter::OnUpdate()
@@ -174,6 +120,7 @@ void SelectMMOTCPFighter::OnUpdate()
 
         if (target->isMove_)
         {
+            
             GameRun(target);
         }
     }
@@ -181,6 +128,7 @@ void SelectMMOTCPFighter::OnUpdate()
 
 void SelectMMOTCPFighter::GameRun(Character* target)
 {
+    Profile profile(L"GameRun");
     switch (target->action_)
     {
     case PacketMoveDirectionLL:
@@ -287,6 +235,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
 
 void SelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
 {
+    Profile profile(L"HitCheck");
     int boundaryX = 0;
     int boundaryY = 0;
 
@@ -318,85 +267,43 @@ void SelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
 
     SectorAround hitCheckSector;
 
-    if (attackCharacter->direction_ == PacketMoveDirectionLL)
+    GetSectorAroundForHit(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
+
+    for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
     {
-        GetSectorAroundForHitLeft(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
+        int sectorX = hitCheckSector.around_[i].x_;
+        int sectorY = hitCheckSector.around_[i].y_;
 
-        for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
+        std::list<Character*>::iterator iter;
+
+        for (iter = sectorCharacterList_[sectorY][sectorX].begin(); iter != sectorCharacterList_[sectorY][sectorX].end(); ++iter)
         {
-            std::list<Character*>::iterator iter;
-            for (iter = sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
+            Character* target = *iter;
+
+            if (CanHitTarget(attackCharacter, target, boundaryX, boundaryY) == false)
             {
-                Character* target = *iter;
-
-                if ((attackCharacter == target) || (attackCharacter->x_ < target->x_))
-                {
-                    continue;
-                }
-
-                if (abs(attackCharacter->y_ - target->y_) <= boundaryY && abs(attackCharacter->x_ - target->x_) <= boundaryX)
-                {
-                    if (damage >= target->hp_)
-                    {
-                        target->hp_ = 0;
-                    }
-                    else
-                    {
-                        target->hp_ -= damage;
-                    }
-
-                    cPacketBuffer_->Clear();
-
-                    MakePacketDamage(target->sessionId_, cPacketBuffer_, attackCharacter->sessionId_, target->sessionId_, target->hp_);
-
-                    if (target->hp_ == 0)
-                    {
-                        Disconnect(target->sessionId_);
-                    }
-
-                    return;
-                }
+                continue;
             }
-        }
-    }
-    else
-    {
-        GetSectorAroundForHitRight(attackCharacter, boundaryX, boundaryY, &hitCheckSector);
-        for (unsigned int i = 0; i < hitCheckSector.count_; ++i)
-        {
-            std::list<Character*>::iterator iter;
-            for (iter = sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].begin(); iter != sectorCharacterList_[hitCheckSector.around_[i].y_][hitCheckSector.around_[i].x_].end(); ++iter)
+
+            if (damage >= target->hp_)
             {
-                Character* target = *iter;
-
-                if ((attackCharacter == target) || (attackCharacter->x_ > target->x_))
-                {
-                    continue;
-                }
-
-                if (abs(attackCharacter->y_ - target->y_) <= boundaryY && abs(attackCharacter->x_ - target->x_) <= boundaryX)
-                {
-                    if (damage >= target->hp_)
-                    {
-                        target->hp_ = 0;
-                    }
-                    else
-                    {
-                        target->hp_ -= damage;
-                    }
-
-                    cPacketBuffer_->Clear();
-
-                    MakePacketDamage(target->sessionId_, cPacketBuffer_, attackCharacter->sessionId_, target->sessionId_, target->hp_);
-
-                    if (target->hp_ == 0)
-                    {
-                        Disconnect(target->sessionId_);
-                    }
-
-                    return;
-                }
+                target->hp_ = 0;
             }
+            else
+            {
+                target->hp_ -= damage;
+            }
+
+            CPacket* packetDamage = CPacket::Alloc();
+            MakePacketDamage(target->sessionId_, packetDamage, attackCharacter->sessionId_, target->sessionId_, target->hp_);
+            CPacket::Free(packetDamage);
+
+            if (target->hp_ == 0)
+            {
+                Disconnect(target->sessionId_);
+            }
+
+            return;
         }
     }
 }
@@ -405,574 +312,127 @@ void SelectMMOTCPFighter::GetSectorAround(int sectorX, int sectorY, SectorAround
 {
     aroundSector->count_ = 0;
 
-    aroundSector->around_[aroundSector->count_].x_ = sectorX;
-    aroundSector->around_[aroundSector->count_].y_ = sectorY;
-    aroundSector->count_++;
+    AddSectorPosition(aroundSector, sectorX, sectorY);
 
     if (sectorX + 1 < SectorMaxX)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX + 1, sectorY);
     }
+
     if (sectorX - 1 >= 0)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX - 1, sectorY);
     }
 
     if (sectorY + 1 < SectorMaxY)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX, sectorY + 1);
     }
 
     if (sectorY - 1 >= 0)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX, sectorY - 1);
     }
 
     if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX + 1, sectorY + 1);
     }
 
     if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX + 1, sectorY - 1);
     }
 
     if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX - 1, sectorY + 1);
     }
+
     if (sectorY - 1 >= 0 && sectorX - 1 >= 0)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX - 1, sectorY - 1);
     }
 }
 
-void SelectMMOTCPFighter::GetSectorAroundForHitLeft(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
+void SelectMMOTCPFighter::GetSectorAroundForHit(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
 {
     int sectorX = target->characterSectorPos_.x_;
     int sectorY = target->characterSectorPos_.y_;
 
     aroundSector->count_ = 0;
 
-    aroundSector->around_[aroundSector->count_].x_ = sectorX;
-    aroundSector->around_[aroundSector->count_].y_ = sectorY;
-    aroundSector->count_++;
+    AddSectorPosition(aroundSector, sectorX, sectorY);
 
-    int targetValidPosX = ((target->x_ - boundaryX) / SectorXSize);
-    int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
-    int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
+    int targetValidPosX;
+    int targetValidPosYAbove = (target->y_ - boundaryY) / SectorYSize;
+    int targetValidPosYBelow = (target->y_ + boundaryY) / SectorYSize;
 
-    if (sectorX - 1 >= 0 && targetValidPosX != sectorX)
+    if (target->direction_ == PacketMoveDirectionLL)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY;
-        aroundSector->count_++;
+        targetValidPosX = (target->x_ - boundaryX) / SectorXSize;
+
+        if (sectorX - 1 >= 0 && targetValidPosX != sectorX)
+        {
+            AddSectorPosition(aroundSector, sectorX - 1, sectorY);
+        }
+    }
+    else
+    {
+        targetValidPosX = (target->x_ + boundaryX) / SectorXSize;
+
+        if (sectorX + 1 < SectorMaxX && targetValidPosX != sectorX)
+        {
+            AddSectorPosition(aroundSector, sectorX + 1, sectorY);
+        }
     }
 
     if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX, sectorY + 1);
     }
 
     if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
+        AddSectorPosition(aroundSector, sectorX, sectorY - 1);
     }
 
-    if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
+    if (target->direction_ == PacketMoveDirectionLL)
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
+        if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
+        {
+            AddSectorPosition(aroundSector, sectorX - 1, sectorY + 1);
+        }
+
+        if (sectorY - 1 >= 0 && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
+        {
+            AddSectorPosition(aroundSector, sectorX - 1, sectorY - 1);
+        }
     }
-    if (sectorY - 1 >= 0 && sectorX - 1 >= 0 && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
+    else
     {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
+        if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
+        {
+            AddSectorPosition(aroundSector, sectorX + 1, sectorY + 1);
+        }
+
+        if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
+        {
+            AddSectorPosition(aroundSector, sectorX + 1, sectorY - 1);
+        }
     }
+
 }
 
-void SelectMMOTCPFighter::GetSectorAroundForHitRight(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
+SectorUpdateAround* SelectMMOTCPFighter::GetUpdateSectorAround(Character* target)
 {
-    int sectorX = target->characterSectorPos_.x_;
-    int sectorY = target->characterSectorPos_.y_;
+    Profile profile(L"GetUpdateSectorAround");
 
-    aroundSector->count_ = 0;
+    int moveIndexX = static_cast<int>(target->characterSectorPos_.x_) - static_cast<int>(target->oldSectorPos_.x_) + 1;
+    int moveIndexY = static_cast<int>(target->characterSectorPos_.y_) - static_cast<int>(target->oldSectorPos_.y_) + 1;
 
-    aroundSector->around_[aroundSector->count_].x_ = sectorX;
-    aroundSector->around_[aroundSector->count_].y_ = sectorY;
-    aroundSector->count_++;
+    return &sectorUpdateAround_[target->oldSectorPos_.y_][target->oldSectorPos_.x_][moveIndexY][moveIndexX];
 
-    int targetValidPosX = ((target->x_ + boundaryX) / SectorXSize);
-    int targetValidPosYAbove = ((target->y_ - boundaryY) / SectorYSize);
-    int targetValidPosYBelow = ((target->y_ + boundaryY) / SectorYSize);
-
-    if (sectorX + 1 < SectorMaxX && targetValidPosX != sectorX)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY;
-        aroundSector->count_++;
-    }
-
-    if (sectorY + 1 < SectorMaxY && targetValidPosYBelow != sectorY)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
-    }
-
-    if (sectorY - 1 >= 0 && targetValidPosYAbove != sectorY)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
-    }
-
-    if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYBelow != sectorY)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
-        aroundSector->count_++;
-    }
-
-    if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX && targetValidPosX != sectorX && targetValidPosYAbove != sectorY)
-    {
-        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
-        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
-        aroundSector->count_++;
-    }
-}
-
-void SelectMMOTCPFighter::GetUpdateSectorAround(Character* target, SectorAround* removeSector, SectorAround* addSector)
-{
-    removeSector->count_ = 0;
-    addSector->count_ = 0;
-
-    // ->
-    if ((target->characterSectorPos_.y_ == target->oldSectorPos_.y_) && (target->characterSectorPos_.x_ > target->oldSectorPos_.x_))
-    {
-        if (target->characterSectorPos_.y_ == 0)
-        {
-            if (target->oldSectorPos_.x_ != 0)
-            {
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-                removeSector->count_++;
-
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-                removeSector->count_++;
-            }
-
-            if (target->characterSectorPos_.x_ + 1 != SectorMaxX)
-            {
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-                addSector->count_++;
-
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-                addSector->count_++;
-            }
-
-            return;
-        }
-
-        if (target->characterSectorPos_.y_ == SectorMaxY - 1)
-        {
-            if (target->oldSectorPos_.x_ != 0)
-            {
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-                removeSector->count_++;
-
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-                removeSector->count_++;
-            }
-
-            if (target->characterSectorPos_.x_ + 1 != SectorMaxX)
-            {
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-                addSector->count_++;
-
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-                addSector->count_++;
-            }
-
-            return;
-        }
-
-        if (target->oldSectorPos_.x_ != 0)
-        {
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-            removeSector->count_++;
-
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-            removeSector->count_++;
-
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-            removeSector->count_++;
-        }
-
-        if (target->characterSectorPos_.x_ + 1 != SectorMaxX)
-        {
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-            addSector->count_++;
-
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-            addSector->count_++;
-
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-            addSector->count_++;
-        }
-
-        return;
-    }
-
-    //<-
-
-    if ((target->characterSectorPos_.y_ == target->oldSectorPos_.y_) && (target->characterSectorPos_.x_ < target->oldSectorPos_.x_))
-    {
-        if (target->characterSectorPos_.y_ == 0)
-        {
-            if (target->characterSectorPos_.x_ != 0)
-            {
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-                addSector->count_++;
-
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-                addSector->count_++;
-            }
-
-            if (target->oldSectorPos_.x_ + 1 != SectorMaxX)
-            {
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-                removeSector->count_++;
-
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-                removeSector->count_++;
-            }
-
-            return;
-        }
-
-        if (target->characterSectorPos_.y_ == SectorMaxY - 1)
-        {
-            if (target->characterSectorPos_.x_ != 0)
-            {
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-                addSector->count_++;
-
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-                addSector->count_++;
-            }
-
-            if (target->oldSectorPos_.x_ + 1 != SectorMaxX)
-            {
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-                removeSector->count_++;
-
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-                removeSector->count_++;
-            }
-
-            return;
-        }
-
-        if (target->characterSectorPos_.x_ != 0)
-        {
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-            addSector->count_++;
-
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-            addSector->count_++;
-
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-            addSector->count_++;
-        }
-
-        if (target->oldSectorPos_.x_ + 1 != SectorMaxX)
-        {
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-            removeSector->count_++;
-
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-            removeSector->count_++;
-
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-            removeSector->count_++;
-        }
-
-        return;
-    }
-
-    //..
-    if ((target->characterSectorPos_.y_ < target->oldSectorPos_.y_) && (target->characterSectorPos_.x_ == target->oldSectorPos_.x_))
-    {
-        if (target->characterSectorPos_.x_ == 0)
-        {
-            if (target->characterSectorPos_.y_ != 0)
-            {
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-                addSector->count_++;
-
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
-                addSector->count_++;
-            }
-
-            if (target->oldSectorPos_.y_ + 1 != SectorMaxY)
-            {
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
-                removeSector->count_++;
-
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-                removeSector->count_++;
-            }
-
-            return;
-        }
-
-        if (target->characterSectorPos_.x_ == SectorMaxX - 1)
-        {
-            if (target->characterSectorPos_.y_ != 0)
-            {
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-                addSector->count_++;
-
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
-                addSector->count_++;
-            }
-
-            if (target->oldSectorPos_.y_ + 1 != SectorMaxY)
-            {
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-                removeSector->count_++;
-
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
-                removeSector->count_++;
-            }
-
-            return;
-        }
-
-        if (target->characterSectorPos_.y_ != 0)
-        {
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-            addSector->count_++;
-
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
-            addSector->count_++;
-
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ - 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-            addSector->count_++;
-        }
-
-        if (target->oldSectorPos_.y_ + 1 != SectorMaxY)
-        {
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-            removeSector->count_++;
-
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-            removeSector->count_++;
-
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ + 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
-            removeSector->count_++;
-        }
-
-        return;
-    }
-
-    //..
-    if ((target->characterSectorPos_.y_ > target->oldSectorPos_.y_) && (target->characterSectorPos_.x_ == target->oldSectorPos_.x_))
-    {
-        if (target->characterSectorPos_.x_ == 0)
-        {
-            if (target->oldSectorPos_.y_ != 0)
-            {
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
-                removeSector->count_++;
-
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-                removeSector->count_++;
-            }
-
-            if (target->characterSectorPos_.y_ + 1 != SectorMaxY)
-            {
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-                addSector->count_++;
-
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
-                addSector->count_++;
-            }
-
-            return;
-        }
-
-        if (target->characterSectorPos_.x_ == SectorMaxX - 1)
-        {
-            if (target->oldSectorPos_.y_ != 0)
-            {
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-                removeSector->count_++;
-
-                removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-                removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
-                removeSector->count_++;
-            }
-
-            if (target->characterSectorPos_.y_ + 1 != SectorMaxY)
-            {
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-                addSector->count_++;
-
-                addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-                addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
-                addSector->count_++;
-            }
-
-            return;
-        }
-
-        if (target->oldSectorPos_.y_ != 0)
-        {
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ - 1;
-            removeSector->count_++;
-
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_ + 1;
-            removeSector->count_++;
-
-            removeSector->around_[removeSector->count_].y_ = target->oldSectorPos_.y_ - 1;
-            removeSector->around_[removeSector->count_].x_ = target->oldSectorPos_.x_;
-            removeSector->count_++;
-        }
-
-        if (target->characterSectorPos_.y_ + 1 != SectorMaxY)
-        {
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ + 1;
-            addSector->count_++;
-
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_;
-            addSector->count_++;
-
-            addSector->around_[addSector->count_].y_ = target->characterSectorPos_.y_ + 1;
-            addSector->around_[addSector->count_].x_ = target->characterSectorPos_.x_ - 1;
-            addSector->count_++;
-        }
-
-        return;
-    }
-
-    SectorAround oldSectorAround;
-    SectorAround curSectorAround;
-
-    GetSectorAround(target->oldSectorPos_.x_, target->oldSectorPos_.y_, &oldSectorAround);
-    GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &curSectorAround);
-
-    unsigned int removeIndex;
-    for (unsigned int i = 0; i < oldSectorAround.count_; ++i)
-    {
-        for (removeIndex = 0; removeIndex < curSectorAround.count_; removeIndex++)
-        {
-            if (oldSectorAround.around_[i].x_ == curSectorAround.around_[removeIndex].x_ && oldSectorAround.around_[i].y_ == curSectorAround.around_[removeIndex].y_)
-            {
-                break;
-            }
-        }
-        if (removeIndex == curSectorAround.count_)
-        {
-            removeSector->around_[removeSector->count_].x_ = oldSectorAround.around_[i].x_;
-            removeSector->around_[removeSector->count_].y_ = oldSectorAround.around_[i].y_;
-            removeSector->count_++;
-        }
-    }
-
-    addSector->count_ = 0;
-    unsigned int j;
-    for (unsigned int i = 0; i < curSectorAround.count_; ++i)
-    {
-        for (j = 0; j < oldSectorAround.count_; j++)
-        {
-            if (oldSectorAround.around_[j].x_ == curSectorAround.around_[i].x_ && oldSectorAround.around_[j].y_ == curSectorAround.around_[i].y_)
-            {
-                break;
-            }
-        }
-        if (j == oldSectorAround.count_)
-        {
-            addSector->around_[addSector->count_].x_ = curSectorAround.around_[i].x_;
-            addSector->around_[addSector->count_].y_ = curSectorAround.around_[i].y_;
-            addSector->count_++;
-        }
-    }
 
 
 }
@@ -1002,56 +462,10 @@ void SelectMMOTCPFighter::SectorUpdate(Character* target)
 {
     Profile profile(L"SectorUpdate");
 
-    SectorAround removeSector;
-    SectorAround addSector;
+    SectorUpdateAround* updateAround = GetUpdateSectorAround(target);
 
-    GetUpdateSectorAround(target, &removeSector, &addSector);
-
-    cPacketBuffer_->Clear();
-
-    MakePacketDeleteCharacterRemoveSector(target->sessionId_, cPacketBuffer_, &removeSector, target->sessionId_); //패킷 만들어서 removeSector 시켜줘야하는데..
-
-    //removeSector에 있는 애들의 삭제를 나에게 보냄.
-    for (unsigned int i = 0; i < removeSector.count_; ++i)
-    {
-        std::list<Character*>::iterator iter;
-        for (iter = sectorCharacterList_[removeSector.around_[i].y_][removeSector.around_[i].x_].begin(); iter != sectorCharacterList_[removeSector.around_[i].y_][removeSector.around_[i].x_].end(); ++iter)
-        {
-            cPacketBuffer_->Clear();
-            MakePacketDeleteCharacterForMe(target->sessionId_, cPacketBuffer_, (*iter)->sessionId_);
-        }
-    }
-
-    //add에 있는 애들에게 나의 생성을 보냄.
-    cPacketBuffer_->Clear();
-    MakePacketCreateCharacterAddSector(target->sessionId_, cPacketBuffer_, &addSector, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
-    //이동 정보도 보내줘야함.
-    cPacketBuffer_->Clear();
-    MakePacketMoveStartAddSector(target->sessionId_, cPacketBuffer_, &addSector, target->sessionId_, target->action_, target->x_, target->y_);
-
-    for (unsigned int i = 0; i < addSector.count_; ++i)
-    {
-        std::list<Character*>::iterator iterCreate;
-        for (iterCreate = sectorCharacterList_[addSector.around_[i].y_][addSector.around_[i].x_].begin();
-            iterCreate != sectorCharacterList_[addSector.around_[i].y_][addSector.around_[i].x_].end(); ++iterCreate)
-        {
-            Character* createCharacter = *iterCreate;
-            if (createCharacter->sessionId_ == target->sessionId_)
-            {
-                continue;
-            }
-
-            cPacketBuffer_->Clear();
-
-            MakePacketCreateOtherCharacterForMe(target->sessionId_, cPacketBuffer_, createCharacter->sessionId_, createCharacter->direction_, createCharacter->x_, createCharacter->y_, createCharacter->hp_);
-
-            if (createCharacter->isMove_ == true)
-            {
-                cPacketBuffer_->Clear();
-                MakePacketMoveStartForMe(target->sessionId_, cPacketBuffer_, createCharacter->sessionId_, createCharacter->action_, createCharacter->x_, createCharacter->y_);
-            }
-        }
-    }
+    SendRemoveSectorUpdate(target, &updateAround->removeSector_);
+    SendAddSectorUpdate(target, &updateAround->addSector_);
 }
 
 void SelectMMOTCPFighter::MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
@@ -1093,7 +507,7 @@ void SelectMMOTCPFighter::MakePacketCreateOtherCharacter(SessionId sessionId, CP
 {
     *packet << static_cast<unsigned char>(PacketScCreateOtherCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
-    SelectMMOTCPFighter::SendPacketAround(sessionId, packet);
+    SendPacketAround(sessionId, packet);
 }
 
 void SelectMMOTCPFighter::MakePacketDeleteCharacter(SessionId sessionId, CPacket* packet, SessionId id)
@@ -1138,11 +552,11 @@ void SelectMMOTCPFighter::MakePacketEcho(SessionId sessionId, CPacket* packet, u
     SendPacket(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketDeleteCharacterRemoveSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id)
+void SelectMMOTCPFighter::MakePacketDeleteCharacterRemoveSector(CPacket* packet, SectorAround* around, SessionId id)
 {
     *packet << static_cast<unsigned char>(PacketScDeleteCharacter) << static_cast<unsigned int>(id);
 
-    SendPacketAroundRemoveSector(sessionId, packet, around);
+    SendPacketToSectors(packet, around);
 }
 
 void SelectMMOTCPFighter::MakePacketDeleteCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id)
@@ -1152,18 +566,18 @@ void SelectMMOTCPFighter::MakePacketDeleteCharacterForMe(SessionId sessionId, CP
     SendPacket(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketCreateCharacterAddSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
+void SelectMMOTCPFighter::MakePacketCreateCharacterAddSector(CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
     *packet << static_cast<unsigned char>(PacketScCreateOtherCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
-    SendPacketAroundAddSector(sessionId, packet, around);
+    SendPacketToSectors(packet, around);
 }
 
-void SelectMMOTCPFighter::MakePacketMoveStartAddSector(SessionId sessionId, CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
+void SelectMMOTCPFighter::MakePacketMoveStartAddSector(CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScMoveStart) << static_cast<unsigned int>(id) << direction << x << y;
 
-    SendPacketAroundAddSector(sessionId, packet, around);
+    SendPacketToSectors(packet, around);
 }
 
 void SelectMMOTCPFighter::MakePacketSync(SessionId sessionId, CPacket* packet, SessionId id, unsigned short x, unsigned short y)
@@ -1177,47 +591,21 @@ void SelectMMOTCPFighter::MakePacketSync(SessionId sessionId, CPacket* packet, S
 
 bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
-	Profile profile(L"NetPacketProcMoveStart");
+    Profile profile(L"NetPacketProcMoveStart");
 
     Character* target = characterMap_.at(sessionId);
 
-    if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
-    {
-        cPacketBuffer_->Clear();
+	SyncOrApplyClientPosition(target, x, y);
 
-        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
-
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-    }
 
     target->isMove_ = true;
     target->action_ = direction;
 
-    switch (direction)
-    {
-    case PacketMoveDirectionRR:
-    case PacketMoveDirectionRU:
-    case PacketMoveDirectionRD:
-        target->direction_ = PacketMoveDirectionRR;
-        break;
+    UpdateCharacterFacingDirection(target, direction);
 
-    case PacketMoveDirectionLU:
-    case PacketMoveDirectionLL:
-    case PacketMoveDirectionLD:
-        target->direction_ = PacketMoveDirectionLL;
-        break;
-    }
-
-    cPacketBuffer_->Clear();
-    MakePacketMoveStart(target->sessionId_, cPacketBuffer_, target->sessionId_, direction, target->x_, target->y_);
+    CPacket* packetMoveStart = CPacket::Alloc();
+    MakePacketMoveStart(target->sessionId_, packetMoveStart, target->sessionId_, direction, target->x_, target->y_);
+    CPacket::Free(packetMoveStart);
 
     return true;
 }
@@ -1227,43 +615,17 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned ch
     Profile profile(L"NetPacketProcMoveStop");
     Character* target = characterMap_.at(sessionId);
 
-    if ((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange))
-    {
-        cPacketBuffer_->Clear();
-        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
+    SyncOrApplyClientPosition(target, x, y);
 
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-    }
     target->isMove_ = false;
 
     target->action_ = direction;
 
-    switch (direction)
-    {
-    case PacketMoveDirectionRR:
-    case PacketMoveDirectionRU:
-    case PacketMoveDirectionRD:
-        target->direction_ = PacketMoveDirectionRR;
-        break;
+    UpdateCharacterFacingDirection(target, direction);
 
-    case PacketMoveDirectionLU:
-    case PacketMoveDirectionLL:
-    case PacketMoveDirectionLD:
-        target->direction_ = PacketMoveDirectionLL;
-        break;
-    }
-
-    cPacketBuffer_->Clear();
-
-    MakePacketMoveStop(target->sessionId_, cPacketBuffer_, target->sessionId_, target->direction_, target->x_, target->y_);
+    CPacket* packetMoveStop = CPacket::Alloc();
+    MakePacketMoveStop(target->sessionId_, packetMoveStop, target->sessionId_, target->direction_, target->x_, target->y_);
+    CPacket::Free(packetMoveStop);
 
     return true;
 }
@@ -1273,28 +635,14 @@ bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned cha
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
-    if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
-    {
-        cPacketBuffer_->Clear();
+    SyncOrApplyClientPosition(target, x, y);
 
-        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
-
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-    }
 
     target->direction_ = direction;
 
-    cPacketBuffer_->Clear();
-
-    MakePacketAttack1(target->sessionId_, cPacketBuffer_, target->sessionId_, direction, target->x_, target->y_);
+    CPacket* packetAttack = CPacket::Alloc();
+    MakePacketAttack1(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
+    CPacket::Free(packetAttack);
     HitCheck(target, 1);
 
     return true;
@@ -1305,27 +653,13 @@ bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned cha
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
-    if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
-    {
-        cPacketBuffer_->Clear();
-        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
-
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-
-    }
+    SyncOrApplyClientPosition(target, x, y);
 
     target->direction_ = direction;
 
-    cPacketBuffer_->Clear();
-    MakePacketAttack2(target->sessionId_, cPacketBuffer_, target->sessionId_, direction, target->x_, target->y_);
+    CPacket* packetAttack = CPacket::Alloc();
+    MakePacketAttack2(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
+    CPacket::Free(packetAttack);
     HitCheck(target, 2);
 
     return true;
@@ -1336,28 +670,13 @@ bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned cha
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
 
-    if (abs(target->x_ - x) > ErrorRange || abs(target->y_ - y) > ErrorRange)
-    {
-        cPacketBuffer_->Clear();
-        MakePacketSync(target->sessionId_, cPacketBuffer_, target->sessionId_, target->x_, target->y_);
-    }
-    else
-    {
-        target->x_ = x;
-        target->y_ = y;
-
-        if (SectorUpdateCharacter(target))
-        {
-            SectorUpdate(target);
-        }
-
-    }
+    SyncOrApplyClientPosition(target, x, y);
 
     target->direction_ = direction;
 
-    cPacketBuffer_->Clear();
-
-    MakePacketAttack3(target->sessionId_, cPacketBuffer_, target->sessionId_, direction, target->x_, target->y_);
+    CPacket* packetAttack = CPacket::Alloc();
+    MakePacketAttack3(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
+    CPacket::Free(packetAttack);
     HitCheck(target, 3);
     return true;
 }
@@ -1366,12 +685,351 @@ bool SelectMMOTCPFighter::NetPacketProcEcho(SessionId sessionId, unsigned int ti
 {
     Profile profile(L"NetPacketEcho");
     Character* target = characterMap_.at(sessionId);
-    cPacketBuffer_->Clear();
 
-    MakePacketEcho(target->sessionId_, cPacketBuffer_, time);
+    CPacket* packetEcho = CPacket::Alloc();
+    MakePacketEcho(target->sessionId_, packetEcho, time);
+    CPacket::Free(packetEcho);
 
     return true;
 }
+
+Character* SelectMMOTCPFighter::CreateCharacter(SessionId sessionId)
+{
+    Character* newPlayer = characterFreeList_.Alloc();
+    newPlayer->sessionId_ = sessionId;
+
+    newPlayer->direction_ = PacketMoveDirectionRR;
+    newPlayer->action_ = PacketMoveDirectionRR;
+
+    newPlayer->x_ = rand() % 6399;
+    newPlayer->y_ = rand() % 6399;
+
+    newPlayer->hp_ = DefaultHp;
+
+    newPlayer->characterSectorPos_.x_ = newPlayer->x_ / SectorXSize;
+    newPlayer->characterSectorPos_.y_ = newPlayer->y_ / SectorYSize;
+    newPlayer->oldSectorPos_.x_ = SectorMaxX;
+    newPlayer->oldSectorPos_.y_ = SectorMaxY;
+
+    newPlayer->isMove_ = false;
+
+
+    return newPlayer;
+}
+
+void SelectMMOTCPFighter::RegisterCharacter(Character* newPlayer)
+{
+    sectorCharacterList_[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
+    characterMap_.insert(std::unordered_map<SessionId, Character*>::value_type(newPlayer->sessionId_, newPlayer));
+}
+
+void SelectMMOTCPFighter::SendNewCharacterCreate(Character* newPlayer)
+{
+    CPacket* packetCreateMyCharacter = CPacket::Alloc();
+    MakePacketCreateMyCharacter(newPlayer->sessionId_, packetCreateMyCharacter, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+    CPacket::Free(packetCreateMyCharacter);
+
+    CPacket* packetCreateOtherCharacter = CPacket::Alloc();
+    MakePacketCreateOtherCharacter(newPlayer->sessionId_, packetCreateOtherCharacter, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
+    CPacket::Free(packetCreateOtherCharacter);
+}
+
+void SelectMMOTCPFighter::SendExistingCharactersToNewCharacter(Character* newPlayer)
+{
+    SectorAround around;
+    GetSectorAround(newPlayer->characterSectorPos_.x_, newPlayer->characterSectorPos_.y_, &around);
+
+    for (unsigned int i = 0; i < around.count_; ++i)
+    {
+        std::list<Character*>::iterator iter;
+        for (iter = sectorCharacterList_[around.around_[i].y_][around.around_[i].x_].begin();
+            iter != sectorCharacterList_[around.around_[i].y_][around.around_[i].x_].end(); ++iter)
+        {
+            Character* target = *iter;
+            if ((target->sessionId_ == newPlayer->sessionId_))
+            {
+                continue;
+            }
+
+            CPacket* packetCreateOtherCharacterForMe = CPacket::Alloc();
+            MakePacketCreateOtherCharacterForMe(newPlayer->sessionId_, packetCreateOtherCharacterForMe, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
+            CPacket::Free(packetCreateOtherCharacterForMe);
+
+            if (target->isMove_ == true)
+            {
+                CPacket* packetMoveStartForMe = CPacket::Alloc();
+                MakePacketMoveStartForMe(newPlayer->sessionId_, packetMoveStartForMe, target->sessionId_, target->action_, target->x_, target->y_);
+                CPacket::Free(packetMoveStartForMe);
+            }
+        }
+    }
+}
+
+void SelectMMOTCPFighter::SendCharacterDelete(Character* character)
+{
+    CPacket* packetDeleteCharacter = CPacket::Alloc();
+
+    MakePacketDeleteCharacter(character->sessionId_, packetDeleteCharacter, character->sessionId_);
+
+    CPacket::Free(packetDeleteCharacter);
+}
+
+void SelectMMOTCPFighter::UnregisterCharacter(Character* character)
+{
+    sectorCharacterList_[character->characterSectorPos_.y_][character->characterSectorPos_.x_].remove(character);
+    characterMap_.erase(character->sessionId_);
+}
+
+void SelectMMOTCPFighter::ReleaseCharacter(Character* character)
+{
+    UnregisterCharacter(character);
+    characterFreeList_.Free(character);
+}
+
+bool SelectMMOTCPFighter::IsClientPositionValid(Character* target, unsigned short x, unsigned short y)
+{
+    return !((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange));
+}
+
+void SelectMMOTCPFighter::SendSync(Character* target)
+{
+    CPacket* packetSync = CPacket::Alloc();
+    MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
+    CPacket::Free(packetSync);
+}
+
+void SelectMMOTCPFighter::ApplyClientPosition(Character* target, unsigned short x, unsigned short y)
+{
+    target->x_ = x;
+    target->y_ = y;
+
+    if (SectorUpdateCharacter(target))
+    {
+        SectorUpdate(target);
+    }
+}
+
+void SelectMMOTCPFighter::SyncOrApplyClientPosition(Character* target, unsigned short x, unsigned short y)
+{
+    if (IsClientPositionValid(target, x, y) == false)
+    {
+        SendSync(target);
+        return;
+    }
+
+    ApplyClientPosition(target, x, y);
+}
+
+void SelectMMOTCPFighter::UpdateCharacterFacingDirection(Character* target, unsigned char direction)
+{
+    switch (direction)
+    {
+    case PacketMoveDirectionRR:
+    case PacketMoveDirectionRU:
+    case PacketMoveDirectionRD:
+        target->direction_ = PacketMoveDirectionRR;
+        break;
+
+    case PacketMoveDirectionLU:
+    case PacketMoveDirectionLL:
+    case PacketMoveDirectionLD:
+        target->direction_ = PacketMoveDirectionLL;
+        break;
+    }
+}
+
+bool SelectMMOTCPFighter::CanHitTarget(const Character* attackCharacter, const Character* target, int boundaryX, int boundaryY)
+{
+    if (attackCharacter == target)
+    {
+        return false;
+    }
+
+    if (attackCharacter->direction_ == PacketMoveDirectionLL)
+    {
+        if (attackCharacter->x_ < target->x_)
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (attackCharacter->x_ > target->x_)
+        {
+            return false;
+        }
+    }
+
+    if (abs(attackCharacter->x_ - target->x_) > boundaryX)
+    {
+        return false;
+    }
+
+    if (abs(attackCharacter->y_ - target->y_) > boundaryY)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+void SelectMMOTCPFighter::AddSectorPosition(SectorAround* aroundSector, int sectorX, int sectorY)
+{
+    aroundSector->around_[aroundSector->count_].x_ = sectorX;
+    aroundSector->around_[aroundSector->count_].y_ = sectorY;
+    aroundSector->count_++;
+}
+
+void SelectMMOTCPFighter::SendRemoveSectorUpdate(Character* target, SectorAround* removeSector)
+{
+    CPacket* packetDeleteCharacterRemoveSector = CPacket::Alloc();
+    MakePacketDeleteCharacterRemoveSector(packetDeleteCharacterRemoveSector, removeSector, target->sessionId_);
+    CPacket::Free(packetDeleteCharacterRemoveSector);
+
+    for (unsigned int i = 0; i < removeSector->count_; ++i)
+    {
+        std::list<Character*>::iterator iter;
+
+        for (iter = sectorCharacterList_[removeSector->around_[i].y_][removeSector->around_[i].x_].begin(); iter != sectorCharacterList_[removeSector->around_[i].y_][removeSector->around_[i].x_].end(); ++iter)
+        {
+            CPacket* packetDeleteCharacterForMe = CPacket::Alloc();
+            MakePacketDeleteCharacterForMe(target->sessionId_, packetDeleteCharacterForMe, (*iter)->sessionId_);
+            CPacket::Free(packetDeleteCharacterForMe);
+        }
+    }
+
+}
+
+void SelectMMOTCPFighter::SendAddSectorUpdate(Character* target, SectorAround* addSector)
+{
+    CPacket* packetCreateCharacterAddSector = CPacket::Alloc();
+    MakePacketCreateCharacterAddSector(packetCreateCharacterAddSector, addSector, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
+    CPacket::Free(packetCreateCharacterAddSector);
+
+    CPacket* packetMoveStartAddSector = CPacket::Alloc();
+    MakePacketMoveStartAddSector(packetMoveStartAddSector, addSector, target->sessionId_, target->action_, target->x_, target->y_);
+    CPacket::Free(packetMoveStartAddSector);
+
+    for (unsigned int i = 0; i < addSector->count_; ++i)
+    {
+        std::list<Character*>::iterator iter;
+
+        for (iter = sectorCharacterList_[addSector->around_[i].y_][addSector->around_[i].x_].begin(); iter != sectorCharacterList_[addSector->around_[i].y_][addSector->around_[i].x_].end(); ++iter)
+        {
+            Character* createCharacter = *iter;
+
+            if (createCharacter->sessionId_ == target->sessionId_)
+            {
+                continue;
+            }
+
+            CPacket* packetCreateOtherCharacterForMe = CPacket::Alloc();
+            MakePacketCreateOtherCharacterForMe(target->sessionId_, packetCreateOtherCharacterForMe, createCharacter->sessionId_, createCharacter->direction_, createCharacter->x_, createCharacter->y_, createCharacter->hp_);
+            CPacket::Free(packetCreateOtherCharacterForMe);
+
+            if (createCharacter->isMove_ == true)
+            {
+                CPacket* packetMoveStartForMe = CPacket::Alloc();
+                MakePacketMoveStartForMe(target->sessionId_, packetMoveStartForMe, createCharacter->sessionId_, createCharacter->action_, createCharacter->x_, createCharacter->y_);
+                CPacket::Free(packetMoveStartForMe);
+            }
+        }
+    }
+}
+
+void SelectMMOTCPFighter::InitializeSectorUpdateAround()
+{
+    for (int oldSectorY = 0; oldSectorY < SectorMaxY; ++oldSectorY)
+    {
+        for (int oldSectorX = 0; oldSectorX < SectorMaxX; ++oldSectorX)
+        {
+            for (int moveSectorY = -1; moveSectorY <= 1; ++moveSectorY)
+            {
+                for (int moveSectorX = -1; moveSectorX <= 1; ++moveSectorX)
+                {
+                    int moveIndexX = moveSectorX + 1;
+                    int moveIndexY = moveSectorY + 1;
+
+                    SectorUpdateAround* sectorUpdateAround = &sectorUpdateAround_[oldSectorY][oldSectorX][moveIndexY][moveIndexX];
+
+                    sectorUpdateAround->removeSector_.count_ = 0;
+                    sectorUpdateAround->addSector_.count_ = 0;
+
+                    if (moveSectorX == 0 && moveSectorY == 0)
+                    {
+                        continue;
+                    }
+
+                    int curSectorX = oldSectorX + moveSectorX;
+                    int curSectorY = oldSectorY + moveSectorY;
+
+                    if (curSectorX < 0 || curSectorX >= SectorMaxX)
+                    {
+                        continue;
+                    }
+
+                    if (curSectorY < 0 || curSectorY >= SectorMaxY)
+                    {
+                        continue;
+                    }
+
+                    BuildSectorUpdateAround(oldSectorX, oldSectorY, curSectorX, curSectorY, sectorUpdateAround);
+                }
+            }
+        }
+    }
+
+}
+
+void SelectMMOTCPFighter::BuildSectorUpdateAround(int oldSectorX, int oldSectorY, int curSectorX, int curSectorY, SectorUpdateAround* sectorUpdateAround)
+{
+    SectorAround oldSectorAround;
+    SectorAround curSectorAround;
+
+    GetSectorAround(oldSectorX, oldSectorY, &oldSectorAround);
+    GetSectorAround(curSectorX, curSectorY, &curSectorAround);
+
+    sectorUpdateAround->removeSector_.count_ = 0;
+    sectorUpdateAround->addSector_.count_ = 0;
+
+    unsigned int removeIndex;
+
+    for (unsigned int i = 0; i < oldSectorAround.count_; ++i)
+    {
+        for (removeIndex = 0; removeIndex < curSectorAround.count_; ++removeIndex)
+        {
+            if (oldSectorAround.around_[i].x_ == curSectorAround.around_[removeIndex].x_ && oldSectorAround.around_[i].y_ == curSectorAround.around_[removeIndex].y_)
+            {
+                break;
+            }
+        }
+
+        if (removeIndex == curSectorAround.count_)
+        {
+            AddSectorPosition(&sectorUpdateAround->removeSector_, oldSectorAround.around_[i].x_, oldSectorAround.around_[i].y_);
+        }
+    }
+
+    unsigned int addIndex;
+
+    for (unsigned int i = 0; i < curSectorAround.count_; ++i)
+    {
+        for (addIndex = 0; addIndex < oldSectorAround.count_; ++addIndex)
+        {
+            if (curSectorAround.around_[i].x_ == oldSectorAround.around_[addIndex].x_ && curSectorAround.around_[i].y_ == oldSectorAround.around_[addIndex].y_)
+            {
+                break;
+            }
+        }
+
+        if (addIndex == oldSectorAround.count_)
+        {
+            AddSectorPosition(&sectorUpdateAround->addSector_, curSectorAround.around_[i].x_, curSectorAround.around_[i].y_);
+        }
+    }
+}
+
+
 
 void SelectMMOTCPFighter::SendPacketSectorOne(int sectorX, int sectorY, SessionId exceptSessionId, CPacket* packet)
 {
@@ -1390,43 +1048,35 @@ void SelectMMOTCPFighter::SendPacketSectorOne(int sectorX, int sectorY, SessionI
     }
 }
 
-void SelectMMOTCPFighter::SendPacketAroundRemoveSector(SessionId sessionId, CPacket* packet, SectorAround* around)
+void SelectMMOTCPFighter::SendPacketToSectors(CPacket* packet, SectorAround* around, SessionId exceptSessionId)
 {
+    Profile profile(L"SendPacketToSectors");
     for (unsigned int index = 0; index < around->count_; ++index)
     {
-        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, InvalidSessionId, packet);
+        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, exceptSessionId, packet);
     }
 }
 
-void SelectMMOTCPFighter::SendPacketAroundAddSector(SessionId sessionId, CPacket* packet, SectorAround* around)
-{
-    for (unsigned int index = 0; index < around->count_; ++index)
-    {
-        SendPacketSectorOne(around->around_[index].x_, around->around_[index].y_, InvalidSessionId, packet);
-    }
-}
 
 void SelectMMOTCPFighter::SendPacketAround(SessionId sessionId, CPacket* packet, bool sendMe)
 {
-	Profile profile(L"SendPacketAround");
+    Profile profile(L"SendPacketAround");
 
     Character* target = characterMap_.at(sessionId);
     SectorAround around;
 
     GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &around);
 
-    if (sendMe)
+    SessionId exceptSessionId;
+
+    if (sendMe == true)
     {
-        for (unsigned int index = 0; index < around.count_; ++index)
-        {
-            SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, InvalidSessionId, packet);
-        }
+        exceptSessionId = InvalidSessionId;
     }
     else
     {
-        for (unsigned int index = 0; index < around.count_; ++index)
-        {
-            SendPacketSectorOne(around.around_[index].x_, around.around_[index].y_, target->sessionId_, packet);
-        }
+        exceptSessionId = target->sessionId_;
     }
+
+    SendPacketToSectors(packet, &around, exceptSessionId);
 }

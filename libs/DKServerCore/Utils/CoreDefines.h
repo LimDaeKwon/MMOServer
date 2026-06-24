@@ -18,12 +18,12 @@ namespace DKServerCore
     constexpr int LockFreeQueueCas2MaxSize = 200;
     constexpr int RingBufferDefaultBufferSize = 5000;
 
-    constexpr int ProfilerMaxIndex = 20;
+    constexpr int ProfilerMaxIndex = 40;
 
     constexpr int RecvIoType = 10;
     constexpr int SendIoType = 20;
 
-    constexpr int MaxBatchSize = 100;
+    constexpr int MaxBatchSize = 300;
     constexpr int MaxPacketPack = 20;
 
     constexpr long ReleaseFlag = static_cast<long>(0x80000000u);

@@ -1,6 +1,5 @@
 ﻿
 #include "SelectMMOTCPFighter.h"
-#include "SelectMMOTCPFighterPQ.h"
 #include "CrashDump.h"
 #include "Profiler.h"
 #include "DKParser.h"
@@ -42,21 +41,9 @@ int main()
         return false;
     }
 
-
-    if (sendQueueTypeValue)
-    {
-        SelectMMOTCPFighterPQ* instance = new SelectMMOTCPFighterPQ();
-        instance->Start(config);
-    }
-    else
-    {
-        SelectMMOTCPFighter* instance = new SelectMMOTCPFighter();
-        instance->Start(config);
-       
-    }
-      
-
-    Sleep(600000);
+    SelectMMOTCPFighter* instance = new SelectMMOTCPFighter();
+    instance->Start(config);
+    Sleep(900000);
 	ProfileDataOutText(L"SelectMMOTCPFighter_Profile.txt");
 
 

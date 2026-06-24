@@ -619,7 +619,7 @@ void SelectServerPQ::InitOldTick()
 
 void SelectServerPQ::SetProfileEnabled()
 {
-	if (sessions_.size() >= 10000)
+	if (sessions_.size() >= 13000)
 	{
 		SetEnabled(true);
 	}
