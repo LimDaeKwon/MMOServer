@@ -136,7 +136,6 @@ bool SelectServer::Start(const char* serverIp, unsigned int serverPort, unsigned
 bool SelectServer::Start(const DKServerCore::SelectServerStartConfig& config)
 {
 	return Start(config.ip.c_str(), config.port, config.nagle, config.maxSessionCount, config.packetCode, config.frameMs);
-	;
 }
 
 void SelectServer::Network()
@@ -211,8 +210,12 @@ void SelectServer::AcceptClient()
 		closesocket(clientSocket);
 		return;
 	}
-
-	Session* newSession = sessionFreeList_.Alloc();
+	Session* newSession;
+	{
+		Profile profile(L"SessionAlloc");
+		newSession = sessionFreeList_.Alloc();
+	}
+	
 
 	newSession->sessionId_ = sessionId_++;
 	newSession->socket_ = clientSocket;
@@ -290,30 +293,32 @@ void SelectServer::Disconnect(SessionId sessionId)
 	{
 		return;
 	}
+	freeSessionStack_.push(target);
 	target->isDelete_ = 1;
 }
 
 void SelectServer::DeleteDisconnect()
 {
-	std::unordered_map<SessionId, Session*>::iterator iter = sessions_.begin();
-
-	while (iter != sessions_.end())
+	size_t deleteCount = freeSessionStack_.size();
+	
+	if (deleteCount)
 	{
-		Session* session = iter->second;
+		Profile profile(L"Release");
 
-		if (session->isDelete_ == 0)
+		for (int i = 0; i < deleteCount; ++i)
 		{
-			++iter;
-			continue;
+			Session* session = freeSessionStack_.top();
+			freeSessionStack_.pop();
+			closesocket(session->socket_);
+			session->receiveQueue_.ClearBuffer();
+			session->sendQueue_.ClearBuffer();
+			OnRelease(session->sessionId_);
+			{
+				Profile profile(L"SessionDelete");
+				sessionFreeList_.Free(session);
+			}
+			sessions_.erase(session->sessionId_);
 		}
-
-		SessionId sessionId = session->sessionId_;
-		closesocket(session->socket_);
-		session->receiveQueue_.ClearBuffer();
-		session->sendQueue_.ClearBuffer();
-		OnRelease(sessionId);
-		sessionFreeList_.Free(session);
-		iter = sessions_.erase(iter);
 	}
 }
 
@@ -503,40 +508,6 @@ void SelectServer::Receive(Session* target)
 
 }
 
-//void SelectServer::SendAll(Session* target)
-//{
-//    int directDequeueSize = target->sendQueue_.DirectDequeueSize();
-//
-//    int sendReturn = send(target->socket_, target->sendQueue_.GetFrontBufferPtr(), directDequeueSize, 0);
-//
-//    if (sendReturn == SOCKET_ERROR)
-//    {
-//        int error = WSAGetLastError();
-//
-//        if (error != WSAEWOULDBLOCK)
-//        {
-//            Disconnect(target->sessionId_);
-//            return;
-//        }
-//    }
-//
-//    if (sendReturn != directDequeueSize)
-//    {
-//        wprintf(L"SendSize : %d , SendReturn : %d \n", directDequeueSize, sendReturn);
-//
-//        Disconnect(target->sessionId_);
-//        return;
-//    }
-//
-//    int moveFrontSize = target->sendQueue_.MoveFront(directDequeueSize);
-//
-//    if (moveFrontSize != directDequeueSize)
-//    {
-//        wprintf(L"MoveFrontSize : %d , DirectDequeueSize : %d \n", moveFrontSize, directDequeueSize);
-//        DebugBreak();
-//    }
-//}
-
 void SelectServer::SendAll(Session* target)
 {
 
@@ -611,7 +582,7 @@ void SelectServer::InitOldTick()
 
 void SelectServer::SetProfileEnabled()
 {
-	if (sessions_.size() >= 10000)
+	if (sessions_.size() >= 12000)
 	{
 		SetEnabled(true);
 	}

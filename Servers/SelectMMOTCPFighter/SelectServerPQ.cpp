@@ -11,7 +11,6 @@ constexpr int SelectSessionBatchSize = FD_SETSIZE - 1;
 SelectServerPQ::SelectServerPQ() :
 	gameLoopThread_(nullptr),
 	listenSocket_(INVALID_SOCKET),
-	sessionFreeList_(DefaultMaxSessionCount),
 	sessionId_(1),
 	frameMs_(0),
 	oldTick_(0),
@@ -211,8 +210,11 @@ void SelectServerPQ::AcceptClient()
 		closesocket(clientSocket);
 		return;
 	}
-
-	SessionPQ* newSession = sessionFreeList_.Alloc();
+	SessionPQ* newSession;
+	{
+		Profile profile(L"SessionAlloc");
+		newSession = new SessionPQ;
+	}
 
 	newSession->sessionId_ = sessionId_++;
 	newSession->socket_ = clientSocket;
@@ -281,6 +283,8 @@ void SelectServerPQ::Disconnect(SessionId sessionId)
 
 void SelectServerPQ::DeleteDisconnect()
 {
+	Profile profile(L"Release");
+
 	std::unordered_map<SessionId, SessionPQ*>::iterator iter = sessions_.begin();
 
 	while (iter != sessions_.end())
@@ -303,9 +307,13 @@ void SelectServerPQ::DeleteDisconnect()
 			CPacket::Free(packet);
 		}
 		session->sendQueue_.ClearBuffer();
-
 		OnRelease(sessionId);
-		sessionFreeList_.Free(session);
+		
+		{
+			Profile profile(L"SessionDelete");
+			delete session;
+		}
+		
 		iter = sessions_.erase(iter);
 	}
 }
@@ -619,7 +627,7 @@ void SelectServerPQ::InitOldTick()
 
 void SelectServerPQ::SetProfileEnabled()
 {
-	if (sessions_.size() >= 13000)
+	if (sessions_.size() >= 12000)
 	{
 		SetEnabled(true);
 	}

@@ -25,6 +25,9 @@
     <ClCompile Include="SelectMMOTCPFighter.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
+    <ClCompile Include="BasicSelectMMOTCPFighter.cpp">
+      <Filter>Contents</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PacketDefine.h">
@@ -37,5 +40,8 @@
     <ClInclude Include="SelectServer.h" />
     <ClInclude Include="SelectServerPQ.h" />
     <ClInclude Include="SelectMMOTCPFighter.h" />
+    <ClInclude Include="BasicSelectMMOTCPFighter.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

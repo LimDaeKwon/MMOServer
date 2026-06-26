@@ -1,5 +1,6 @@
 ﻿
 #include "SelectMMOTCPFighter.h"
+#include "BasicSelectMMOTCPFighter.h"
 #include "CrashDump.h"
 #include "Profiler.h"
 #include "DKParser.h"
@@ -41,8 +42,20 @@ int main()
         return false;
     }
 
-    SelectMMOTCPFighter* instance = new SelectMMOTCPFighter();
-    instance->Start(config);
+
+    if (sendQueueTypeValue)
+    {
+		printf("Using SelectMMOTCPFighter\n");
+        SelectMMOTCPFighter* instance = new SelectMMOTCPFighter();
+        instance->Start(config);
+    }
+    else
+    {
+        printf("Using BasicSelectMMOTCPFighter\n");
+        BasicSelectMMOTCPFighter* instance = new BasicSelectMMOTCPFighter();
+        instance->Start(config);
+    }
+
     Sleep(900000);
 	ProfileDataOutText(L"SelectMMOTCPFighter_Profile.txt");
 

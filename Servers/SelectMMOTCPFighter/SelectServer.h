@@ -6,7 +6,7 @@
 #include <vector>
 #include "ObjectFreeList.h"
 #include "ServerStartConfig.h"
-
+#include "stack"
 using SessionId = unsigned __int64;
 class CPacket;
 
@@ -50,6 +50,9 @@ private:
 	SOCKET listenSocket_;
     std::unordered_map<SessionId, Session*> sessions_;
     ObjectFreeList<Session> sessionFreeList_;
+   
+	std::stack<Session*> freeSessionStack_;
+
     std::vector<Session*> pendingAcceptSessions_;
 	SessionId sessionId_;
     unsigned int frameMs_;

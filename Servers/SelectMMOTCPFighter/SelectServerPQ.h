@@ -51,8 +51,7 @@ private:
     HANDLE gameLoopThread_;
     SOCKET listenSocket_;
     std::unordered_map<SessionId, SessionPQ*> sessions_;
-    ObjectFreeList<SessionPQ> sessionFreeList_;
-    std::vector<SessionPQ*> pendingAcceptSessions_;
+    std::vector<SessionPQ*> pendingAcceptSessions_; 
     SessionId sessionId_;
     unsigned int frameMs_;
     unsigned int oldTick_;

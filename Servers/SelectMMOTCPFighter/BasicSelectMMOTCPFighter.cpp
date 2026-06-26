@@ -1,3 +1,4 @@
+#include "BasicSelectMMOTCPFighter.h"
 #include "SelectMMOTCPFighter.h"
 #include "Character.h"
 #include "CPacket.h"
@@ -6,19 +7,19 @@
 #include "ContentsCPacket.h"
 
 
-SelectMMOTCPFighter::SelectMMOTCPFighter() : characterFreeList_(10000)
+BasicSelectMMOTCPFighter::BasicSelectMMOTCPFighter() : characterFreeList_(10000)
 {
     InitializeSectorUpdateAround();
 }
 
-SelectMMOTCPFighter::~SelectMMOTCPFighter()
+BasicSelectMMOTCPFighter::~BasicSelectMMOTCPFighter()
 {
 
 }
 
-void SelectMMOTCPFighter::OnAccept(SessionId sessionId)
+void BasicSelectMMOTCPFighter::OnAccept(SessionId sessionId)
 {
-    Profile profile(L"OnAccept");
+	Profile profile(L"OnAccept");
 
     Character* newPlayer = CreateCharacter(sessionId);
 
@@ -27,9 +28,9 @@ void SelectMMOTCPFighter::OnAccept(SessionId sessionId)
     SendExistingCharactersToNewCharacter(newPlayer);
 }
 
-void SelectMMOTCPFighter::OnMessage(SessionId sessionId, unsigned char packetType, CPacket* packet)
+void BasicSelectMMOTCPFighter::OnMessage(SessionId sessionId, unsigned char packetType, CPacket* packet)
 {
-    Profile profile(L"OnMessage");
+	Profile profile(L"OnMessage");
     switch (packetType)
     {
     case PacketCsMoveStart:
@@ -105,16 +106,16 @@ void SelectMMOTCPFighter::OnMessage(SessionId sessionId, unsigned char packetTyp
 
 }
 
-void SelectMMOTCPFighter::OnRelease(SessionId sessionId)
+void BasicSelectMMOTCPFighter::OnRelease(SessionId sessionId)
 {
-    Profile profile(L"OnRelease");
+	Profile profile(L"OnRelease");
     Character* target = characterMap_.at(sessionId);
 
     SendCharacterDelete(target);
     ReleaseCharacter(target);
 }
 
-void SelectMMOTCPFighter::OnUpdate()
+void BasicSelectMMOTCPFighter::OnUpdate()
 {
     Profile profile(L"OnUpdate");
     std::unordered_map<SessionId, Character*>::iterator iter;
@@ -124,13 +125,13 @@ void SelectMMOTCPFighter::OnUpdate()
 
         if (target->isMove_)
         {
-            
+
             GameRun(target);
         }
     }
 }
 
-void SelectMMOTCPFighter::GameRun(Character* target)
+void BasicSelectMMOTCPFighter::GameRun(Character* target)
 {
     Profile profile(L"GameRun");
     switch (target->action_)
@@ -237,7 +238,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
 }
 
 
-void SelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
+void BasicSelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
 {
     Profile profile(L"HitCheck");
     int boundaryX = 0;
@@ -312,7 +313,7 @@ void SelectMMOTCPFighter::HitCheck(Character* attackCharacter, int attackNumber)
     }
 }
 
-void SelectMMOTCPFighter::GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector)
+void BasicSelectMMOTCPFighter::GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector)
 {
     aroundSector->count_ = 0;
 
@@ -359,7 +360,7 @@ void SelectMMOTCPFighter::GetSectorAround(int sectorX, int sectorY, SectorAround
     }
 }
 
-void SelectMMOTCPFighter::GetSectorAroundForHit(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
+void BasicSelectMMOTCPFighter::GetSectorAroundForHit(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector)
 {
     int sectorX = target->characterSectorPos_.x_;
     int sectorY = target->characterSectorPos_.y_;
@@ -428,7 +429,7 @@ void SelectMMOTCPFighter::GetSectorAroundForHit(Character* target, int boundaryX
 
 }
 
-SectorUpdateAround* SelectMMOTCPFighter::GetUpdateSectorAround(Character* target)
+SectorUpdateAround* BasicSelectMMOTCPFighter::GetUpdateSectorAround(Character* target)
 {
     Profile profile(L"GetUpdateSectorAround");
 
@@ -441,7 +442,7 @@ SectorUpdateAround* SelectMMOTCPFighter::GetUpdateSectorAround(Character* target
 
 }
 
-bool SelectMMOTCPFighter::SectorUpdateCharacter(Character* target)
+bool BasicSelectMMOTCPFighter::SectorUpdateCharacter(Character* target)
 {
     int targetCurSectorAroundPosX = (target->x_ / SectorXSize);
     int targetCurSectorAroundPosY = (target->y_ / SectorYSize);
@@ -462,129 +463,176 @@ bool SelectMMOTCPFighter::SectorUpdateCharacter(Character* target)
     return false;
 }
 
-void SelectMMOTCPFighter::SectorUpdate(Character* target)
+void BasicSelectMMOTCPFighter::SectorUpdate(Character* target)
 {
     Profile profile(L"SectorUpdate");
 
-    SectorUpdateAround* updateAround = GetUpdateSectorAround(target);
+    SectorAround oldSectorAround;
+    SectorAround curSectorAround;
+    SectorAround removeSector;
+    SectorAround addSector;
 
-    SendRemoveSectorUpdate(target, &updateAround->removeSector_);
-    SendAddSectorUpdate(target, &updateAround->addSector_);
+    removeSector.count_ = 0;
+    addSector.count_ = 0;
+
+    GetSectorAround(target->oldSectorPos_.x_, target->oldSectorPos_.y_, &oldSectorAround);
+    GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &curSectorAround);
+
+    for (unsigned int oldIndex = 0; oldIndex < oldSectorAround.count_; ++oldIndex)
+    {
+        bool isRemoveSector = true;
+
+        for (unsigned int curIndex = 0; curIndex < curSectorAround.count_; ++curIndex)
+        {
+            if (oldSectorAround.around_[oldIndex].x_ == curSectorAround.around_[curIndex].x_ && oldSectorAround.around_[oldIndex].y_ == curSectorAround.around_[curIndex].y_)
+            {
+                isRemoveSector = false;
+                break;
+            }
+        }
+
+        if (isRemoveSector)
+        {
+            AddSectorPosition(&removeSector, oldSectorAround.around_[oldIndex].x_, oldSectorAround.around_[oldIndex].y_);
+        }
+    }
+
+    for (unsigned int curIndex = 0; curIndex < curSectorAround.count_; ++curIndex)
+    {
+        bool isAddSector = true;
+
+        for (unsigned int oldIndex = 0; oldIndex < oldSectorAround.count_; ++oldIndex)
+        {
+            if (curSectorAround.around_[curIndex].x_ == oldSectorAround.around_[oldIndex].x_ && curSectorAround.around_[curIndex].y_ == oldSectorAround.around_[oldIndex].y_)
+            {
+                isAddSector = false;
+                break;
+            }
+        }
+
+        if (isAddSector)
+        {
+            AddSectorPosition(&addSector, curSectorAround.around_[curIndex].x_, curSectorAround.around_[curIndex].y_);
+        }
+    }
+
+    SendRemoveSectorUpdate(target, &removeSector);
+    SendAddSectorUpdate(target, &addSector);
 }
 
-void SelectMMOTCPFighter::MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScMoveStart) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketMoveStartForMe(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::MakePacketMoveStartForMe(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScMoveStart) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacket(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketMoveStop(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::MakePacketMoveStop(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScMoveStop) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketCreateMyCharacter(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
+void BasicSelectMMOTCPFighter::MakePacketCreateMyCharacter(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
     *packet << static_cast<unsigned char>(PacketScCreateMyCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
     SendPacket(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketCreateOtherCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
+void BasicSelectMMOTCPFighter::MakePacketCreateOtherCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
     *packet << static_cast<unsigned char>(PacketScCreateOtherCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
     SendPacket(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketCreateOtherCharacter(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
+void BasicSelectMMOTCPFighter::MakePacketCreateOtherCharacter(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
     *packet << static_cast<unsigned char>(PacketScCreateOtherCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
     SendPacketAround(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketDeleteCharacter(SessionId sessionId, CPacket* packet, SessionId id)
+void BasicSelectMMOTCPFighter::MakePacketDeleteCharacter(SessionId sessionId, CPacket* packet, SessionId id)
 {
     *packet << static_cast<unsigned char>(PacketScDeleteCharacter) << static_cast<unsigned int>(id);
 
     SendPacketAround(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketDamage(SessionId sessionId, CPacket* packet, SessionId attackId, SessionId damageId, unsigned char damageHp)
+void BasicSelectMMOTCPFighter::MakePacketDamage(SessionId sessionId, CPacket* packet, SessionId attackId, SessionId damageId, unsigned char damageHp)
 {
     *packet << static_cast<unsigned char>(PacketScDamage) << static_cast<unsigned int>(attackId) << static_cast<unsigned int>(damageId) << damageHp;
 
     SendPacketAround(sessionId, packet, true);
 }
 
-void SelectMMOTCPFighter::MakePacketAttack1(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::MakePacketAttack1(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScAttack1) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketAttack2(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::MakePacketAttack2(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScAttack2) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketAttack3(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::MakePacketAttack3(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScAttack3) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketAround(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketEcho(SessionId sessionId, CPacket* packet, unsigned int time)
+void BasicSelectMMOTCPFighter::MakePacketEcho(SessionId sessionId, CPacket* packet, unsigned int time)
 {
     *packet << static_cast<unsigned char>(PacketScEcho) << time;
 
     SendPacket(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketDeleteCharacterRemoveSector(CPacket* packet, SectorAround* around, SessionId id)
+void BasicSelectMMOTCPFighter::MakePacketDeleteCharacterRemoveSector(CPacket* packet, SectorAround* around, SessionId id)
 {
     *packet << static_cast<unsigned char>(PacketScDeleteCharacter) << static_cast<unsigned int>(id);
 
     SendPacketToSectors(packet, around);
 }
 
-void SelectMMOTCPFighter::MakePacketDeleteCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id)
+void BasicSelectMMOTCPFighter::MakePacketDeleteCharacterForMe(SessionId sessionId, CPacket* packet, SessionId id)
 {
     *packet << static_cast<unsigned char>(PacketScDeleteCharacter) << static_cast<unsigned int>(id);
 
     SendPacket(sessionId, packet);
 }
 
-void SelectMMOTCPFighter::MakePacketCreateCharacterAddSector(CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
+void BasicSelectMMOTCPFighter::MakePacketCreateCharacterAddSector(CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y, unsigned char hp)
 {
     *packet << static_cast<unsigned char>(PacketScCreateOtherCharacter) << static_cast<unsigned int>(id) << direction << x << y << hp;
 
     SendPacketToSectors(packet, around);
 }
 
-void SelectMMOTCPFighter::MakePacketMoveStartAddSector(CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::MakePacketMoveStartAddSector(CPacket* packet, SectorAround* around, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScMoveStart) << static_cast<unsigned int>(id) << direction << x << y;
 
     SendPacketToSectors(packet, around);
 }
 
-void SelectMMOTCPFighter::MakePacketSync(SessionId sessionId, CPacket* packet, SessionId id, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::MakePacketSync(SessionId sessionId, CPacket* packet, SessionId id, unsigned short x, unsigned short y)
 {
     *packet << static_cast<unsigned char>(PacketScSync) << static_cast<unsigned int>(id) << x << y;
 
@@ -592,14 +640,13 @@ void SelectMMOTCPFighter::MakePacketSync(SessionId sessionId, CPacket* packet, S
 }
 
 
-
-bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
+bool BasicSelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
     Profile profile(L"NetPacketProcMoveStart");
 
     Character* target = characterMap_.at(sessionId);
 
-	SyncOrApplyClientPosition(target, x, y);
+    SyncOrApplyClientPosition(target, x, y);
 
 
     target->isMove_ = true;
@@ -614,7 +661,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned c
     return true;
 }
 
-bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
+bool BasicSelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
     Profile profile(L"NetPacketProcMoveStop");
     Character* target = characterMap_.at(sessionId);
@@ -634,7 +681,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned ch
     return true;
 }
 
-bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
+bool BasicSelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
@@ -652,7 +699,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned cha
     return true;
 }
 
-bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
+bool BasicSelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
@@ -669,7 +716,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned cha
     return true;
 }
 
-bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
+bool BasicSelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned char direction, unsigned short x, unsigned short y)
 {
     Profile profile(L"NetPacketProcAttack");
     Character* target = characterMap_.at(sessionId);
@@ -685,7 +732,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned cha
     return true;
 }
 
-bool SelectMMOTCPFighter::NetPacketProcEcho(SessionId sessionId, unsigned int time)
+bool BasicSelectMMOTCPFighter::NetPacketProcEcho(SessionId sessionId, unsigned int time)
 {
     Profile profile(L"NetPacketEcho");
     Character* target = characterMap_.at(sessionId);
@@ -697,7 +744,7 @@ bool SelectMMOTCPFighter::NetPacketProcEcho(SessionId sessionId, unsigned int ti
     return true;
 }
 
-Character* SelectMMOTCPFighter::CreateCharacter(SessionId sessionId)
+Character* BasicSelectMMOTCPFighter::CreateCharacter(SessionId sessionId)
 {
     Character* newPlayer = characterFreeList_.Alloc();
     newPlayer->sessionId_ = sessionId;
@@ -721,13 +768,13 @@ Character* SelectMMOTCPFighter::CreateCharacter(SessionId sessionId)
     return newPlayer;
 }
 
-void SelectMMOTCPFighter::RegisterCharacter(Character* newPlayer)
+void BasicSelectMMOTCPFighter::RegisterCharacter(Character* newPlayer)
 {
     sectorCharacterList_[newPlayer->characterSectorPos_.y_][newPlayer->characterSectorPos_.x_].push_back(newPlayer);
     characterMap_.insert(std::unordered_map<SessionId, Character*>::value_type(newPlayer->sessionId_, newPlayer));
 }
 
-void SelectMMOTCPFighter::SendNewCharacterCreate(Character* newPlayer)
+void BasicSelectMMOTCPFighter::SendNewCharacterCreate(Character* newPlayer)
 {
     CPacket* packetCreateMyCharacter = CPacket::Alloc();
     MakePacketCreateMyCharacter(newPlayer->sessionId_, packetCreateMyCharacter, newPlayer->sessionId_, newPlayer->direction_, newPlayer->x_, newPlayer->y_, newPlayer->hp_);
@@ -738,7 +785,7 @@ void SelectMMOTCPFighter::SendNewCharacterCreate(Character* newPlayer)
     CPacket::Free(packetCreateOtherCharacter);
 }
 
-void SelectMMOTCPFighter::SendExistingCharactersToNewCharacter(Character* newPlayer)
+void BasicSelectMMOTCPFighter::SendExistingCharactersToNewCharacter(Character* newPlayer)
 {
     SectorAround around;
     GetSectorAround(newPlayer->characterSectorPos_.x_, newPlayer->characterSectorPos_.y_, &around);
@@ -769,7 +816,7 @@ void SelectMMOTCPFighter::SendExistingCharactersToNewCharacter(Character* newPla
     }
 }
 
-void SelectMMOTCPFighter::SendCharacterDelete(Character* character)
+void BasicSelectMMOTCPFighter::SendCharacterDelete(Character* character)
 {
     CPacket* packetDeleteCharacter = CPacket::Alloc();
 
@@ -778,31 +825,31 @@ void SelectMMOTCPFighter::SendCharacterDelete(Character* character)
     CPacket::Free(packetDeleteCharacter);
 }
 
-void SelectMMOTCPFighter::UnregisterCharacter(Character* character)
+void BasicSelectMMOTCPFighter::UnregisterCharacter(Character* character)
 {
     sectorCharacterList_[character->characterSectorPos_.y_][character->characterSectorPos_.x_].remove(character);
     characterMap_.erase(character->sessionId_);
 }
 
-void SelectMMOTCPFighter::ReleaseCharacter(Character* character)
+void BasicSelectMMOTCPFighter::ReleaseCharacter(Character* character)
 {
     UnregisterCharacter(character);
     characterFreeList_.Free(character);
 }
 
-bool SelectMMOTCPFighter::IsClientPositionValid(Character* target, unsigned short x, unsigned short y)
+bool BasicSelectMMOTCPFighter::IsClientPositionValid(Character* target, unsigned short x, unsigned short y)
 {
     return !((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange));
 }
 
-void SelectMMOTCPFighter::SendSync(Character* target)
+void BasicSelectMMOTCPFighter::SendSync(Character* target)
 {
     CPacket* packetSync = CPacket::Alloc();
     MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
     CPacket::Free(packetSync);
 }
 
-void SelectMMOTCPFighter::ApplyClientPosition(Character* target, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::ApplyClientPosition(Character* target, unsigned short x, unsigned short y)
 {
     target->x_ = x;
     target->y_ = y;
@@ -813,7 +860,7 @@ void SelectMMOTCPFighter::ApplyClientPosition(Character* target, unsigned short 
     }
 }
 
-void SelectMMOTCPFighter::SyncOrApplyClientPosition(Character* target, unsigned short x, unsigned short y)
+void BasicSelectMMOTCPFighter::SyncOrApplyClientPosition(Character* target, unsigned short x, unsigned short y)
 {
     if (IsClientPositionValid(target, x, y) == false)
     {
@@ -824,7 +871,7 @@ void SelectMMOTCPFighter::SyncOrApplyClientPosition(Character* target, unsigned 
     ApplyClientPosition(target, x, y);
 }
 
-void SelectMMOTCPFighter::UpdateCharacterFacingDirection(Character* target, unsigned char direction)
+void BasicSelectMMOTCPFighter::UpdateCharacterFacingDirection(Character* target, unsigned char direction)
 {
     switch (direction)
     {
@@ -842,7 +889,7 @@ void SelectMMOTCPFighter::UpdateCharacterFacingDirection(Character* target, unsi
     }
 }
 
-bool SelectMMOTCPFighter::CanHitTarget(const Character* attackCharacter, const Character* target, int boundaryX, int boundaryY)
+bool BasicSelectMMOTCPFighter::CanHitTarget(const Character* attackCharacter, const Character* target, int boundaryX, int boundaryY)
 {
     if (attackCharacter == target)
     {
@@ -877,14 +924,14 @@ bool SelectMMOTCPFighter::CanHitTarget(const Character* attackCharacter, const C
     return true;
 }
 
-void SelectMMOTCPFighter::AddSectorPosition(SectorAround* aroundSector, int sectorX, int sectorY)
+void BasicSelectMMOTCPFighter::AddSectorPosition(SectorAround* aroundSector, int sectorX, int sectorY)
 {
     aroundSector->around_[aroundSector->count_].x_ = sectorX;
     aroundSector->around_[aroundSector->count_].y_ = sectorY;
     aroundSector->count_++;
 }
 
-void SelectMMOTCPFighter::SendRemoveSectorUpdate(Character* target, SectorAround* removeSector)
+void BasicSelectMMOTCPFighter::SendRemoveSectorUpdate(Character* target, SectorAround* removeSector)
 {
     CPacket* packetDeleteCharacterRemoveSector = CPacket::Alloc();
     MakePacketDeleteCharacterRemoveSector(packetDeleteCharacterRemoveSector, removeSector, target->sessionId_);
@@ -904,7 +951,7 @@ void SelectMMOTCPFighter::SendRemoveSectorUpdate(Character* target, SectorAround
 
 }
 
-void SelectMMOTCPFighter::SendAddSectorUpdate(Character* target, SectorAround* addSector)
+void BasicSelectMMOTCPFighter::SendAddSectorUpdate(Character* target, SectorAround* addSector)
 {
     CPacket* packetCreateCharacterAddSector = CPacket::Alloc();
     MakePacketCreateCharacterAddSector(packetCreateCharacterAddSector, addSector, target->sessionId_, target->direction_, target->x_, target->y_, target->hp_);
@@ -941,7 +988,7 @@ void SelectMMOTCPFighter::SendAddSectorUpdate(Character* target, SectorAround* a
     }
 }
 
-void SelectMMOTCPFighter::InitializeSectorUpdateAround()
+void BasicSelectMMOTCPFighter::InitializeSectorUpdateAround()
 {
     for (int oldSectorY = 0; oldSectorY < SectorMaxY; ++oldSectorY)
     {
@@ -985,7 +1032,7 @@ void SelectMMOTCPFighter::InitializeSectorUpdateAround()
 
 }
 
-void SelectMMOTCPFighter::BuildSectorUpdateAround(int oldSectorX, int oldSectorY, int curSectorX, int curSectorY, SectorUpdateAround* sectorUpdateAround)
+void BasicSelectMMOTCPFighter::BuildSectorUpdateAround(int oldSectorX, int oldSectorY, int curSectorX, int curSectorY, SectorUpdateAround* sectorUpdateAround)
 {
     SectorAround oldSectorAround;
     SectorAround curSectorAround;
@@ -1035,7 +1082,7 @@ void SelectMMOTCPFighter::BuildSectorUpdateAround(int oldSectorX, int oldSectorY
 
 
 
-void SelectMMOTCPFighter::SendPacketSectorOne(int sectorX, int sectorY, SessionId exceptSessionId, CPacket* packet)
+void BasicSelectMMOTCPFighter::SendPacketSectorOne(int sectorX, int sectorY, SessionId exceptSessionId, CPacket* packet)
 {
     Character* target;
     std::list<Character*>::iterator iter;
@@ -1052,7 +1099,7 @@ void SelectMMOTCPFighter::SendPacketSectorOne(int sectorX, int sectorY, SessionI
     }
 }
 
-void SelectMMOTCPFighter::SendPacketToSectors(CPacket* packet, SectorAround* around, SessionId exceptSessionId)
+void BasicSelectMMOTCPFighter::SendPacketToSectors(CPacket* packet, SectorAround* around, SessionId exceptSessionId)
 {
     Profile profile(L"SendPacketToSectors");
     for (unsigned int index = 0; index < around->count_; ++index)
@@ -1062,7 +1109,7 @@ void SelectMMOTCPFighter::SendPacketToSectors(CPacket* packet, SectorAround* aro
 }
 
 
-void SelectMMOTCPFighter::SendPacketAround(SessionId sessionId, CPacket* packet, bool sendMe)
+void BasicSelectMMOTCPFighter::SendPacketAround(SessionId sessionId, CPacket* packet, bool sendMe)
 {
     Profile profile(L"SendPacketAround");
 

@@ -139,6 +139,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BasicSelectMMOTCPFighter.cpp" />
     <ClCompile Include="Character.h" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Sector.h" />
@@ -147,6 +148,7 @@
     <ClCompile Include="SelectServerPQ.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BasicSelectMMOTCPFighter.h" />
     <ClInclude Include="GameDefine.h" />
     <ClInclude Include="PacketDefine.h" />
     <ClInclude Include="SelectMMOTCPFighter.h" />
