@@ -18,12 +18,12 @@
     <ClCompile Include="Main.cpp">
       <Filter>Main</Filter>
     </ClCompile>
-    <ClCompile Include="MMOTCPServer_Single.cpp">
+    <ClCompile Include="MMOTCPServerSingle.cpp">
       <Filter>Contents\TCPFighter</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="MMOTCPServer_Single.h">
+    <ClInclude Include="MMOTCPServerSingle.h">
       <Filter>Contents\TCPFighter</Filter>
     </ClInclude>
     <ClInclude Include="PacketDefine.h">

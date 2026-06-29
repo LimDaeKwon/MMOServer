@@ -131,11 +131,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="MMOTCPServer_Single.cpp" />
+    <ClCompile Include="MMOTCPServerSingle.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="MMOTCPServer_Single.h" />
+    <ClInclude Include="MMOTCPServerSingle.h" />
     <ClInclude Include="PacketDefine.h" />
   </ItemGroup>
   <ItemGroup>

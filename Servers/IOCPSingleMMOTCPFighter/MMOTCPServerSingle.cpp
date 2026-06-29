@@ -1,8 +1,9 @@
-#include "MMOTCPServer_Single.h"
+#include "MMOTCPServerSingle.h"
 #include "ContentsCPacket.h"
 #include <process.h>
 #include "PacketDefine.h"
 #include <conio.h>
+#include "Profiler.h"
 
 
 MMOTCPServerSingle::MMOTCPServerSingle() : messageDataFreeList_(1000), characterFreeList_(1000)
@@ -27,9 +28,9 @@ bool MMOTCPServerSingle::OnConnectionRequest(const wchar_t* serverIp, unsigned s
 	return false;
 }
 
-void MMOTCPServerSingle::OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId)
+void MMOTCPServerSingle::OnAccept(const wchar_t* serverIp, unsigned short serverPort, SessionId sessionId)
 {
-
+	Profile profile(L"OnAccept");
 
 	MessageData* messageData = messageDataFreeList_.Alloc();
 	messageData->sessionId_ = sessionId;
@@ -42,8 +43,9 @@ void MMOTCPServerSingle::OnAccept(const wchar_t* serverIp, unsigned short server
 
 }
 
-void MMOTCPServerSingle::OnRelease(__int64 sessionId)
+void MMOTCPServerSingle::OnRelease(SessionId sessionId)
 {
+	Profile profile(L"OnRelease");
 
 	MessageData* messageData = messageDataFreeList_.Alloc();
 	messageData->sessionId_ = sessionId;
@@ -56,9 +58,10 @@ void MMOTCPServerSingle::OnRelease(__int64 sessionId)
 
 }
 
-void MMOTCPServerSingle::OnMessage(__int64 sessionId, BYTE packetType, CPacket* contentsSendPacket)
+void MMOTCPServerSingle::OnMessage(SessionId sessionId, BYTE packetType, CPacket* contentsSendPacket)
 {
 
+	Profile profile(L"OnMessage");
 
 	MessageData* messageData = messageDataFreeList_.Alloc();
 	messageData->sessionId_ = sessionId;
