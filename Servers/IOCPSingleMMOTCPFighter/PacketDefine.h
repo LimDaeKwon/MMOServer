@@ -1,157 +1,280 @@
 #pragma once
 
-#pragma pack(push, 1)
 
-constexpr int RangeMoveTop = 0;
-constexpr int RangeMoveLeft = 0;
-constexpr int RangeMoveRight = 6400;
-constexpr int RangeMoveBottom = 6400;
-constexpr int ErrorRange = 50;
-constexpr int NetworkPacketRecvTimeout = 30000;
-
-constexpr int Attack1RangeX = 80;
-constexpr int Attack2RangeX = 90;
-constexpr int Attack3RangeX = 100;
-constexpr int Attack1RangeY = 10;
-constexpr int Attack2RangeY = 10;
-constexpr int Attack3RangeY = 20;
-
-constexpr int Attack1Damage = 1;
-constexpr int Attack2Damage = 2;
-constexpr int Attack3Damage = 3;
-
-constexpr int SectorMaxX = 40;
-constexpr int SectorMaxY = 40;
-constexpr int SectorXSize = 160;
-constexpr int SectorYSize = 160;
-
-constexpr unsigned short ServerPort = 20511;
-constexpr unsigned char PacketCode = 0x89;
-constexpr unsigned char DefaultHp = 100;
-constexpr int NetworkPacketHeaderSize = 3;
-constexpr unsigned char FixedUpdateFrameMs = 40;
-
-constexpr unsigned char PacketMoveDirectionLL = 0;
-constexpr unsigned char PacketMoveDirectionLU = 1;
-constexpr unsigned char PacketMoveDirectionUU = 2;
-constexpr unsigned char PacketMoveDirectionRU = 3;
-constexpr unsigned char PacketMoveDirectionRR = 4;
-constexpr unsigned char PacketMoveDirectionRD = 5;
-constexpr unsigned char PacketMoveDirectionDD = 6;
-constexpr unsigned char PacketMoveDirectionLD = 7;
+// ---------------------------------------------------------------
+// Server -> Client
+// 클라이언트 자신의 캐릭터 할당
+//
+// 서버 접속 시 최초로 받는 패킷.
+// 클라이언트는 이 패킷을 통해 자신의 ID, 최초 위치, HP를 저장하고 캐릭터를 생성한다.
+//
+// Type: 0
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// 1 byte  - HP
+// ---------------------------------------------------------------
 
 constexpr unsigned char PacketScCreateMyCharacter = 0;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 다른 클라이언트의 캐릭터 생성
+//
+// 처음 서버에 접속했을 때 이미 접속 중이던 캐릭터 정보,
+// 또는 게임 중 새로 접속한 클라이언트의 캐릭터 생성 정보.
+//
+// Type: 1
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// 1 byte  - HP
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScCreateOtherCharacter = 1;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 캐릭터 삭제
+//
+// 캐릭터 접속 해제 또는 캐릭터 사망 시 전송.
+//
+// Type: 2
+//
+// 4 bytes - ID
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScDeleteCharacter = 2;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 캐릭터 이동 시작
+//
+// 자신의 캐릭터가 이동을 시작할 때 전송.
+// 이동 중에는 계속 보내지 않고, 키 입력 방향이 변경되었을 때만 전송한다.
+//
+// Type: 10
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketCsMoveStart = 10;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 다른 캐릭터 이동 시작
+//
+// 다른 유저의 캐릭터 이동 시작을 알린다.
+// 수신 측은 해당 캐릭터를 찾아 방향과 좌표를 갱신하고 이동 상태로 처리한다.
+//
+// Type: 11
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScMoveStart = 11;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 캐릭터 이동 중지
+//
+// 이동 중 키 입력이 없어 정지되었을 때 전송.
+// 이동 중 방향 전환 시에는 Stop을 보내지 않는다.
+//
+// Type: 12
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketCsMoveStop = 12;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 다른 캐릭터 이동 중지
+//
+// ID에 해당하는 캐릭터가 이동을 멈췄음을 알린다.
+// 수신 측은 해당 캐릭터를 찾아 방향과 좌표를 갱신하고 정지 상태로 처리한다.
+//
+// Type: 13
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScMoveStop = 13;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 공격 1
+//
+// 공격 1 동작 시작 시 한 번만 전송.
+// 충돌 및 데미지 결과는 서버에서 처리 후 통보한다.
+//
+// Type: 20
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketCsAttack1 = 20;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 공격 1
+//
+// ID에 해당하는 캐릭터가 공격 1 동작을 했음을 알린다.
+//
+// Type: 21
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScAttack1 = 21;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 공격 2
+//
+// 공격 2 동작 시작 시 한 번만 전송.
+// 충돌 및 데미지 결과는 서버에서 처리 후 통보한다.
+//
+// Type: 22
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketCsAttack2 = 22;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 공격 2
+//
+// ID에 해당하는 캐릭터가 공격 2 동작을 했음을 알린다.
+//
+// Type: 23
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScAttack2 = 23;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 공격 3
+//
+// 공격 3 동작 시작 시 한 번만 전송.
+// 충돌 및 데미지 결과는 서버에서 처리 후 통보한다.
+//
+// Type: 24
+//
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketCsAttack3 = 24;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 공격 3
+//
+// ID에 해당하는 캐릭터가 공격 3 동작을 했음을 알린다.
+//
+// Type: 25
+//
+// 4 bytes - ID
+// 1 byte  - Direction
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScAttack3 = 25;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 데미지
+//
+// 공격에 맞은 캐릭터의 데미지 결과를 알린다.
+//
+// Type: 30
+//
+// 4 bytes - AttackID
+// 4 bytes - DamageID
+// 1 byte  - DamageHP
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScDamage = 30;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// 동기화 요청
+//
+// 현재는 사용하지 않음.
+//
+// Type: 250
+//
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketCsSync = 250;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// 동기화 응답
+//
+// 서버 기준 좌표 보정용 패킷.
+// 수신 측은 ID에 해당하는 캐릭터를 찾아 좌표를 보정한다.
+//
+// Type: 251
+//
+// 4 bytes - ID
+// 2 bytes - X
+// 2 bytes - Y
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScSync = 251;
+
+// ---------------------------------------------------------------
+// Client -> Server
+// Echo 요청
+//
+// Type: 252
+//
+// 4 bytes - Time
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketCsEcho = 252;
+
+// ---------------------------------------------------------------
+// Server -> Client
+// Echo 응답
+//
+// Type: 253
+//
+// 4 bytes - Time
+// ---------------------------------------------------------------
+
 constexpr unsigned char PacketScEcho = 253;
-
-struct PacketHeader
-{
-	unsigned char code_;
-	unsigned char size_;
-	unsigned char type_;
-};
-
-struct PacketScCreateMyCharacterData
-{
-	unsigned int id_;
-	unsigned char direction_;
-	unsigned short x_;
-	unsigned short y_;
-	unsigned char hp_;
-};
-
-struct PacketScCreateOtherCharacterData
-{
-	unsigned int id_;
-	unsigned char direction_;
-	unsigned short x_;
-	unsigned short y_;
-	unsigned char hp_;
-};
-
-struct PacketScDeleteCharacterData
-{
-	unsigned int id_;
-};
-
-struct PacketCsMoveStartData
-{
-	unsigned char direction_;
-	unsigned short x_;
-	unsigned short y_;
-};
-
-struct PacketScMoveStartData
-{
-	unsigned int id_;
-	unsigned char direction_;
-	unsigned short x_;
-	unsigned short y_;
-};
-
-struct PacketCsMoveStopData
-{
-	unsigned char direction_;
-	unsigned short x_;
-	unsigned short y_;
-};
-
-struct PacketScMoveStopData
-{
-	unsigned int id_;
-	unsigned char direction_;
-	unsigned short x_;
-	unsigned short y_;
-};
-
-struct PacketCsAttackData
-{
-	unsigned char direction_;
-	unsigned short x_;
-	unsigned short y_;
-};
-
-struct PacketScAttackData
-{
-	unsigned int id_;
-	unsigned char direction_;
-	unsigned short x_;
-	unsigned short y_;
-};
-
-struct PacketScDamageData
-{
-	unsigned int attackId_;
-	unsigned int damageId_;
-	unsigned char damageHp_;
-};
-
-struct PacketCsSyncData
-{
-	unsigned short x_;
-	unsigned short y_;
-};
-
-struct PacketScSyncData
-{
-	unsigned int id_;
-	unsigned short x_;
-	unsigned short y_;
-};
-
-#pragma pack(pop)

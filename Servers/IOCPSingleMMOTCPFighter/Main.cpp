@@ -31,12 +31,6 @@ unsigned int GlobalChecksum;
 
 
 bool ParseThreadDataFile(const char* fileName);
-bool ParseGameDataFile(const char* fileName);
-
-char threadData[7][200];
-
-char gameData[7][200];
-
 
 bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config);
 
@@ -61,9 +55,9 @@ int main()
 	}
 
 
-	MMOTCPServerSingle gameInstance;
+	MMOTCPServerSingle* gameInstance = new MMOTCPServerSingle;
 	
-	gameInstance.Start(config);
+	gameInstance->Start(config);
 
 	while (1)
 	{

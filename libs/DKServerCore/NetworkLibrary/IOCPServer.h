@@ -10,6 +10,8 @@
 #include "ServerStartConfig.h"
 
 
+using SessionId = unsigned __int64;
+
 class IOCPServer
 {
 public:
@@ -107,9 +109,9 @@ public:
     static unsigned int WINAPI HeartbeatThread(void* thisPointer);
 
     virtual bool OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort) = 0;
-    virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId) = 0;
-    virtual void OnRelease(__int64 sessionId) = 0;
-    virtual void OnMessage(__int64 sessionId, BYTE packetType, CPacket* sendPacket) = 0;
+    virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, SessionId sessionId) = 0;
+    virtual void OnRelease(SessionId sessionId) = 0;
+    virtual void OnMessage(SessionId sessionId, BYTE packetType, CPacket* sendPacket) = 0;
     virtual void OnError(int errorCode, const wchar_t* errorLog) = 0;
 
     int GetAcceptTPS();

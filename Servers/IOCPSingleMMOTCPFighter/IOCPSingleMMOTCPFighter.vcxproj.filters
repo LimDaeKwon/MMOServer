@@ -29,6 +29,15 @@
     <ClInclude Include="PacketDefine.h">
       <Filter>Contents\TCPFighter</Filter>
     </ClInclude>
+    <ClInclude Include="Character.h">
+      <Filter>Contents\TCPFighter</Filter>
+    </ClInclude>
+    <ClInclude Include="Sector.h">
+      <Filter>Contents\TCPFighter</Filter>
+    </ClInclude>
+    <ClInclude Include="GameDefine.h">
+      <Filter>Contents\TCPFighter</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="MMOTCPFighterThreadSetting.config">

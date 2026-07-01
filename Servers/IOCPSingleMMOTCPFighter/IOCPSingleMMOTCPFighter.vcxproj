@@ -135,8 +135,11 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Character.h" />
+    <ClInclude Include="GameDefine.h" />
     <ClInclude Include="MMOTCPServerSingle.h" />
     <ClInclude Include="PacketDefine.h" />
+    <ClInclude Include="Sector.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameSetting.config" />
