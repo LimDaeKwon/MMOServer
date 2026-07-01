@@ -133,11 +133,13 @@
   <ItemGroup>
     <ClCompile Include="MMOTCPServerSingle.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="MMOTCPServerSingleRB.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Character.h" />
     <ClInclude Include="GameDefine.h" />
     <ClInclude Include="MMOTCPServerSingle.h" />
+    <ClInclude Include="MMOTCPServerSingleRB.h" />
     <ClInclude Include="PacketDefine.h" />
     <ClInclude Include="Sector.h" />
   </ItemGroup>

@@ -157,6 +157,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="IOCPServerRB.h" />
     <ClInclude Include="Memory\LockFreeObjectFreeList.h" />
     <ClInclude Include="Memory\ObjectFreeList.h" />
     <ClInclude Include="Memory\TLSObjectFreeList.h" />
@@ -187,6 +188,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DKServerCore.cpp" />
+    <ClCompile Include="IOCPServerRB.cpp" />
     <ClCompile Include="Monitoring\CPUUsage.cpp" />
     <ClCompile Include="Monitoring\ProcessMonitoring.cpp" />
     <ClCompile Include="Monitoring\SystemMonitoring.cpp" />

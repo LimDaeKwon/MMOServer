@@ -21,6 +21,7 @@
     <ClCompile Include="MMOTCPServerSingle.cpp">
       <Filter>Contents\TCPFighter</Filter>
     </ClCompile>
+    <ClCompile Include="MMOTCPServerSingleRB.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MMOTCPServerSingle.h">
@@ -38,6 +39,7 @@
     <ClInclude Include="GameDefine.h">
       <Filter>Contents\TCPFighter</Filter>
     </ClInclude>
+    <ClInclude Include="MMOTCPServerSingleRB.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="MMOTCPFighterThreadSetting.config">

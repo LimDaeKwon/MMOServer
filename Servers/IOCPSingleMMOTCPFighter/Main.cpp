@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include "MMOTCPServerSingle.h"
+#include "MMOTCPServerSingleRB.h"
 #include "windows.h"
 #include "conio.h"
 #include "Profiler.h"
@@ -53,11 +54,28 @@ int main()
 	{
 		return 1;
 	}
+	unsigned int bufferMode;
+	if (!parser.GetUnsignedInt("IOCP", "BUFFERMODE", &bufferMode))
+	{
+		printf("Missing or invalid config: [IOCP] BUFFERMODE\n");
+		return false;
+	}
 
+	if (bufferMode == 0) // 링버퍼 모드
+	{
+		MMOTCPServerSingleRB* gameInstance = new MMOTCPServerSingleRB;
 
-	MMOTCPServerSingle* gameInstance = new MMOTCPServerSingle;
+		gameInstance->Start(config);
+	}
+	else
+	{
+		MMOTCPServerSingle* gameInstance = new MMOTCPServerSingle;
+
+		gameInstance->Start(config);
+	}
+
 	
-	gameInstance->Start(config);
+	
 
 	while (1)
 	{
