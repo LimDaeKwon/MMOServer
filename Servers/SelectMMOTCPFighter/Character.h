@@ -13,7 +13,9 @@ struct Character
     short x_;
     short y_;
     unsigned char hp_;
+
     bool isMove_;
+    int movingIndex_;
 
     SectorPos oldSectorPos_;
     SectorPos characterSectorPos_;

@@ -144,6 +144,7 @@ Character* MMOTCPServerSingle::CreateCharacter(SessionId sessionId)
 	newPlayer->oldSectorPos_.y_ = SectorMaxY;
 
 	newPlayer->isMove_ = false;
+	newPlayer->movingIndex_ = -1;
 
 
 	return newPlayer;
@@ -216,6 +217,7 @@ void MMOTCPServerSingle::UnregisterCharacter(Character* target)
 
 void MMOTCPServerSingle::ReleaseCharacter(Character* target)
 {
+	RemoveMovingCharacter(target);
 	UnregisterCharacter(target);
 	characterFreeList_.Free(target);
 }
@@ -425,6 +427,43 @@ int MMOTCPServerSingle::ServerControl()
 	}
 
 	return 0;
+}
+
+void MMOTCPServerSingle::AddMovingCharacter(Character* target)
+{
+	if (target->movingIndex_ != -1)
+	{
+		target->isMove_ = true;
+		return;
+	}
+
+	target->movingIndex_ = static_cast<int>(movingCharacters_.size());
+	movingCharacters_.push_back(target);
+	target->isMove_ = true;
+}
+
+void MMOTCPServerSingle::RemoveMovingCharacter(Character* target)
+{
+	if (target->movingIndex_ == -1)
+	{
+		target->isMove_ = false;
+		return;
+	}
+
+	int removeIndex = target->movingIndex_;
+	int lastIndex = static_cast<int>(movingCharacters_.size()) - 1;
+
+	if (removeIndex != lastIndex)
+	{
+		Character* lastCharacter = movingCharacters_[lastIndex];
+		movingCharacters_[removeIndex] = lastCharacter;
+		lastCharacter->movingIndex_ = removeIndex;
+	}
+
+	movingCharacters_.pop_back();
+
+	target->movingIndex_ = -1;
+	target->isMove_ = false;
 }
 
 
@@ -815,8 +854,7 @@ bool MMOTCPServerSingle::NetPacketProcMoveStart(SessionId sessionId, unsigned ch
 
 	SyncOrApplyClientPosition(target, x, y);
 
-
-	target->isMove_ = true;
+	AddMovingCharacter(target);
 	target->action_ = direction;
 
 	UpdateCharacterFacingDirection(target, direction);
@@ -835,7 +873,7 @@ bool MMOTCPServerSingle::NetPacketProcMoveStop(SessionId sessionId, unsigned cha
 
 	SyncOrApplyClientPosition(target, x, y);
 
-	target->isMove_ = false;
+	RemoveMovingCharacter(target);
 
 	target->action_ = direction;
 
@@ -1158,20 +1196,19 @@ void MMOTCPServerSingle::Update()
 	{
 		unsigned int fixUpdate = (frame / 40);
 
-		for (unsigned int i = 0; i < fixUpdate; ++i)
+		for (unsigned int fixedIndex = 0; fixedIndex < fixUpdate; ++fixedIndex)
 		{
-			std::unordered_map<SessionId, Character*>::iterator iter;
-			for (iter = characterMap_.begin(); iter != characterMap_.end(); ++iter)
+			for (unsigned int movingIndex = 0; movingIndex < movingCharacters_.size();)
 			{
-				Character* target = iter->second;
+				Character* target = movingCharacters_[movingIndex];
 
-				if (target->isMove_)
+				GameRun(target);
+
+				if (target->movingIndex_ != -1)
 				{
-
-					GameRun(target);
+					++movingIndex;
 				}
 			}
-
 		}
 
 		oldTick_ += (frameMs_ * (frame / frameMs_));
@@ -1189,7 +1226,7 @@ void MMOTCPServerSingle::GameRun(Character* target)
 	case PacketMoveDirectionLL:
 		if (target->x_ - 6 < RangeMoveLeft)
 		{
-			target->isMove_ = false;
+			RemoveMovingCharacter(target);
 			return;
 		}
 
@@ -1200,7 +1237,7 @@ void MMOTCPServerSingle::GameRun(Character* target)
 	case PacketMoveDirectionLU:
 		if (target->y_ - 4 < RangeMoveTop || target->x_ - 6 < RangeMoveLeft)
 		{
-			target->isMove_ = false;
+			RemoveMovingCharacter(target);
 			return;
 		}
 
@@ -1214,7 +1251,7 @@ void MMOTCPServerSingle::GameRun(Character* target)
 	case PacketMoveDirectionUU:
 		if (target->y_ - 4 < RangeMoveTop)
 		{
-			target->isMove_ = false;
+			RemoveMovingCharacter(target);
 			return;
 		}
 
@@ -1228,7 +1265,7 @@ void MMOTCPServerSingle::GameRun(Character* target)
 
 		if ((target->y_ - 4 < RangeMoveTop) || (target->x_ + 6 >= RangeMoveRight))
 		{
-			target->isMove_ = false;
+			RemoveMovingCharacter(target);
 			return;
 		}
 
@@ -1242,7 +1279,7 @@ void MMOTCPServerSingle::GameRun(Character* target)
 
 		if (target->x_ + 6 >= RangeMoveRight)
 		{
-			target->isMove_ = false;
+			RemoveMovingCharacter(target);
 			return;
 		}
 		target->x_ += 6;
@@ -1254,7 +1291,7 @@ void MMOTCPServerSingle::GameRun(Character* target)
 
 		if (target->y_ + 4 >= RangeMoveBottom || target->x_ + 6 >= RangeMoveRight)
 		{
-			target->isMove_ = false;
+			RemoveMovingCharacter(target);
 			return;
 		}
 
@@ -1269,7 +1306,7 @@ void MMOTCPServerSingle::GameRun(Character* target)
 	case PacketMoveDirectionDD:
 		if (target->y_ + 4 >= RangeMoveBottom)
 		{
-			target->isMove_ = false;
+			RemoveMovingCharacter(target);
 			return;
 		}
 
@@ -1280,7 +1317,7 @@ void MMOTCPServerSingle::GameRun(Character* target)
 	case PacketMoveDirectionLD:
 		if (target->y_ + 4 >= RangeMoveBottom || target->x_ - 6 < RangeMoveLeft)
 		{
-			target->isMove_ = false;
+			RemoveMovingCharacter(target);
 			return;
 		}
 

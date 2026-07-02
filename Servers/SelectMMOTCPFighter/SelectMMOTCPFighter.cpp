@@ -117,15 +117,18 @@ void SelectMMOTCPFighter::OnRelease(SessionId sessionId)
 void SelectMMOTCPFighter::OnUpdate()
 {
     Profile profile(L"OnUpdate");
-    std::unordered_map<SessionId, Character*>::iterator iter;
-    for (iter = characterMap_.begin(); iter != characterMap_.end(); ++iter)
+    for (unsigned int i = 0; i < movingCharacters_.size();)
     {
-        Character* target = iter->second;
+        Character* target = movingCharacters_[i];
 
-        if (target->isMove_)
+        GameRun(target);
+
+		//안쪽에서 스왑으로 삭제되면 타겟의 Index를 삭제시킴. 즉 -1이면 지금 위치는 스왑된 맨 끝에 있던 유저이다.
+        //다시 돌려줘야 함 .
+
+        if (target->movingIndex_ != -1)
         {
-            
-            GameRun(target);
+            ++i;
         }
     }
 }
@@ -138,7 +141,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
     case PacketMoveDirectionLL:
         if (target->x_ - 6 < RangeMoveLeft)
         {
-            target->isMove_ = false;
+            RemoveMovingCharacter(target);
             return;
         }
 
@@ -149,7 +152,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
     case PacketMoveDirectionLU:
         if (target->y_ - 4 < RangeMoveTop || target->x_ - 6 < RangeMoveLeft)
         {
-            target->isMove_ = false;
+            RemoveMovingCharacter(target);
             return;
         }
 
@@ -161,7 +164,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
     case PacketMoveDirectionUU:
         if (target->y_ - 4 < RangeMoveTop)
         {
-            target->isMove_ = false;
+            RemoveMovingCharacter(target);
             return;
         }
 
@@ -173,7 +176,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
 
         if ((target->y_ - 4 < RangeMoveTop) || (target->x_ + 6 >= RangeMoveRight))
         {
-            target->isMove_ = false;
+            RemoveMovingCharacter(target);
             return;
         }
 
@@ -186,7 +189,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
 
         if (target->x_ + 6 >= RangeMoveRight)
         {
-            target->isMove_ = false;
+            RemoveMovingCharacter(target);
             return;
         }
         target->x_ += 6;
@@ -197,7 +200,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
 
         if (target->y_ + 4 >= RangeMoveBottom || target->x_ + 6 >= RangeMoveRight)
         {
-            target->isMove_ = false;
+            RemoveMovingCharacter(target);
             return;
         }
 
@@ -209,7 +212,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
     case PacketMoveDirectionDD:
         if (target->y_ + 4 >= RangeMoveBottom)
         {
-            target->isMove_ = false;
+            RemoveMovingCharacter(target);
             return;
         }
 
@@ -220,7 +223,7 @@ void SelectMMOTCPFighter::GameRun(Character* target)
     case PacketMoveDirectionLD:
         if (target->y_ + 4 >= RangeMoveBottom || target->x_ - 6 < RangeMoveLeft)
         {
-            target->isMove_ = false;
+            RemoveMovingCharacter(target);
             return;
         }
 
@@ -602,7 +605,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned c
 	SyncOrApplyClientPosition(target, x, y);
 
 
-    target->isMove_ = true;
+    AddMovingCharacter(target);
     target->action_ = direction;
 
     UpdateCharacterFacingDirection(target, direction);
@@ -621,7 +624,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned ch
 
     SyncOrApplyClientPosition(target, x, y);
 
-    target->isMove_ = false;
+    RemoveMovingCharacter(target);
 
     target->action_ = direction;
 
@@ -716,6 +719,7 @@ Character* SelectMMOTCPFighter::CreateCharacter(SessionId sessionId)
     newPlayer->oldSectorPos_.y_ = SectorMaxY;
 
     newPlayer->isMove_ = false;
+    newPlayer->movingIndex_ = -1;
 
 
     return newPlayer;
@@ -784,10 +788,12 @@ void SelectMMOTCPFighter::UnregisterCharacter(Character* character)
     characterMap_.erase(character->sessionId_);
 }
 
-void SelectMMOTCPFighter::ReleaseCharacter(Character* character)
+void SelectMMOTCPFighter::ReleaseCharacter(Character* target)
 {
-    UnregisterCharacter(character);
-    characterFreeList_.Free(character);
+    RemoveMovingCharacter(target);
+    UnregisterCharacter(target);
+    characterFreeList_.Free(target);
+    
 }
 
 bool SelectMMOTCPFighter::IsClientPositionValid(Character* target, unsigned short x, unsigned short y)
@@ -1031,6 +1037,45 @@ void SelectMMOTCPFighter::BuildSectorUpdateAround(int oldSectorX, int oldSectorY
             AddSectorPosition(&sectorUpdateAround->addSector_, curSectorAround.around_[i].x_, curSectorAround.around_[i].y_);
         }
     }
+}
+
+void SelectMMOTCPFighter::AddMovingCharacter(Character* target)
+{
+    if (target->movingIndex_ != -1)
+    {
+        target->isMove_ = true;
+        return;
+    }
+
+    target->movingIndex_ = static_cast<int>(movingCharacters_.size());
+    movingCharacters_.push_back(target);
+    target->isMove_ = true;
+}
+
+void SelectMMOTCPFighter::RemoveMovingCharacter(Character* target)
+{
+
+    if (target->movingIndex_ == -1)
+    {
+        target->isMove_ = false;
+        return;
+    }
+
+    int removeIndex = target->movingIndex_;
+    int lastIndex = static_cast<int>(movingCharacters_.size()) - 1;
+
+    //스왑 후 뒤를 지워버리기
+    if (removeIndex != lastIndex)
+    {
+        Character* lastCharacter = movingCharacters_[lastIndex];
+        movingCharacters_[removeIndex] = lastCharacter;
+        lastCharacter->movingIndex_ = removeIndex;
+    }
+
+    movingCharacters_.pop_back();
+
+    target->movingIndex_ = -1;
+    target->isMove_ = false;
 }
 
 

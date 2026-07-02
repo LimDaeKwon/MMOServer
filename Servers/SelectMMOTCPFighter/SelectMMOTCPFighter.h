@@ -3,7 +3,9 @@
 #include "ObjectFreeList.h"
 #include "GameDefine.h"
 #include "Character.h"
+#include <vector>
 
+using namespace std;
 
 
 class SelectMMOTCPFighter : public SelectServer
@@ -115,6 +117,9 @@ private:
 
 	void BuildSectorUpdateAround(int oldSectorX, int oldSectorY, int curSectorX, int curSectorY, SectorUpdateAround* sectorUpdateAround);
 
+	void AddMovingCharacter(Character* target);
+	void RemoveMovingCharacter(Character* target);
+
 
 	std::list<Character*> sectorCharacterList_[SectorMaxY][SectorMaxX];
 
@@ -123,6 +128,8 @@ private:
 	ObjectFreeList<Character> characterFreeList_;
 
 	SectorUpdateAround sectorUpdateAround_[SectorMaxY][SectorMaxX][3][3];
+
+	std::vector<Character*> movingCharacters_;
 
 
 

@@ -8,6 +8,7 @@
 
 #include <list>
 #include <unordered_map>
+#include <vector>
 
 class MMOTCPServerSingle : public IOCPServer
 {
@@ -115,6 +116,9 @@ private:
 
 	int ServerControl();
 
+	void AddMovingCharacter(Character* target);
+	void RemoveMovingCharacter(Character* target);
+
 private:
 	TLockFreeQueue<MessageData*> messageQueue_;
 	TLSObjectFreeList<MessageData> messageDataFreeList_;
@@ -126,6 +130,8 @@ private:
 
 	SectorUpdateAround sectorUpdateAround_[SectorMaxY][SectorMaxX][3][3];
 
+	std::vector<Character*> movingCharacters_;
+	
 	unsigned int oldTick_;
 	unsigned int oldTickForCheck_;
 	unsigned int frameMs_;
