@@ -44,7 +44,10 @@ void MMOTCPServerSingleRB::OnAccept(const wchar_t* serverIp, unsigned short serv
 	messageData->packetType_ = 0;
 	messageData->type_ = MessageTypeAccept;
 
-	messageQueue_.Enqueue(messageData);
+	if (!messageQueue_.Enqueue(messageData))
+	{
+		DebugBreak();
+	}
 
 
 }
@@ -59,8 +62,10 @@ void MMOTCPServerSingleRB::OnRelease(SessionId sessionId)
 	messageData->packetType_ = 0;
 	messageData->type_ = MessageTypeRelease;
 
-	messageQueue_.Enqueue(messageData);
-
+	if (!messageQueue_.Enqueue(messageData))
+	{
+		DebugBreak();
+	}
 
 }
 
@@ -76,7 +81,10 @@ void MMOTCPServerSingleRB::OnMessage(SessionId sessionId, BYTE packetType, CPack
 	messageData->packetType_ = packetType;
 	messageData->type_ = MessageTypePacket;
 
-	messageQueue_.Enqueue(messageData);
+	if (!messageQueue_.Enqueue(messageData))
+	{
+		DebugBreak();
+	}
 
 }
 
@@ -92,6 +100,9 @@ unsigned int WINAPI MMOTCPServerSingleRB::LogicThread(LPVOID thisPtr)
 
 	while (true)
 	{
+
+		server->SetProfileEnabled();
+		Profile profile(L"Frame");
 
 		server->MessageLoop();
 
@@ -290,7 +301,7 @@ bool MMOTCPServerSingleRB::MessageProc(MessageData* msg)
 	}
 	case MessageTypeRelease:
 	{
-		ReleaseCharacter(msg->sessionId_);
+		ReleaseProc(msg->sessionId_);
 		break;
 
 	}
@@ -299,11 +310,19 @@ bool MMOTCPServerSingleRB::MessageProc(MessageData* msg)
 	return true;
 }
 
-void MMOTCPServerSingleRB::ReleaseCharacter(SessionId sessionId)
+void MMOTCPServerSingleRB::ReleaseProc(SessionId sessionId)
 {
-	Profile profile(L"OnRelease");
+	Profile profile(L"ReleaseProc");
 
-	Character* target = characterMap_.at(sessionId);
+	std::unordered_map<SessionId, Character*>::iterator iter = characterMap_.find(sessionId);
+
+	if (iter == characterMap_.end())
+	{
+		DebugBreak();
+		return;
+	}
+
+	Character* target = iter->second;
 
 	SendCharacterDelete(target);
 	ReleaseCharacter(target);
@@ -464,6 +483,11 @@ void MMOTCPServerSingleRB::RemoveMovingCharacter(Character* target)
 
 	target->movingIndex_ = -1;
 	target->isMove_ = false;
+}
+
+int MMOTCPServerSingleRB::GetMessageQueueSize()
+{
+	return messageQueue_.GetSize();;
 }
 
 

@@ -12,6 +12,7 @@
 #include "ServerStartConfig.h"
 #include "DKParser.h"
 
+using namespace std;
 
 
 CrashDump zz;
@@ -60,45 +61,57 @@ int main()
 		printf("Missing or invalid config: [IOCP] BUFFERMODE\n");
 		return false;
 	}
+	MMOTCPServerSingleRB* gameInstanceRB;
+	MMOTCPServerSingle* gameInstance;
 
+	int localCount = 0;
 	if (bufferMode == 0) // 링버퍼 모드
 	{
-		MMOTCPServerSingleRB* gameInstance = new MMOTCPServerSingleRB;
+		gameInstanceRB = new MMOTCPServerSingleRB;
 
-		gameInstance->Start(config);
+		gameInstanceRB->Start(config);
+		while (localCount != 600)
+		{
+
+			cout << "RB Message Queue Size: " << gameInstanceRB->GetMessageQueueSize() << endl;
+			localCount++;
+			Sleep(1000);
+
+
+			//서버 컨트롤
+			//그 순간 서버의 덤프를 남긴다 -> 메모리를 자료구조라고 봤을 때
+			// 누군가가 쓰고있을 때 읽어도 되는가?>
+			//
+		}
+
+		wprintf(L"SendPost Avg : %.3f us / Call : %lld\n", gameInstanceRB->GetSendPostAverageMicroSecond(), gameInstanceRB->GetSendPostProfileCall());
+
 	}
 	else
 	{
-		MMOTCPServerSingle* gameInstance = new MMOTCPServerSingle;
+		gameInstance = new MMOTCPServerSingle;
 
 		gameInstance->Start(config);
-	}
-
-	
-	
-
-	while (1)
-	{
-
-		if (_kbhit())
+		while (localCount != 600)
 		{
-			char c = _getch();
-			if (c == 's' || c == 'C')
-			{
-				ProfileDataOutText(L"ProfileData");
-			}
 
-			if (c == 'r' || c == 'R')
-			{
-				ProfileReset();
-			}
+			cout << "Message Queue Size: " << gameInstance->GetMessageQueueSize() << endl;
+
+			localCount++;
+			Sleep(1000);
+
+
+			//서버 컨트롤
+			//그 순간 서버의 덤프를 남긴다 -> 메모리를 자료구조라고 봤을 때
+			// 누군가가 쓰고있을 때 읽어도 되는가?>
+			//
+
 		}
-		//서버 컨트롤
-		//그 순간 서버의 덤프를 남긴다 -> 메모리를 자료구조라고 봤을 때
-		// 누군가가 쓰고있을 때 읽어도 되는가?>
-		//
 
+		wprintf(L"SendPost Avg : %.3f us / Call : %lld\n", gameInstance->GetSendPostAverageMicroSecond(), gameInstance->GetSendPostProfileCall());
 	}
+
+	ProfileDataOutText(L"SelectMMOTCPFighter_Profile.txt");
 
 
 

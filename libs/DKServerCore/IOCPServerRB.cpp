@@ -203,6 +203,9 @@ IOCPServerRB::IOCPServerRB()
 	, uniqueId_(0)
 	, indexList_(0, false)
 {
+	QueryPerformanceFrequency(&sendPostProfileFrequency_);
+	sendPostProfileTotalTime_ = 0;
+	sendPostProfileCall_ = 0;
 }
 
 IOCPServerRB::~IOCPServerRB()
@@ -565,6 +568,8 @@ IOCPServerRB::Session* IOCPServerRB::SessionAlloc(int* emptyIndex, unsigned long
 
 void IOCPServerRB::SendCompletion(Session* target, DWORD cbTransferred)
 {
+	Profile profile(L"SendCompletion");
+
 	target->sendBuffer_.MoveFront(cbTransferred);
 	InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 0);
 	SendPost(target);
@@ -632,8 +637,12 @@ void IOCPServerRB::SendPacket(__int64 sessionId, CPacket* packet)
 
 void IOCPServerRB::SendPost(Session* target)
 {
+	LARGE_INTEGER sendPostStartTime;
+	QueryPerformanceCounter(&sendPostStartTime);
+
 	if (InterlockedOr8(reinterpret_cast<volatile char*>(&target->disconnectFlag_), 0) == 1)
 	{
+		RecordSendPostProfile(sendPostStartTime);
 		return;
 	}
 
@@ -642,6 +651,7 @@ void IOCPServerRB::SendPost(Session* target)
 	if ((localCount & DKServerCore::ReleaseFlag) == DKServerCore::ReleaseFlag)
 	{
 		ReturnReference(target);
+		RecordSendPostProfile(sendPostStartTime);
 		return;
 	}
 
@@ -656,6 +666,7 @@ void IOCPServerRB::SendPost(Session* target)
 		{
 			RecursiveCheck(target);
 			ReturnReference(target);
+			RecordSendPostProfile(sendPostStartTime);
 			return;
 		}
 
@@ -663,18 +674,19 @@ void IOCPServerRB::SendPost(Session* target)
 		DWORD sendBytes = 0;
 		ZeroMemory(&target->sendOverlapped_.overlapped_, sizeof(target->sendOverlapped_.overlapped_));
 
-		int wsaSendReturn = WSASend(target->sock_, localWsaBuf, bufCount, &sendBytes, 0, &target->sendOverlapped_.overlapped_, nullptr);
+		int wsaSendReturn;
+		{
+			Profile profile(L"WSASend");
+			wsaSendReturn = WSASend(target->sock_, localWsaBuf, bufCount, &sendBytes, 0, &target->sendOverlapped_.overlapped_, nullptr);
 
+		}
 		if (wsaSendReturn == SOCKET_ERROR)
 		{
 			int wsaSendError = WSAGetLastError();
 
 			if (wsaSendError == WSA_IO_PENDING)
 			{
-				if (target->disconnectFlag_ == 1)
-				{
-					CancelIoEx(reinterpret_cast<HANDLE>(target->sock_), nullptr);
-				}
+				Disconnect(target->sessionId_);
 			}
 			else
 			{
@@ -689,7 +701,7 @@ void IOCPServerRB::SendPost(Session* target)
 	}
 
 	ReturnReference(target);
-
+	RecordSendPostProfile(sendPostStartTime);
 
 
 }
@@ -990,4 +1002,48 @@ int IOCPServerRB::GetRecvMessageTPS()
 int IOCPServerRB::GetSendMessageTPS()
 {
 	return sendMessageTps_;
+}
+
+void IOCPServerRB::SetProfileEnabled()
+{
+	if (sessionNum_ >= 12000)
+	{
+		SetEnabled(true);
+	}
+	else
+	{
+		SetEnabled(false);
+	}
+}
+
+
+void IOCPServerRB::RecordSendPostProfile(const LARGE_INTEGER& startTime)
+{
+	LARGE_INTEGER endTime;
+	QueryPerformanceCounter(&endTime);
+
+	long long elapsedTime = endTime.QuadPart - startTime.QuadPart;
+
+	InterlockedIncrement64(&sendPostProfileCall_);
+	InterlockedAdd64(&sendPostProfileTotalTime_, elapsedTime);
+}
+
+double IOCPServerRB::GetSendPostAverageMicroSecond()
+{
+	long long call = InterlockedCompareExchange64(&sendPostProfileCall_, 0, 0);
+
+	if (call == 0)
+	{
+		return 0.0;
+	}
+
+	long long totalTime = InterlockedCompareExchange64(&sendPostProfileTotalTime_, 0, 0);
+
+	return static_cast<double>(totalTime) / static_cast<double>(call) / static_cast<double>(sendPostProfileFrequency_.QuadPart) * 1000000.0;
+
+}
+
+long long IOCPServerRB::GetSendPostProfileCall()
+{
+	return InterlockedCompareExchange64(&sendPostProfileCall_, 0, 0);
 }

@@ -22,6 +22,8 @@ public:
 	virtual void OnMessage(SessionId sessionId, BYTE packetType, CPacket* sendPacket) override;
 	virtual void OnError(int errorCode, const wchar_t* errorLog) override;
 
+	int GetMessageQueueSize();
+
 private:
 
 	enum MessageType
@@ -48,7 +50,7 @@ private:
 	bool PacketProc(MessageData* messageData);
 
 	void AcceptProc(SessionId sessionId);
-	void ReleaseCharacter(SessionId sessionId);
+	void ReleaseProc(SessionId sessionId);
 
 	Character* CreateCharacter(SessionId sessionId);
 	void RegisterCharacter(Character* newPlayer);
@@ -118,6 +120,9 @@ private:
 
 	void AddMovingCharacter(Character* target);
 	void RemoveMovingCharacter(Character* target);
+
+	
+
 
 private:
 	TLockFreeQueue<MessageData*> messageQueue_;

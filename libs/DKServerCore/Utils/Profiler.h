@@ -49,6 +49,7 @@ public:
     {
         if (Enabled)
         {
+            begin_ = true;
             PRO_BEGIN(newTag);
         }
         
@@ -56,7 +57,7 @@ public:
 
     ~Profile()
     {
-        if (Enabled)
+        if (begin_)
         {
             PRO_END(tag_);
         }
@@ -65,4 +66,5 @@ public:
 
 private:
     const WCHAR* tag_;
+    bool begin_;
 };

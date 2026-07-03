@@ -15,7 +15,7 @@ namespace DKServerCore
     constexpr int PacketQueueDefaultBufferSize = 2000;
     constexpr int MessageDataQueueDefaultBufferSize = 500000;
     constexpr long LockFreeQueueMaxSize = 50000;
-    constexpr int LockFreeQueueCas2MaxSize = 200;
+    constexpr int LockFreeQueueCas2MaxSize = 10000;
     constexpr int RingBufferDefaultBufferSize = 5000;
 
     constexpr int ProfilerMaxIndex = 40;

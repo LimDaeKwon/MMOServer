@@ -44,7 +44,10 @@ void MMOTCPServerSingle::OnAccept(const wchar_t* serverIp, unsigned short server
 	messageData->packetType_ = 0;
 	messageData->type_ = MessageTypeAccept;
 
-	messageQueue_.Enqueue(messageData);
+	if (!messageQueue_.Enqueue(messageData))
+	{
+		DebugBreak();
+	}
 
 
 }
@@ -59,7 +62,10 @@ void MMOTCPServerSingle::OnRelease(SessionId sessionId)
 	messageData->packetType_ = 0;
 	messageData->type_ = MessageTypeRelease;
 
-	messageQueue_.Enqueue(messageData);
+	if (!messageQueue_.Enqueue(messageData))
+	{
+		DebugBreak();
+	}
 
 
 }
@@ -76,7 +82,10 @@ void MMOTCPServerSingle::OnMessage(SessionId sessionId, BYTE packetType, CPacket
 	messageData->packetType_ = packetType;
 	messageData->type_ = MessageTypePacket;
 
-	messageQueue_.Enqueue(messageData);
+	if (!messageQueue_.Enqueue(messageData))
+	{
+		DebugBreak();
+	}
 
 }
 
@@ -92,6 +101,9 @@ unsigned int WINAPI MMOTCPServerSingle::LogicThread(LPVOID thisPtr)
 
 	while (true)
 	{
+
+		server->SetProfileEnabled();
+		Profile profile(L"Frame");
 
 		server->MessageLoop();
 
@@ -290,7 +302,7 @@ bool MMOTCPServerSingle::MessageProc(MessageData* msg)
 	}
 	case MessageTypeRelease:
 	{
-		ReleaseCharacter(msg->sessionId_);
+		ReleaseProc(msg->sessionId_);
 		break;
 
 	}
@@ -299,9 +311,9 @@ bool MMOTCPServerSingle::MessageProc(MessageData* msg)
 	return true;
 }
 
-void MMOTCPServerSingle::ReleaseCharacter(SessionId sessionId)
+void MMOTCPServerSingle::ReleaseProc(SessionId sessionId)
 {
-	Profile profile(L"OnRelease");
+	Profile profile(L"ReleaseProc");
 
 	Character* target = characterMap_.at(sessionId);
 
@@ -464,6 +476,11 @@ void MMOTCPServerSingle::RemoveMovingCharacter(Character* target)
 
 	target->movingIndex_ = -1;
 	target->isMove_ = false;
+}
+
+int MMOTCPServerSingle::GetMessageQueueSize()
+{
+	return messageQueue_.GetSize();
 }
 
 

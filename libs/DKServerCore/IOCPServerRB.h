@@ -115,6 +115,12 @@ public:
     int GetRecvMessageTPS();
     int GetSendMessageTPS();
 
+    void SetProfileEnabled();
+
+    void RecordSendPostProfile(const LARGE_INTEGER& startTime);
+    double GetSendPostAverageMicroSecond();
+    long long GetSendPostProfileCall();
+
     unsigned int acceptTps_;
     unsigned int recvMessageTps_;
     unsigned int sendMessageTps_;
@@ -142,4 +148,8 @@ public:
     Session* sessionArray_;
 
     LFObjectFreeList<int> indexList_;
+
+    LARGE_INTEGER sendPostProfileFrequency_;
+    long long sendPostProfileTotalTime_;
+    long long sendPostProfileCall_;
 };
