@@ -4,12 +4,14 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <mutex>
 
 DWORD tlsIndex;
 LARGE_INTEGER frequency;
 bool Enabled = true;
 
 std::vector<ProfileManagement*> profileList;
+std::mutex profileListLock;
 
 void ProfileBegin(const WCHAR* tagName)
 {
@@ -24,6 +26,7 @@ void ProfileBegin(const WCHAR* tagName)
         TlsSetValue(tlsIndex, profileManagement);
 
         profileManagement->threadId_ = GetCurrentThreadId();
+        std::lock_guard<std::mutex> lock(profileListLock);
         profileList.push_back(profileManagement);
     }
 
@@ -181,6 +184,7 @@ void ProfileDataOutText(const WCHAR* fileName)
 
 void ProfileReset()
 {
+    std::lock_guard<std::mutex> lock(profileListLock);
     for (int profileIndex = 0; profileIndex < static_cast<int>(profileList.size()); ++profileIndex)
     {
         ProfileManagement* profileManagement = profileList[profileIndex];
