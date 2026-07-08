@@ -47,18 +47,30 @@ int main()
 	if (!parser.Load(ThreadFileName))
 	{
 		printf("Config load failed: %s\n", parser.GetLastError().c_str());
+		while (1)
+		{
+
+		}
 		return 1;
 	}
 
 	DKServerCore::IocpServerStartConfig config;
 	if (!SetConfigValue(parser, config))
 	{
+		while (1)
+		{
+
+		}
 		return 1;
 	}
 	unsigned int bufferMode;
 	if (!parser.GetUnsignedInt("IOCP", "BUFFERMODE", &bufferMode))
 	{
 		printf("Missing or invalid config: [IOCP] BUFFERMODE\n");
+		while (1)
+		{
+
+		}
 		return false;
 	}
 	MMOTCPServerSingleRB* gameInstanceRB;

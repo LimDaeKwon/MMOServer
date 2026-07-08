@@ -232,6 +232,7 @@ void SelectServer::CommitAcceptedClients()
 		sessions_.insert(std::unordered_map<SessionId, Session*>::value_type(newSession->sessionId_, newSession));
 
 		OnAccept(newSession->sessionId_);
+		++acceptCount_;
 	}
 
 	pendingAcceptSessions_.clear();
@@ -282,6 +283,9 @@ void SelectServer::SendPacket(SessionId sessionId, CPacket* packet)
 
 			Disconnect(target->sessionId_);
 		}
+
+		++sendPacketCount_;
+
 	}
 	
 }
@@ -295,6 +299,47 @@ void SelectServer::Disconnect(SessionId sessionId)
 	}
 	freeSessionStack_.push(target);
 	target->isDelete_ = 1;
+	++disconnectCount_;
+}
+
+unsigned int SelectServer::GetSessionCount() const
+{
+	return static_cast<unsigned int>(sessions_.size());
+}
+
+unsigned int SelectServer::GetAcceptTPS() const
+{
+	return acceptTPS_;
+}
+
+unsigned int SelectServer::GetRecvPacketTPS() const
+{
+	return recvPacketTPS_;
+}
+
+unsigned int SelectServer::GetSendPacketTPS() const
+{
+	return sendPacketTPS_;
+}
+
+unsigned int SelectServer::GetSendCompleteTPS() const
+{
+	return sendCompleteTPS_;
+}
+
+unsigned int SelectServer::GetDisconnectTPS() const
+{
+	return disconnectTPS_;
+}
+
+unsigned int SelectServer::GetReleaseTPS() const
+{
+	return releaseTPS_;
+}
+
+unsigned int SelectServer::GetFrameTPS() const
+{
+	return frameTPS_;
 }
 
 void SelectServer::DeleteDisconnect()
@@ -318,6 +363,7 @@ void SelectServer::DeleteDisconnect()
 				sessionFreeList_.Free(session);
 			}
 			sessions_.erase(session->sessionId_);
+			++releaseCount_;
 		}
 	}
 }
@@ -502,6 +548,7 @@ void SelectServer::Receive(Session* target)
 
 			OnMessage(target->sessionId_, header.byType_, packetBuffer);
 			CPacket::Free(packetBuffer);
+			++recvPacketCount_;
 		}
 	}
 
@@ -550,6 +597,7 @@ void SelectServer::SendAll(Session* target)
 	
 
 	target->sendQueue_.MoveFront(sentBytes);
+	++sendCompleteCount_;
 }
 
 
@@ -582,7 +630,7 @@ void SelectServer::InitOldTick()
 
 void SelectServer::SetProfileEnabled()
 {
-	if (sessions_.size() >= 12000)
+	if (sessions_.size() >= 11000)
 	{
 		SetEnabled(true);
 	}
@@ -609,6 +657,30 @@ unsigned int __stdcall SelectServer::GameLoopThread(void* thisPointer)
 		thisForGameLoop->TryUpdate();
 
 		//ServerControl();
+
+		++thisForGameLoop->frameCount_;
+
+		DWORD now = timeGetTime();
+		if (now - thisForGameLoop->lastMonitorTick_ >= 1000)
+		{
+			thisForGameLoop->acceptTPS_ = thisForGameLoop->acceptCount_;
+			thisForGameLoop->recvPacketTPS_ = thisForGameLoop->recvPacketCount_;
+			thisForGameLoop->sendPacketTPS_ = thisForGameLoop->sendPacketCount_;
+			thisForGameLoop->sendCompleteTPS_ = thisForGameLoop->sendCompleteCount_;
+			thisForGameLoop->disconnectTPS_ = thisForGameLoop->disconnectCount_;
+			thisForGameLoop->releaseTPS_ = thisForGameLoop->releaseCount_;
+			thisForGameLoop->frameTPS_ = thisForGameLoop->frameCount_;
+
+			thisForGameLoop->acceptCount_ = 0;
+			thisForGameLoop->recvPacketCount_ = 0;
+			thisForGameLoop->sendPacketCount_ = 0;
+			thisForGameLoop->sendCompleteCount_ = 0;
+			thisForGameLoop->disconnectCount_ = 0;
+			thisForGameLoop->releaseCount_ = 0;
+			thisForGameLoop->frameCount_ = 0;
+
+			thisForGameLoop->lastMonitorTick_ = now;
+		}
 
 	}
 

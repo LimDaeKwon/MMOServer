@@ -23,6 +23,16 @@ public:
     void SendPacket(SessionId sessionId, CPacket* packet);
     void Disconnect(SessionId sessionId);
 
+    unsigned int GetSessionCount() const;
+    unsigned int GetAcceptTPS() const;
+    unsigned int GetRecvPacketTPS() const;
+    unsigned int GetSendPacketTPS() const;
+    unsigned int GetSendCompleteTPS() const;
+    unsigned int GetDisconnectTPS() const;
+    unsigned int GetReleaseTPS() const;
+    unsigned int GetFrameTPS() const;
+
+
 protected:
     virtual void OnAccept(SessionId sessionId) = 0;
     virtual void OnMessage(SessionId sessionId, unsigned char packetType, CPacket* packet) = 0;
@@ -59,6 +69,26 @@ private:
 	unsigned int oldTick_;
     unsigned int maxSessionCount_;
     unsigned char packetCode_;
+
+
+    unsigned int acceptCount_ = 0;
+    unsigned int recvPacketCount_ = 0;
+    unsigned int sendPacketCount_ = 0;
+    unsigned int sendCompleteCount_ = 0;
+    unsigned int disconnectCount_ = 0;
+    unsigned int releaseCount_ = 0;
+    unsigned int frameCount_ = 0;
+
+    unsigned int acceptTPS_ = 0;
+    unsigned int recvPacketTPS_ = 0;
+    unsigned int sendPacketTPS_ = 0;
+    unsigned int sendCompleteTPS_ = 0;
+    unsigned int disconnectTPS_ = 0;
+    unsigned int releaseTPS_ = 0;
+    unsigned int frameTPS_ = 0;
+
+    DWORD lastMonitorTick_ = 0;
+
 
     
 

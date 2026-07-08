@@ -16,6 +16,50 @@ SelectMMOTCPFighter::~SelectMMOTCPFighter()
 
 }
 
+unsigned int SelectMMOTCPFighter::GetCharacterCount() const
+{
+    return static_cast<unsigned int>(characterMap_.size());
+}
+
+unsigned int SelectMMOTCPFighter::GetMovingCharacterCount() const
+{
+    return static_cast<unsigned int>(movingCharacters_.size());
+}
+
+unsigned int SelectMMOTCPFighter::GetUpdateTPS() const
+{
+    return updateTPS_;
+}
+
+unsigned int SelectMMOTCPFighter::GetMoveStartTPS() const
+{
+    return moveStartTPS_;
+}
+
+unsigned int SelectMMOTCPFighter::GetMoveStopTPS() const
+{
+    return moveStopTPS_;
+}
+
+unsigned int SelectMMOTCPFighter::GetAttackTPS() const
+{
+    return attackTPS_;
+}
+
+unsigned int SelectMMOTCPFighter::GetEchoTPS() const
+{
+    return echoTPS_;
+}
+
+unsigned int SelectMMOTCPFighter::GetSyncCount() const
+{
+    return syncTotalCount_;
+}
+
+unsigned int SelectMMOTCPFighter::GetSyncTPS() const
+{
+    return syncTPS_;
+}
 void SelectMMOTCPFighter::OnAccept(SessionId sessionId)
 {
     Profile profile(L"OnAccept");
@@ -117,6 +161,7 @@ void SelectMMOTCPFighter::OnRelease(SessionId sessionId)
 void SelectMMOTCPFighter::OnUpdate()
 {
     Profile profile(L"OnUpdate");
+    ++updateCount_;
     for (unsigned int i = 0; i < movingCharacters_.size();)
     {
         Character* target = movingCharacters_[i];
@@ -131,6 +176,28 @@ void SelectMMOTCPFighter::OnUpdate()
             ++i;
         }
     }
+
+    DWORD now = timeGetTime();
+    if (now - lastContentsMonitorTick_ >= 1000)
+    {
+        updateTPS_ = updateCount_;
+        moveStartTPS_ = moveStartCount_;
+        moveStopTPS_ = moveStopCount_;
+        attackTPS_ = attackCount_;
+        echoTPS_ = echoCount_;
+        syncTPS_ = syncCount_;
+
+        updateCount_ = 0;
+        moveStartCount_ = 0;
+        moveStopCount_ = 0;
+        attackCount_ = 0;
+        echoCount_ = 0;
+        syncCount_ = 0;
+
+        lastContentsMonitorTick_ = now;
+    }
+
+
 }
 
 void SelectMMOTCPFighter::GameRun(Character* target)
@@ -613,7 +680,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned c
     CPacket* packetMoveStart = CPacket::Alloc();
     MakePacketMoveStart(target->sessionId_, packetMoveStart, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetMoveStart);
-
+    ++moveStartCount_;
     return true;
 }
 
@@ -633,7 +700,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned ch
     CPacket* packetMoveStop = CPacket::Alloc();
     MakePacketMoveStop(target->sessionId_, packetMoveStop, target->sessionId_, target->direction_, target->x_, target->y_);
     CPacket::Free(packetMoveStop);
-
+    ++moveStopCount_;
     return true;
 }
 
@@ -651,7 +718,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned cha
     MakePacketAttack1(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetAttack);
     HitCheck(target, 1);
-
+    ++attackCount_;
     return true;
 }
 
@@ -668,7 +735,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned cha
     MakePacketAttack2(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetAttack);
     HitCheck(target, 2);
-
+    ++attackCount_;
     return true;
 }
 
@@ -685,6 +752,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned cha
     MakePacketAttack3(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetAttack);
     HitCheck(target, 3);
+    ++attackCount_;
     return true;
 }
 
@@ -806,6 +874,8 @@ void SelectMMOTCPFighter::SendSync(Character* target)
     CPacket* packetSync = CPacket::Alloc();
     MakePacketSync(target->sessionId_, packetSync, target->sessionId_, target->x_, target->y_);
     CPacket::Free(packetSync);
+    ++syncCount_;
+    ++syncTotalCount_;
 }
 
 void SelectMMOTCPFighter::ApplyClientPosition(Character* target, unsigned short x, unsigned short y)

@@ -25,6 +25,9 @@ public:
 
 	int GetMessageQueueSize();
 
+
+
+
 private:
 
 	enum MessageType
@@ -143,6 +146,8 @@ private:
 
 	int globalLoop_ = 0;
 	int count_ = 0;
+
+
 
 	
 

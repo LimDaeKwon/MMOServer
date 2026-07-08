@@ -14,6 +14,17 @@ public:
 	SelectMMOTCPFighter();
 	virtual ~SelectMMOTCPFighter();
 
+	unsigned int GetCharacterCount() const;
+	unsigned int GetMovingCharacterCount() const;
+	unsigned int GetUpdateTPS() const;
+	unsigned int GetMoveStartTPS() const;
+	unsigned int GetMoveStopTPS() const;
+	unsigned int GetAttackTPS() const;
+	unsigned int GetEchoTPS() const;
+	unsigned int GetSyncCount() const;
+	unsigned int GetSyncTPS() const;
+
+
 public:
 
 	virtual void OnAccept(SessionId sessionId);
@@ -130,6 +141,25 @@ private:
 	SectorUpdateAround sectorUpdateAround_[SectorMaxY][SectorMaxX][3][3];
 
 	std::vector<Character*> movingCharacters_;
+
+
+
+	unsigned int updateCount_ = 0;
+	unsigned int moveStartCount_ = 0;
+	unsigned int moveStopCount_ = 0;
+	unsigned int attackCount_ = 0;
+	unsigned int echoCount_ = 0;
+	unsigned int syncCount_ = 0;
+	unsigned int syncTotalCount_ = 0;
+
+	unsigned int updateTPS_ = 0;
+	unsigned int moveStartTPS_ = 0;
+	unsigned int moveStopTPS_ = 0;
+	unsigned int attackTPS_ = 0;
+	unsigned int echoTPS_ = 0;
+	unsigned int syncTPS_ = 0;
+
+	DWORD lastContentsMonitorTick_ = 0;
 
 
 

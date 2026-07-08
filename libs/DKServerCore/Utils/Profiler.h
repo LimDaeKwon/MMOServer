@@ -5,7 +5,7 @@
 
 #include "CoreDefines.h"
 
-#define DK_ENABLE_PROFILE
+//#define DK_ENABLE_PROFILE
 
 #ifdef DK_ENABLE_PROFILE
 #define PRO_BEGIN(tagName) ProfileBegin(tagName)

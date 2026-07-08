@@ -5,6 +5,7 @@
 #include <fstream>
 #include <limits>
 #include <sstream>
+#include <iostream>
 #include <stdexcept>
 
 bool DKParser::Load(const std::string& filePath)
@@ -16,6 +17,7 @@ bool DKParser::Load(const std::string& filePath)
     if (!file.is_open())
     {
         lastError_ = "설정 파일을 열 수 없습니다: " + filePath;
+		std::cout <<"can not open "  << std::endl;
         return false;
     }
 
@@ -55,6 +57,8 @@ bool DKParser::Load(const std::string& filePath)
         {
             SetError(lineNumber, "올바르지 않은 설정 형식입니다.");
             Clear();
+
+            std::cout << "Wrong" << std::endl;
             return false;
         }
 
@@ -62,6 +66,7 @@ bool DKParser::Load(const std::string& filePath)
         {
             SetError(lineNumber, "설정값보다 먼저 섹션을 선언해야 합니다.");
             Clear();
+            std::cout << "SectionFirst" << std::endl;
             return false;
         }
 

@@ -656,8 +656,6 @@ void IOCPServer::SendPost(Session* target)
 		return;
 	}
 
-	int wsaSendReturn;
-
 	if (InterlockedExchange8(reinterpret_cast<volatile char*>(&target->sendFlag_), 1) == 0)
 	{
 		WSABUF localWsaBuf[DKServerCore::MaxBatchSize];

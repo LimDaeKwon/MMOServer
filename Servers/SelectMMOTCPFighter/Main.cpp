@@ -42,12 +42,14 @@ int main()
         return false;
     }
 
+    SelectMMOTCPFighter* selectInstance = nullptr;
+
 
     if (sendQueueTypeValue)
     {
 		printf("Using SelectMMOTCPFighter\n");
-        SelectMMOTCPFighter* instance = new SelectMMOTCPFighter();
-        instance->Start(config);
+        selectInstance = new SelectMMOTCPFighter();
+        selectInstance->Start(config);
     }
     else
     {
@@ -56,7 +58,46 @@ int main()
         instance->Start(config);
     }
 
-    Sleep(900000);
+	int loopCount = 0;
+    while (selectInstance != nullptr)
+    {
+        wprintf(L"\n------------------------------------------------------------\n");
+        wprintf(L"SelectMMOTCPFighter Monitoring\n");
+        wprintf(L"Session  : %u    Character : %u    Moving : %u\n",
+            selectInstance->GetSessionCount(),
+            selectInstance->GetCharacterCount(),
+            selectInstance->GetMovingCharacterCount());
+
+        wprintf(L"\nTPS\n");
+        wprintf(L"FrameTPS : %u    UpdateTPS : %u\n",
+            selectInstance->GetFrameTPS(),
+            selectInstance->GetUpdateTPS());
+
+        wprintf(L"AcceptTPS : %u    RecvPacketTPS : %u    SendPacketTPS : %u   \n",
+            selectInstance->GetAcceptTPS(),
+            selectInstance->GetRecvPacketTPS(),
+            selectInstance->GetSendPacketTPS());
+
+        wprintf(L"MoveStartTPS : %u    MoveStopTPS : %u    AttackTPS : %u    EchoTPS : %u\n",
+            selectInstance->GetMoveStartTPS(),
+            selectInstance->GetMoveStopTPS(),
+            selectInstance->GetAttackTPS(),
+            selectInstance->GetEchoTPS());
+
+        wprintf(L"DisconnectTPS : %u    ReleaseTPS : %u\n",
+            selectInstance->GetDisconnectTPS(),
+            selectInstance->GetReleaseTPS());
+
+        wprintf(L"SyncTPS : %u    SyncTotal : %u\n",
+            selectInstance->GetSyncTPS(),
+            selectInstance->GetSyncCount());
+        if (++loopCount == 9000)
+        {
+            break;
+        }
+        Sleep(1000);
+    }
+
 	ProfileDataOutText(L"SelectMMOTCPFighter_Profile.txt");
 
 
