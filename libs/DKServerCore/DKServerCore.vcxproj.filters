@@ -113,6 +113,9 @@
     <ClInclude Include="IOCPServerRB.h">
       <Filter>NetworkLibaray</Filter>
     </ClInclude>
+    <ClInclude Include="NetLibraryLock.h">
+      <Filter>NetworkLibaray</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DKServerCore.cpp">
@@ -176,6 +179,9 @@
       <Filter>Utils</Filter>
     </ClCompile>
     <ClCompile Include="IOCPServerRB.cpp">
+      <Filter>NetworkLibaray</Filter>
+    </ClCompile>
+    <ClCompile Include="NetLibraryLock.cpp">
       <Filter>NetworkLibaray</Filter>
     </ClCompile>
   </ItemGroup>

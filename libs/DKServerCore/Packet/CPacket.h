@@ -17,6 +17,7 @@ public:
     friend class TLSObjectFreeList<CPacket>;
     friend class ContentsNetLibrary;
     friend class NetLibrary;
+    friend class NetLibraryLock;
 
     virtual ~CPacket();
 

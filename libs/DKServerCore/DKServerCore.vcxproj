@@ -164,6 +164,7 @@
     <ClInclude Include="Monitoring\CPUUsage.h" />
     <ClInclude Include="Monitoring\ProcessMonitoring.h" />
     <ClInclude Include="Monitoring\SystemMonitoring.h" />
+    <ClInclude Include="NetLibraryLock.h" />
     <ClInclude Include="NetworkLibrary\ContentGroupBase.h" />
     <ClInclude Include="NetworkLibrary\ContentsNetLibrary.h" />
     <ClInclude Include="NetworkLibrary\GroupManager.h" />
@@ -192,6 +193,7 @@
     <ClCompile Include="Monitoring\CPUUsage.cpp" />
     <ClCompile Include="Monitoring\ProcessMonitoring.cpp" />
     <ClCompile Include="Monitoring\SystemMonitoring.cpp" />
+    <ClCompile Include="NetLibraryLock.cpp" />
     <ClCompile Include="NetworkLibrary\ContentGroupBase.cpp" />
     <ClCompile Include="NetworkLibrary\ContentsNetLibrary.cpp" />
     <ClCompile Include="NetworkLibrary\GroupManager.cpp" />
