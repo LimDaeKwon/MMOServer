@@ -232,7 +232,7 @@ void SelectServer::CommitAcceptedClients()
 		sessions_.insert(std::unordered_map<SessionId, Session*>::value_type(newSession->sessionId_, newSession));
 
 		OnAccept(newSession->sessionId_);
-		++acceptCount_;
+		//++acceptCount_;
 	}
 
 	pendingAcceptSessions_.clear();
@@ -284,7 +284,7 @@ void SelectServer::SendPacket(SessionId sessionId, CPacket* packet)
 			Disconnect(target->sessionId_);
 		}
 
-		++sendPacketCount_;
+		//++sendPacketCount_;
 
 	}
 	
@@ -299,7 +299,7 @@ void SelectServer::Disconnect(SessionId sessionId)
 	}
 	freeSessionStack_.push(target);
 	target->isDelete_ = 1;
-	++disconnectCount_;
+	//++disconnectCount_;
 }
 
 unsigned int SelectServer::GetSessionCount() const
@@ -363,7 +363,7 @@ void SelectServer::DeleteDisconnect()
 				sessionFreeList_.Free(session);
 			}
 			sessions_.erase(session->sessionId_);
-			++releaseCount_;
+			//++releaseCount_;
 		}
 	}
 }
@@ -548,7 +548,7 @@ void SelectServer::Receive(Session* target)
 
 			OnMessage(target->sessionId_, header.byType_, packetBuffer);
 			CPacket::Free(packetBuffer);
-			++recvPacketCount_;
+			//++recvPacketCount_;
 		}
 	}
 
@@ -597,7 +597,7 @@ void SelectServer::SendAll(Session* target)
 	
 
 	target->sendQueue_.MoveFront(sentBytes);
-	++sendCompleteCount_;
+	//++sendCompleteCount_;
 }
 
 
@@ -630,7 +630,7 @@ void SelectServer::InitOldTick()
 
 void SelectServer::SetProfileEnabled()
 {
-	if (sessions_.size() >= 11000)
+	if (sessions_.size() >= 9000)
 	{
 		SetEnabled(true);
 	}
@@ -644,6 +644,37 @@ unsigned int __stdcall SelectServer::GameLoopThread(void* thisPointer)
 {
 	SelectServer* thisForGameLoop = static_cast<SelectServer*>(thisPointer);
 	thisForGameLoop->InitOldTick();
+	SetEnabled(true);
+	{ Profile profile(L"SendPacket"); }
+	{ Profile profile(L"SendEnqueue"); }
+	{ Profile profile(L"SendAll"); }
+	{ Profile profile(L"WSASend"); }
+
+	{ Profile profile(L"GameRun"); }
+	{ Profile profile(L"SendPacketToSectors"); }
+	{ Profile profile(L"SendPacketAround"); }
+	{ Profile profile(L"SectorUpdate"); }
+	{ Profile profile(L"GetUpdateSectorAround"); }
+
+	{ Profile profile(L"OnMessage"); }
+	{ Profile profile(L"NetPacketProcMoveStop"); }
+	{ Profile profile(L"NetPacketProcMoveStart"); }
+	{ Profile profile(L"NetPacketProcAttack"); }
+	{ Profile profile(L"HitCheck"); }
+	{ Profile profile(L"NetPacketEcho"); }
+
+	{ Profile profile(L"SessionAlloc"); }
+	{ Profile profile(L"OnAccept"); }
+	{ Profile profile(L"SessionDelete"); }
+	{ Profile profile(L"OnRelease"); }
+	{ Profile profile(L"Release"); }
+
+	{ Profile profile(L"OnUpdate"); }
+	{ Profile profile(L"Network"); }
+	{ Profile profile(L"Frame"); }
+	SetEnabled(false);
+
+
 
 	while (true)
 	{
@@ -658,7 +689,7 @@ unsigned int __stdcall SelectServer::GameLoopThread(void* thisPointer)
 
 		//ServerControl();
 
-		++thisForGameLoop->frameCount_;
+	/*	++thisForGameLoop->frameCount_;
 
 		DWORD now = timeGetTime();
 		if (now - thisForGameLoop->lastMonitorTick_ >= 1000)
@@ -680,7 +711,7 @@ unsigned int __stdcall SelectServer::GameLoopThread(void* thisPointer)
 			thisForGameLoop->frameCount_ = 0;
 
 			thisForGameLoop->lastMonitorTick_ = now;
-		}
+		}*/
 
 	}
 

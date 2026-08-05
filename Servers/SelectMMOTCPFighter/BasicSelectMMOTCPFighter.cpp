@@ -429,14 +429,58 @@ void BasicSelectMMOTCPFighter::GetSectorAroundForHit(Character* target, int boun
 
 }
 
-SectorUpdateAround* BasicSelectMMOTCPFighter::GetUpdateSectorAround(Character* target)
+void BasicSelectMMOTCPFighter::GetUpdateSectorAround(Character* target, SectorUpdateAround* updateAround)
 {
     Profile profile(L"GetUpdateSectorAround");
 
-    int moveIndexX = static_cast<int>(target->characterSectorPos_.x_) - static_cast<int>(target->oldSectorPos_.x_) + 1;
-    int moveIndexY = static_cast<int>(target->characterSectorPos_.y_) - static_cast<int>(target->oldSectorPos_.y_) + 1;
+    SectorAround oldSectorAround;
+    SectorAround curSectorAround;
+    SectorAround* removeSector = &updateAround->removeSector_;
+    SectorAround* addSector = &updateAround->addSector_;
 
-    return &sectorUpdateAround_[target->oldSectorPos_.y_][target->oldSectorPos_.x_][moveIndexY][moveIndexX];
+    removeSector->count_ = 0;
+    addSector->count_ = 0;
+
+    GetSectorAround(target->oldSectorPos_.x_, target->oldSectorPos_.y_, &oldSectorAround);
+    GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &curSectorAround);
+
+    for (unsigned int oldIndex = 0; oldIndex < oldSectorAround.count_; ++oldIndex)
+    {
+        bool isRemoveSector = true;
+
+        for (unsigned int curIndex = 0; curIndex < curSectorAround.count_; ++curIndex)
+        {
+            if (oldSectorAround.around_[oldIndex].x_ == curSectorAround.around_[curIndex].x_ &&  oldSectorAround.around_[oldIndex].y_ == curSectorAround.around_[curIndex].y_)
+            {
+                isRemoveSector = false;
+                break;
+            }
+        }
+
+        if (isRemoveSector)
+        {
+            AddSectorPosition(removeSector, oldSectorAround.around_[oldIndex].x_, oldSectorAround.around_[oldIndex].y_);
+        }
+    }
+
+    for (unsigned int curIndex = 0; curIndex < curSectorAround.count_; ++curIndex)
+    {
+        bool isAddSector = true;
+
+        for (unsigned int oldIndex = 0; oldIndex < oldSectorAround.count_; ++oldIndex)
+        {
+            if (curSectorAround.around_[curIndex].x_ == oldSectorAround.around_[oldIndex].x_ && curSectorAround.around_[curIndex].y_ == oldSectorAround.around_[oldIndex].y_)
+            {
+                isAddSector = false;
+                break;
+            }
+        }
+
+        if (isAddSector)
+        {
+            AddSectorPosition(addSector, curSectorAround.around_[curIndex].x_, curSectorAround.around_[curIndex].y_);
+        }
+    }
 
 
 
@@ -466,58 +510,11 @@ bool BasicSelectMMOTCPFighter::SectorUpdateCharacter(Character* target)
 void BasicSelectMMOTCPFighter::SectorUpdate(Character* target)
 {
     Profile profile(L"SectorUpdate");
+    SectorUpdateAround updateAround;
+    GetUpdateSectorAround(target, &updateAround);
 
-    SectorAround oldSectorAround;
-    SectorAround curSectorAround;
-    SectorAround removeSector;
-    SectorAround addSector;
-
-    removeSector.count_ = 0;
-    addSector.count_ = 0;
-
-    GetSectorAround(target->oldSectorPos_.x_, target->oldSectorPos_.y_, &oldSectorAround);
-    GetSectorAround(target->characterSectorPos_.x_, target->characterSectorPos_.y_, &curSectorAround);
-
-    for (unsigned int oldIndex = 0; oldIndex < oldSectorAround.count_; ++oldIndex)
-    {
-        bool isRemoveSector = true;
-
-        for (unsigned int curIndex = 0; curIndex < curSectorAround.count_; ++curIndex)
-        {
-            if (oldSectorAround.around_[oldIndex].x_ == curSectorAround.around_[curIndex].x_ && oldSectorAround.around_[oldIndex].y_ == curSectorAround.around_[curIndex].y_)
-            {
-                isRemoveSector = false;
-                break;
-            }
-        }
-
-        if (isRemoveSector)
-        {
-            AddSectorPosition(&removeSector, oldSectorAround.around_[oldIndex].x_, oldSectorAround.around_[oldIndex].y_);
-        }
-    }
-
-    for (unsigned int curIndex = 0; curIndex < curSectorAround.count_; ++curIndex)
-    {
-        bool isAddSector = true;
-
-        for (unsigned int oldIndex = 0; oldIndex < oldSectorAround.count_; ++oldIndex)
-        {
-            if (curSectorAround.around_[curIndex].x_ == oldSectorAround.around_[oldIndex].x_ && curSectorAround.around_[curIndex].y_ == oldSectorAround.around_[oldIndex].y_)
-            {
-                isAddSector = false;
-                break;
-            }
-        }
-
-        if (isAddSector)
-        {
-            AddSectorPosition(&addSector, curSectorAround.around_[curIndex].x_, curSectorAround.around_[curIndex].y_);
-        }
-    }
-
-    SendRemoveSectorUpdate(target, &removeSector);
-    SendAddSectorUpdate(target, &addSector);
+    SendRemoveSectorUpdate(target, &updateAround.removeSector_);
+    SendAddSectorUpdate(target, &updateAround.addSector_);
 }
 
 void BasicSelectMMOTCPFighter::MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)

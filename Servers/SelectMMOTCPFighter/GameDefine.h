@@ -34,9 +34,9 @@ constexpr int Attack1Damage = 1;
 constexpr int Attack2Damage = 2;
 constexpr int Attack3Damage = 3;
 
-constexpr int SectorMaxX = 40;
+constexpr int SectorMaxX = 32;
 constexpr int SectorMaxY = 40;
-constexpr int SectorXSize = 160;
+constexpr int SectorXSize = 200;
 constexpr int SectorYSize = 160;
 
 constexpr int DefaultHp = 100;

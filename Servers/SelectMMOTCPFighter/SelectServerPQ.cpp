@@ -627,7 +627,7 @@ void SelectServerPQ::InitOldTick()
 
 void SelectServerPQ::SetProfileEnabled()
 {
-	if (sessions_.size() >= 11000)
+	if (sessions_.size() >= 9000)
 	{
 		SetEnabled(true);
 	}
@@ -641,6 +641,36 @@ unsigned int __stdcall SelectServerPQ::GameLoopThread(void* thisPointer)
 {
 	SelectServerPQ* thisForGameLoop = static_cast<SelectServerPQ*>(thisPointer);
 	thisForGameLoop->InitOldTick();
+
+	SetEnabled(true);
+	{ Profile profile(L"SendPacket"); }
+	{ Profile profile(L"SendEnqueue"); }
+	{ Profile profile(L"SendAll"); }
+	{ Profile profile(L"WSASend"); }
+
+	{ Profile profile(L"GameRun"); }
+	{ Profile profile(L"SendPacketToSectors"); }
+	{ Profile profile(L"SendPacketAround"); }
+	{ Profile profile(L"SectorUpdate"); }
+	{ Profile profile(L"GetUpdateSectorAround"); }
+
+	{ Profile profile(L"OnMessage"); }
+	{ Profile profile(L"NetPacketProcMoveStop"); }
+	{ Profile profile(L"NetPacketProcMoveStart"); }
+	{ Profile profile(L"NetPacketProcAttack"); }
+	{ Profile profile(L"HitCheck"); }
+	{ Profile profile(L"NetPacketEcho"); }
+
+	{ Profile profile(L"SessionAlloc"); }
+	{ Profile profile(L"OnAccept"); }
+	{ Profile profile(L"SessionDelete"); }
+	{ Profile profile(L"OnRelease"); }
+	{ Profile profile(L"Release"); }
+
+	{ Profile profile(L"OnUpdate"); }
+	{ Profile profile(L"Network"); }
+	{ Profile profile(L"Frame"); }
+	SetEnabled(false);
 
 	while (true)
 	{

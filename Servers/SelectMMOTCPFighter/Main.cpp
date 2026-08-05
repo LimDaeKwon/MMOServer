@@ -58,46 +58,53 @@ int main()
         instance->Start(config);
     }
 
-	int loopCount = 0;
-    while (selectInstance != nullptr)
-    {
-        wprintf(L"\n------------------------------------------------------------\n");
-        wprintf(L"SelectMMOTCPFighter Monitoring\n");
-        wprintf(L"Session  : %u    Character : %u    Moving : %u\n",
-            selectInstance->GetSessionCount(),
-            selectInstance->GetCharacterCount(),
-            selectInstance->GetMovingCharacterCount());
+	//int loopCount = 0;
+ //   while (selectInstance != nullptr)
+ //   {
+ //       wprintf(L"\n------------------------------------------------------------\n");
+ //       wprintf(L"SelectMMOTCPFighter Monitoring\n");
+ //       wprintf(L"Session  : %u    Character : %u    Moving : %u\n",
+ //           selectInstance->GetSessionCount(),
+ //           selectInstance->GetCharacterCount(),
+ //           selectInstance->GetMovingCharacterCount());
 
-        wprintf(L"\nTPS\n");
-        wprintf(L"FrameTPS : %u    UpdateTPS : %u\n",
-            selectInstance->GetFrameTPS(),
-            selectInstance->GetUpdateTPS());
+ //       wprintf(L"\nTPS\n");
+ //       wprintf(L"FrameTPS : %u    UpdateTPS : %u\n",
+ //           selectInstance->GetFrameTPS(),
+ //           selectInstance->GetUpdateTPS());
 
-        wprintf(L"AcceptTPS : %u    RecvPacketTPS : %u    SendPacketTPS : %u   \n",
-            selectInstance->GetAcceptTPS(),
-            selectInstance->GetRecvPacketTPS(),
-            selectInstance->GetSendPacketTPS());
+ //       wprintf(L"AcceptTPS : %u    RecvPacketTPS : %u    SendPacketTPS : %u   \n",
+ //           selectInstance->GetAcceptTPS(),
+ //           selectInstance->GetRecvPacketTPS(),
+ //           selectInstance->GetSendPacketTPS());
 
-        wprintf(L"MoveStartTPS : %u    MoveStopTPS : %u    AttackTPS : %u    EchoTPS : %u\n",
-            selectInstance->GetMoveStartTPS(),
-            selectInstance->GetMoveStopTPS(),
-            selectInstance->GetAttackTPS(),
-            selectInstance->GetEchoTPS());
+ //       wprintf(L"MoveStartTPS : %u    MoveStopTPS : %u    AttackTPS : %u    EchoTPS : %u\n",
+ //           selectInstance->GetMoveStartTPS(),
+ //           selectInstance->GetMoveStopTPS(),
+ //           selectInstance->GetAttackTPS(),
+ //           selectInstance->GetEchoTPS());
 
-        wprintf(L"DisconnectTPS : %u    ReleaseTPS : %u\n",
-            selectInstance->GetDisconnectTPS(),
-            selectInstance->GetReleaseTPS());
+ //       wprintf(L"DisconnectTPS : %u    ReleaseTPS : %u\n",
+ //           selectInstance->GetDisconnectTPS(),
+ //           selectInstance->GetReleaseTPS());
 
-        wprintf(L"SyncTPS : %u    SyncTotal : %u\n",
-            selectInstance->GetSyncTPS(),
-            selectInstance->GetSyncCount());
-        if (++loopCount == 9000)
-        {
-            break;
-        }
-        Sleep(1000);
-    }
-
+ //       wprintf(L"SyncTPS : %u    SyncTotal : %u\n",
+ //           selectInstance->GetSyncTPS(),
+ //           selectInstance->GetSyncCount());
+ //       if (++loopCount == 9000)
+ //       {
+ //           break;
+ //       }
+ //      
+ //   }
+    Sleep(300000);
+    wprintf(L"5Minutes\n");
+    Sleep(300000);
+    wprintf(L"10Minutes\n");
+    Sleep(300000);
+    wprintf(L"15Minutes\n");
+    Sleep(300000);
+    wprintf(L"20Minutes\n");
 	ProfileDataOutText(L"SelectMMOTCPFighter_Profile.txt");
 
 

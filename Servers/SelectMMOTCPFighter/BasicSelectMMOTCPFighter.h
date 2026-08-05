@@ -28,7 +28,7 @@ public:
 
 	void GetSectorAroundForHit(Character* target, int boundaryX, int boundaryY, SectorAround* aroundSector);
 
-	SectorUpdateAround* GetUpdateSectorAround(Character* target);
+	void GetUpdateSectorAround(Character* target, SectorUpdateAround* updateAround);
 
 	bool SectorUpdateCharacter(Character* target);
 

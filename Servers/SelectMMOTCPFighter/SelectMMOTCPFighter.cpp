@@ -161,7 +161,7 @@ void SelectMMOTCPFighter::OnRelease(SessionId sessionId)
 void SelectMMOTCPFighter::OnUpdate()
 {
     Profile profile(L"OnUpdate");
-    ++updateCount_;
+    //++updateCount_;
     for (unsigned int i = 0; i < movingCharacters_.size();)
     {
         Character* target = movingCharacters_[i];
@@ -177,7 +177,7 @@ void SelectMMOTCPFighter::OnUpdate()
         }
     }
 
-    DWORD now = timeGetTime();
+   /* DWORD now = timeGetTime();
     if (now - lastContentsMonitorTick_ >= 1000)
     {
         updateTPS_ = updateCount_;
@@ -195,7 +195,7 @@ void SelectMMOTCPFighter::OnUpdate()
         syncCount_ = 0;
 
         lastContentsMonitorTick_ = now;
-    }
+    }*/
 
 
 }
@@ -498,15 +498,14 @@ void SelectMMOTCPFighter::GetSectorAroundForHit(Character* target, int boundaryX
 
 }
 
-SectorUpdateAround* SelectMMOTCPFighter::GetUpdateSectorAround(Character* target)
+void SelectMMOTCPFighter::GetUpdateSectorAround(Character* target, SectorUpdateAround* updateAround)
 {
     Profile profile(L"GetUpdateSectorAround");
 
     int moveIndexX = static_cast<int>(target->characterSectorPos_.x_) - static_cast<int>(target->oldSectorPos_.x_) + 1;
     int moveIndexY = static_cast<int>(target->characterSectorPos_.y_) - static_cast<int>(target->oldSectorPos_.y_) + 1;
 
-    return &sectorUpdateAround_[target->oldSectorPos_.y_][target->oldSectorPos_.x_][moveIndexY][moveIndexX];
-
+    *updateAround = sectorUpdateAround_[target->oldSectorPos_.y_][target->oldSectorPos_.x_][moveIndexY][moveIndexX];
 
 
 }
@@ -536,10 +535,11 @@ void SelectMMOTCPFighter::SectorUpdate(Character* target)
 {
     Profile profile(L"SectorUpdate");
 
-    SectorUpdateAround* updateAround = GetUpdateSectorAround(target);
+    SectorUpdateAround updateAround;
+    GetUpdateSectorAround(target, &updateAround);
 
-    SendRemoveSectorUpdate(target, &updateAround->removeSector_);
-    SendAddSectorUpdate(target, &updateAround->addSector_);
+    SendRemoveSectorUpdate(target, &updateAround.removeSector_);
+    SendAddSectorUpdate(target, &updateAround.addSector_);
 }
 
 void SelectMMOTCPFighter::MakePacketMoveStart(SessionId sessionId, CPacket* packet, SessionId id, unsigned char direction, unsigned short x, unsigned short y)
@@ -680,7 +680,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStart(SessionId sessionId, unsigned c
     CPacket* packetMoveStart = CPacket::Alloc();
     MakePacketMoveStart(target->sessionId_, packetMoveStart, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetMoveStart);
-    ++moveStartCount_;
+    //++moveStartCount_;
     return true;
 }
 
@@ -700,7 +700,7 @@ bool SelectMMOTCPFighter::NetPacketProcMoveStop(SessionId sessionId, unsigned ch
     CPacket* packetMoveStop = CPacket::Alloc();
     MakePacketMoveStop(target->sessionId_, packetMoveStop, target->sessionId_, target->direction_, target->x_, target->y_);
     CPacket::Free(packetMoveStop);
-    ++moveStopCount_;
+   // ++moveStopCount_;
     return true;
 }
 
@@ -718,7 +718,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack1(SessionId sessionId, unsigned cha
     MakePacketAttack1(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetAttack);
     HitCheck(target, 1);
-    ++attackCount_;
+    //++attackCount_;
     return true;
 }
 
@@ -735,7 +735,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack2(SessionId sessionId, unsigned cha
     MakePacketAttack2(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetAttack);
     HitCheck(target, 2);
-    ++attackCount_;
+    //++attackCount_;
     return true;
 }
 
@@ -752,7 +752,7 @@ bool SelectMMOTCPFighter::NetPacketProcAttack3(SessionId sessionId, unsigned cha
     MakePacketAttack3(target->sessionId_, packetAttack, target->sessionId_, direction, target->x_, target->y_);
     CPacket::Free(packetAttack);
     HitCheck(target, 3);
-    ++attackCount_;
+    //++attackCount_;
     return true;
 }
 
