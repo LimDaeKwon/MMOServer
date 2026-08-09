@@ -15,20 +15,29 @@
     <ClCompile Include="SingleChatMain.cpp">
       <Filter>Main</Filter>
     </ClCompile>
-    <ClCompile Include="ChattingServer_Single.cpp">
+    <ClCompile Include="ChattingServerSingle.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ChattingServer_Single.h">
+    <ClInclude Include="ChattingServerSingle.h">
       <Filter>Contents</Filter>
     </ClInclude>
-    <ClInclude Include="CommonProtocol.h">
+    <ClInclude Include="GameDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="Sector.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
       <Filter>Contents</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="SingleChatThreadSetting.config">
+    <None Include="SingleChatServer.config">
       <Filter>Config</Filter>
     </None>
   </ItemGroup>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <WinSock2.h>
-
+#include "ServerStartConfig.h"
 #include "CoreDefines.h"
 #include "LockFreeObjectFreeList.h"
 #include "ContentsCPacket.h"
@@ -67,6 +67,7 @@ public:
     };
 
     bool Start(const char* serverIp, unsigned int serverPort, unsigned int threadsCount, unsigned int concurrentThreads, unsigned int nagle, unsigned int sessions, unsigned int headerSize, unsigned char packetCode);
+    bool Start(const DKServerCore::IocpServerStartConfig& config);
     bool Stop();
     void Disconnect(__int64 sessionId);
 

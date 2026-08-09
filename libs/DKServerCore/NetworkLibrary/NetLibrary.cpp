@@ -340,6 +340,12 @@ bool NetLibrary::Start(const char* serverIp, unsigned int serverPort, unsigned i
     return true;
 }
 
+bool NetLibrary::Start(const DKServerCore::IocpServerStartConfig& config)
+{
+
+    return Start(config.ip.c_str(), config.port, config.workerThreadCount, config.concurrentThreadCount, config.nagle, config.maxSessionCount, config.headerSize, config.packetCode);
+}
+
 bool NetLibrary::Stop()
 {
     PostQueuedCompletionStatus(handleIocp_, 0, 0, nullptr);

@@ -124,11 +124,17 @@ unsigned int __stdcall NetLibraryLock::WorkerThread(void* thisPointer)
             }
         }
 
+
+
         if (InterlockedDecrement(&target->ioCount_) == 0)
         {
             thisForWorker->Release(target);
         }
+
+
+
     }
+
 
     return 0;
 }

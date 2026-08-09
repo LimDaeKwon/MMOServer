@@ -132,14 +132,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="SingleChatMain.cpp" />
-    <ClCompile Include="ChattingServer_Single.cpp" />
+    <ClCompile Include="ChattingServerSingle.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ChattingServer_Single.h" />
-    <ClInclude Include="CommonProtocol.h" />
+    <ClInclude Include="ChattingServerSingle.h" />
+    <ClInclude Include="GameDefine.h" />
+    <ClInclude Include="PacketDefine.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="Sector.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="SingleChatThreadSetting.config" />
+    <None Include="SingleChatServer.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Libs\DKServerCore\DKServerCore.vcxproj">
