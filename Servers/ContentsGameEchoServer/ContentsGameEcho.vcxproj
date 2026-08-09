@@ -140,10 +140,12 @@
     <ClCompile Include="GameEchoMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GameDefine.h" />
     <ClInclude Include="GameEchoServer.h" />
-    <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="GameEchoServerGroup.h" />
     <ClInclude Include="GameMonitoringClient.h" />
+    <ClInclude Include="MonitoringDefine.h" />
+    <ClInclude Include="PacketDefine.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameEchoServer.config" />

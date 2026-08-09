@@ -26,9 +26,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommonProtocol.h">
-      <Filter>Contents</Filter>
-    </ClInclude>
     <ClInclude Include="GameEchoServer.h">
       <Filter>Contents</Filter>
     </ClInclude>
@@ -38,6 +35,9 @@
     <ClInclude Include="GameMonitoringClient.h">
       <Filter>Contents</Filter>
     </ClInclude>
+    <ClInclude Include="GameDefine.h" />
+    <ClInclude Include="MonitoringDefine.h" />
+    <ClInclude Include="PacketDefine.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameEchoServer.config">

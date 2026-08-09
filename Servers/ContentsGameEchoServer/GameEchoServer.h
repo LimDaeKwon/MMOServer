@@ -1,80 +1,68 @@
 #pragma once
 
 #include "ContentsNetLibrary.h"
-
 #include "TLSObjectFreeList.h"
-#include "CommonProtocol.h"
-
-#include <unordered_map>
-#include <list>
-
-
-#include "LockFreeQueueCas2.h"
-#include "ObjectFreeList.h"
-
 #include "GameMonitoringClient.h"
 #include "ProcessMonitoring.h"
+#include "ServerStartConfig.h"
 
+#include <unordered_map>
+
+class DKParser;
 
 class GameEchoServer : public ContentsNetLibrary
 {
 public:
-	enum Type
-	{
-		ACCEPT,
-		MESSAGE,
-		RELEASE,
-	};
+    GameEchoServer();
+    virtual ~GameEchoServer() override;
 
+    bool Start(const DKServerCore::IocpServerStartConfig& config, DKParser& parser);
 
-	virtual void* GetPlayerPointer(__int64 sessionId)  override;
+    virtual void* GetPlayerPointer(__int64 sessionId) override;
 
+    DWORD GetLogicTPS();
+    DWORD GetLoginTPS();
+    DWORD GetHeartbeatTPS();
 
-	GameEchoServer();
-	virtual ~GameEchoServer();
+    DWORD GetDCWrongPacket();
+    DWORD GetDCAuthFailed();
+    DWORD GetDCDuplicateLogin();
 
-	virtual bool OnConnectionRequest(const wchar_t* server_IP, unsigned short server_port);
-	virtual void OnAccept(const wchar_t* server_IP, unsigned short server_port, __int64 session_ID);
-	virtual void OnRelease(__int64 session_ID);
-	virtual void OnMessage(__int64 session_ID, ContentsCPacket* send_packet);
-	virtual void OnError(int errorcode, const wchar_t* error_log);
-	virtual void OnInitializeTPS();
+    DWORD GetLoginPlayer();
+    DWORD GetUnloginPlayer();
 
-	DWORD LogicTPS;
-	DWORD LoginTPS;
-	DWORD HeartBeatTPS;
+protected:
+    virtual bool OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort) override;
+    virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId) override;
+    virtual void OnRelease(__int64 sessionId) override;
+    virtual void OnMessage(__int64 sessionId, ContentsCPacket* contentsPacket) override;
+    virtual void OnError(int errorCode, const wchar_t* errorLog) override;
+    virtual void OnInitializeTPS() override;
 
-	DWORD LogicCount;
-	DWORD LoginCount;
-	DWORD HeartBeatCount;
+private:
+    bool StartMonitoringClient(DKParser& parser);
 
-	DWORD DCWrongPacket;
-	DWORD DCAuthFailed;
-	DWORD DCDuplicateLogin;
+private:
+    TLSObjectFreeList<Player> playerPool_;
 
-	DWORD LoginPlayer;
-	DWORD UnloginPlayer;
+    std::unordered_map<__int64, Player*> playerMap_;
+    SRWLOCK playerMapLock_;
 
+    GameMonitoringClient monitoringClient_;
+    ProcessMonitoring processMonitoring_;
 
-	
-	DWORD GetLogicTPS();
-	DWORD GetLoginTPS();
-	DWORD GetHeartBeatTPS();
+    DWORD logicTps_{ 0 };
+    DWORD loginTps_{ 0 };
+    DWORD heartbeatTps_{ 0 };
 
-	DWORD GetDCWrongPacket();
-	DWORD GetDCAuthFailed();
-	DWORD GetDCDuplicateLogin();
+    DWORD logicCount_{ 0 };
+    DWORD loginCount_{ 0 } ;
+    DWORD heartbeatCount_{ 0 };
 
-	DWORD GetLoginPlayer();
-	DWORD GetUnloginPlayer();
+    DWORD dcWrongPacket_{ 0 };
+    DWORD dcAuthFailed_{ 0 };
+    DWORD dcDuplicateLogin_{ 0 };
 
-	TLSObjectFreeList<Player> playerPool_;
-	std::unordered_map<__int64, Player*> playerMap_;
-	SRWLOCK playerMapLock_;
-
-
-	GameMonitoringClient monitoringClient_;
-	ProcessMonitoring processMonitoring_;
-
-
+    DWORD loginPlayer_{ 0 };
+    DWORD unloginPlayer_{ 0 };
 };

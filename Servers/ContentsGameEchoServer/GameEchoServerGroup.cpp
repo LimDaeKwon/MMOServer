@@ -1,12 +1,13 @@
 #include "ContentsNetLibrary.h"
 #include "GameEchoServerGroup.h"
-#include "CommonProtocol.h"
 #include "ContentsCPacket.h"
+#include "GameDefine.h"
+#include "PacketDefine.h"
 
-AuthGroup::AuthGroup(GroupId groupId, DWORD FrameMS)
+AuthGroup::AuthGroup(GroupId groupId, DWORD frameMs)
 {
-	frameMS_ = FrameMS;
-	groupId_ = groupId;
+    frameMS_ = frameMs;
+    groupId_ = groupId;
 }
 
 AuthGroup::~AuthGroup()
@@ -15,140 +16,103 @@ AuthGroup::~AuthGroup()
 
 void AuthGroup::OnEnter(SessionId sessionId)
 {
-	Player* newPlayer = static_cast<Player*>(contentsServer_->GetPlayerPointer(sessionId));
+    Player* newPlayer = static_cast<Player*>(contentsServer_->GetPlayerPointer(sessionId));
 
-	if (newPlayer == nullptr)
-	{
-		//엔터가 수행되기 전 끊긴거. 그냥 리턴시키기.
-		return;
-	}
-	authPlayerMap_.insert(std::unordered_map<__int64, Player*>::value_type(newPlayer->sessionId_, newPlayer));
+    if (newPlayer == nullptr)
+    {
+        return;
+    }
+
+    authPlayerMap_.insert(std::unordered_map<SessionId, Player*>::value_type(newPlayer->sessionId_, newPlayer));
 }
 
 void AuthGroup::OnLeave(SessionId sessionId)
 {
-	std::unordered_map<__int64, Player*>::iterator AI = authPlayerMap_.find(sessionId);
-	if (AI == authPlayerMap_.end())
-	{
-		//끊긴겨서 인큐조차 안 된거. 그냥 보내주기.
-		return;
-	}
-	Player* leavePlayer = AI->second;
-	authPlayerMap_.erase(sessionId);
+    std::unordered_map<SessionId, Player*>::iterator authPlayerIter = authPlayerMap_.find(sessionId);
 
+    if (authPlayerIter == authPlayerMap_.end())
+    {
+        DebugBreak();
+        return;
+    }
+
+    authPlayerMap_.erase(authPlayerIter);
 }
 
 void AuthGroup::OnMessage(SessionId sessionId, ContentsCPacket* packet)
 {
-	std::unordered_map<__int64, Player*>::iterator AI = authPlayerMap_.find(sessionId);
-	if (AI == authPlayerMap_.end())
-	{
-		// 특이사항. 
-		//contentsServer_->Disconnect(sessionId);
-		//_debugbreak();
-	}
-	Player* target = AI->second;
-	WORD messageType;
+    std::unordered_map<SessionId, Player*>::iterator authPlayerIter = authPlayerMap_.find(sessionId);
 
-	ContentsCPacket contentsPacket = packet;
+    if (authPlayerIter == authPlayerMap_.end())
+    {
+        DebugBreak();
+        return;
+    }
 
-	while (contentsPacket.GetDataSize())
-	{
-		int len = 0;
-		contentsPacket >> len;
-		contentsPacket >> messageType;
+    Player* target = authPlayerIter->second;
+    unsigned short messageType;
 
-		if (en_PACKET_CS_GAME_REQ_LOGIN)
-		{
-			//그룹 옮기기..
-			//별 다른 확인 없이 넘겨주기. 
-			//토큰조회는 하지 않음. 
-			//우리 그룹에서 삭제.후 다른 그룹으로 인큐메시지. 
-			// 
-			//		WORD	Type
-			//
-			//		INT64	AccountNo
-			//		char	SessionKey[64]
-			//
-			//		int		Version			// 1 
-			if (len != 78)
-			{
-				//사유
-				contentsServer_->Disconnect(sessionId);
-				return;
-			}
+    ContentsCPacket contentsPacket = packet;
 
-			INT64 accountNo;
-			char sessionKey[64];		// 인증토큰
-			int version; // 버전. 
-			contentsPacket >> accountNo;
-			contentsPacket.GetData((char*)sessionKey, 64);
-			contentsPacket >> version;
+    while (contentsPacket.GetDataSize() > 0)
+    {
+        int packetSize = 0;
 
-			target->accountNo_ = accountNo;
+        contentsPacket >> packetSize;
+        contentsPacket >> messageType;
 
-			//contentsServer_->loginlogintpsLoginTPS
+        if (messageType == PacketCsGameReqLogin)
+        {
+            if (packetSize != PacketGameReqLoginSize)
+            {
+                contentsServer_->Disconnect(sessionId);
+                return;
+            }
 
-			contentsServer_->MoveGroup(sessionId, 1);
-		}
-		else
-		{
-			//공격
-			contentsServer_->Disconnect(sessionId);
-			//Disconnect(msg_data->session_ID);
-		}
+            __int64 accountNo;
+            char sessionKey[SessionKeyLength];
+            int version;
 
+            contentsPacket >> accountNo;
+            contentsPacket.GetData(sessionKey, SessionKeyLength);
+            contentsPacket >> version;
 
+            target->accountNo_ = accountNo;
 
-
-
-	}
-
-
-
-	//인증메시지일거야.
-
-	//en_PACKET_CS_GAME_REQ_LOGIN
-
-	//엔터가 왔었는지 확인해야 함..  
-
-
-
-	
-
-
+            contentsServer_->MoveGroup(sessionId, EchoGroupId);
+        }
+        else
+        {
+            contentsServer_->Disconnect(sessionId);
+        }
+    }
 }
 
 void AuthGroup::OnUpdate()
 {
-	//흠.
-	InterlockedIncrement(&UpdateCount);
+    InterlockedIncrement(&updateCount_);
 }
 
 int AuthGroup::GetPlayerNum()
 {
-	return static_cast<int>(authPlayerMap_.size());
+    return static_cast<int>(authPlayerMap_.size());
 }
 
 int AuthGroup::GetFPS()
 {
-	
-	return UpdateTPS;
+    return updateTps_;
 }
 
 void AuthGroup::OnInitializeTPS()
 {
-	
-	UpdateTPS = UpdateCount;
-	InterlockedExchange(&UpdateCount, 0);
+    updateTps_ = updateCount_;
+    InterlockedExchange(&updateCount_, 0);
 }
 
-
-
-EchoGroup::EchoGroup(GroupId groupId, DWORD FrameMS)
+EchoGroup::EchoGroup(GroupId groupId, DWORD frameMs)
 {
-	frameMS_ = FrameMS;
-	groupId_ = groupId;
+    frameMS_ = frameMs;
+    groupId_ = groupId;
 }
 
 EchoGroup::~EchoGroup()
@@ -157,132 +121,115 @@ EchoGroup::~EchoGroup()
 
 void EchoGroup::OnEnter(SessionId sessionId)
 {
-	Player* target = static_cast<Player*>(contentsServer_->GetPlayerPointer(sessionId));
+    Player* target = static_cast<Player*>(contentsServer_->GetPlayerPointer(sessionId));
 
-	if (target == nullptr)
-	{
-		//엔터가 수행되기 전 끊긴거. 그냥 리턴시키기.
-		return;
-	}
+    if (target == nullptr)
+    {
+        return;
+    }
 
-	echoPlayerMap_.insert(std::unordered_map<__int64, Player*>::value_type(target->sessionId_, target));;
+    echoPlayerMap_.insert(std::unordered_map<SessionId, Player*>::value_type(target->sessionId_, target));
 
+    ContentsCPacket loginPacket = ContentsCPacket::MakeContentsPacket();
 
-	//로그인 응답 메시지 쏴주기. 
-	ContentsCPacket login_packet = ContentsCPacket::MakeContentsPacket();
-	login_packet << (WORD)en_PACKET_CS_GAME_RES_LOGIN << BYTE(TRUE) << target->accountNo_;
+    loginPacket << PacketScGameResLogin << GameLoginStatusOk << target->accountNo_;
 
-	contentsServer_->SendPacket(target->sessionId_, login_packet);
-
+    contentsServer_->SendPacket(target->sessionId_, loginPacket);
 }
 
 void EchoGroup::OnLeave(SessionId sessionId)
 {
-	std::unordered_map<__int64, Player*>::iterator echoIter = echoPlayerMap_.find(sessionId);
-	if (echoIter == echoPlayerMap_.end())
-	{
-		//끊긴겨서 인큐조차 안 된거. 그냥 보내주기.
-		return;
-	}
-	Player* target = echoIter->second;
-	echoPlayerMap_.erase(sessionId);
+    std::unordered_map<SessionId, Player*>::iterator echoPlayerIter = echoPlayerMap_.find(sessionId);
 
+    if (echoPlayerIter == echoPlayerMap_.end())
+    {
+        DebugBreak();
+        return;
+    }
+
+    echoPlayerMap_.erase(echoPlayerIter);
 }
-
-
 
 void EchoGroup::OnMessage(SessionId sessionId, ContentsCPacket* packet)
 {
+    std::unordered_map<SessionId, Player*>::iterator echoPlayerIter = echoPlayerMap_.find(sessionId);
 
-	std::unordered_map<__int64, Player*>::iterator echoIter = echoPlayerMap_.find(sessionId);
-	if (echoIter == echoPlayerMap_.end())
-	{
-		// 특이사항. 
-		//contentsServer_->Disconnect(sessionId);
-		//DebugBreak();
-	}
-	Player* target = echoIter->second;
-	WORD messageType;
-	
+    if (echoPlayerIter == echoPlayerMap_.end())
+    {
+        DebugBreak();
+        return;
+    }
 
-	ContentsCPacket contentsPacket = packet;
-	while (contentsPacket.GetDataSize())
-	{
-		int len = 0;
-		contentsPacket >> len;
-		contentsPacket >> messageType;
+    Player* target = echoPlayerIter->second;
+    unsigned short messageType;
 
+    ContentsCPacket contentsPacket = packet;
 
-		if (en_PACKET_CS_GAME_REQ_ECHO)
-		{
+    while (contentsPacket.GetDataSize() > 0)
+    {
+        int packetSize = 0;
 
-			//에코. 그대로 돌려줌. 
-					//		WORD		Type
-			//
-			if (len  != 18)
-			{
-				//사유
-				contentsServer_->Disconnect(sessionId);
-				return;
-			}
+        contentsPacket >> packetSize;
+        contentsPacket >> messageType;
 
-			INT64 accountoNo;
-			LONGLONG sendTick;
+        if (messageType == PacketCsGameReqEcho)
+        {
+            if (packetSize != PacketGameReqEchoSize)
+            {
+                contentsServer_->Disconnect(sessionId);
+                return;
+            }
 
-			contentsPacket >> accountoNo;
-			contentsPacket >> sendTick;
+            __int64 accountNo;
+            long long sendTick;
 
-			if (target->accountNo_ != accountoNo)
-			{
-				//음?
-				contentsServer_->Disconnect(sessionId);
-			}
+            contentsPacket >> accountNo;
+            contentsPacket >> sendTick;
 
+            if (target->accountNo_ != accountNo)
+            {
+                contentsServer_->Disconnect(sessionId);
+                return;
+            }
 
-			ContentsCPacket echoPacket = ContentsCPacket::MakeContentsPacket();
-			echoPacket << (WORD)en_PACKET_CS_GAME_RES_ECHO << target->accountNo_ << sendTick;
+            ContentsCPacket echoPacket = ContentsCPacket::MakeContentsPacket();
 
-			contentsServer_->SendPacket(target->sessionId_, echoPacket);
+            echoPacket << PacketScGameResEcho << target->accountNo_ << sendTick;
 
-		}
-
-		else if (en_PACKET_CS_GAME_REQ_HEARTBEAT)
-		{
-			if (len != 2)
-			{
-				contentsServer_->Disconnect(sessionId);
-				return;
-			}
-		}
-		else
-		{
-			contentsServer_->Disconnect(sessionId);
-		}
-	}
-	
-
+            contentsServer_->SendPacket(target->sessionId_, echoPacket);
+        }
+        else if (messageType == PacketCsGameReqHeartbeat)
+        {
+            if (packetSize != PacketGameReqHeartbeatSize)
+            {
+                contentsServer_->Disconnect(sessionId);
+                return;
+            }
+        }
+        else
+        {
+            contentsServer_->Disconnect(sessionId);
+        }
+    }
 }
 
 void EchoGroup::OnUpdate()
 {
-	InterlockedIncrement(&UpdateCount);
-
+    InterlockedIncrement(&updateCount_);
 }
-
 
 int EchoGroup::GetPlayerNum()
 {
-	return static_cast<int>(echoPlayerMap_.size());
+    return static_cast<int>(echoPlayerMap_.size());
 }
 
 int EchoGroup::GetFPS()
 {
-
-	return UpdateTPS;
+    return updateTps_;
 }
 
 void EchoGroup::OnInitializeTPS()
 {
-	UpdateTPS = UpdateCount;
-	InterlockedExchange(&UpdateCount, 0);
+    updateTps_ = updateCount_;
+    InterlockedExchange(&updateCount_, 0);
 }

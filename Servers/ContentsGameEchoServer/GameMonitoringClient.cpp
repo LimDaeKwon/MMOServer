@@ -1,5 +1,5 @@
 #include "GameMonitoringClient.h"
-#include "CommonProtocol.h"
+#include "MonitoringDefine.h"
 
 GameMonitoringClient::GameMonitoringClient()
 {
@@ -14,107 +14,93 @@ void GameMonitoringClient::OnConnect()
     ContentsCPacket loginPacket = ContentsCPacket::MakeContentsPacket();
     loginPacket.packetBuffer_->InitLan();
 
-    loginPacket << (WORD)en_PACKET_SS_MONITOR_LOGIN << (int)dfMONITOR_SERVER_TYPE_GAME;
+    loginPacket << PacketSsMonitorLogin << MonitorServerTypeGame;
 
     SendPacket(loginPacket);
 }
 
 void GameMonitoringClient::OnRelease()
 {
-
-
-
 }
-
 
 void GameMonitoringClient::OnMessage(ContentsCPacket* packet)
 {
-    //근데 모니터링서버로부터 받을게 뭐 있나? 
-    //없지 않나? 
-
 }
 
 void GameMonitoringClient::OnError(int errorCode, const wchar_t* errorLog)
 {
-    
-}
-
-void GameMonitoringClient::UpdateMonitorValue(MonitorValue& monitorValue, int dataValue, int timeStamp)
-{
-    monitorValue.value_ = dataValue;
-    monitorValue.timestamp_ = timeStamp;
 }
 
 void GameMonitoringClient::UpdateMonitorData(BYTE dataType, int dataValue, int timeStamp)
 {
     switch (dataType)
     {
-    case dfMONITOR_DATA_TYPE_GAME_SERVER_RUN:
+    case MonitorDataTypeGameServerRun:
     {
         UpdateMonitorValue(gameServerData_.isRunning_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_SERVER_CPU:
+    case MonitorDataTypeGameServerCpu:
     {
         UpdateMonitorValue(gameServerData_.cpuUsage_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_SERVER_MEM:
+    case MonitorDataTypeGameServerMemory:
     {
         UpdateMonitorValue(gameServerData_.memoryMBytes_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_SESSION:
+    case MonitorDataTypeGameSession:
     {
         UpdateMonitorValue(gameServerData_.sessionCount_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_AUTH_PLAYER:
+    case MonitorDataTypeGameAuthPlayer:
     {
         UpdateMonitorValue(gameServerData_.authPlayerCount_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_GAME_PLAYER:
+    case MonitorDataTypeGameGamePlayer:
     {
         UpdateMonitorValue(gameServerData_.gamePlayerCount_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_ACCEPT_TPS:
+    case MonitorDataTypeGameAcceptTps:
     {
         UpdateMonitorValue(gameServerData_.acceptTps_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_PACKET_RECV_TPS:
+    case MonitorDataTypeGamePacketRecvTps:
     {
         UpdateMonitorValue(gameServerData_.packetRecvTps_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_PACKET_SEND_TPS:
+    case MonitorDataTypeGamePacketSendTps:
     {
         UpdateMonitorValue(gameServerData_.packetSendTps_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_DB_WRITE_TPS:
+    case MonitorDataTypeGameDbWriteTps:
     {
         UpdateMonitorValue(gameServerData_.dbWriteTps_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_DB_WRITE_MSG:
+    case MonitorDataTypeGameDbWriteMessage:
     {
         UpdateMonitorValue(gameServerData_.dbWriteMessageQueueCount_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_AUTH_THREAD_FPS:
+    case MonitorDataTypeGameAuthThreadFps:
     {
         UpdateMonitorValue(gameServerData_.authThreadFps_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_GAME_THREAD_FPS:
+    case MonitorDataTypeGameGameThreadFps:
     {
         UpdateMonitorValue(gameServerData_.gameThreadFps_, dataValue, timeStamp);
         break;
     }
-    case dfMONITOR_DATA_TYPE_GAME_PACKET_POOL:
+    case MonitorDataTypeGamePacketPool:
     {
         UpdateMonitorValue(gameServerData_.packetPoolUsage_, dataValue, timeStamp);
         break;
@@ -126,32 +112,39 @@ void GameMonitoringClient::UpdateMonitorData(BYTE dataType, int dataValue, int t
     }
 }
 
+void GameMonitoringClient::SendMonitorData()
+{
+    SendMonitorValue(MonitorDataTypeGameServerRun, gameServerData_.isRunning_);
+    SendMonitorValue(MonitorDataTypeGameServerCpu, gameServerData_.cpuUsage_);
+    SendMonitorValue(MonitorDataTypeGameServerMemory, gameServerData_.memoryMBytes_);
+    SendMonitorValue(MonitorDataTypeGameSession, gameServerData_.sessionCount_);
+    SendMonitorValue(MonitorDataTypeGameAuthPlayer, gameServerData_.authPlayerCount_);
+    SendMonitorValue(MonitorDataTypeGameGamePlayer, gameServerData_.gamePlayerCount_);
+    SendMonitorValue(MonitorDataTypeGameAcceptTps, gameServerData_.acceptTps_);
+    SendMonitorValue(MonitorDataTypeGamePacketRecvTps, gameServerData_.packetRecvTps_);
+    SendMonitorValue(MonitorDataTypeGamePacketSendTps, gameServerData_.packetSendTps_);
+    SendMonitorValue(MonitorDataTypeGameDbWriteTps, gameServerData_.dbWriteTps_);
+    SendMonitorValue(MonitorDataTypeGameDbWriteMessage, gameServerData_.dbWriteMessageQueueCount_);
+    SendMonitorValue(MonitorDataTypeGameAuthThreadFps, gameServerData_.authThreadFps_);
+    SendMonitorValue(MonitorDataTypeGameGameThreadFps, gameServerData_.gameThreadFps_);
+    SendMonitorValue(MonitorDataTypeGamePacketPool, gameServerData_.packetPoolUsage_);
+}
+
+void GameMonitoringClient::UpdateMonitorValue(MonitorValue& monitorValue, int dataValue, int timeStamp)
+{
+    monitorValue.value_ = dataValue;
+    monitorValue.timestamp_ = timeStamp;
+}
+
 void GameMonitoringClient::SendMonitorValue(BYTE dataType, const MonitorValue& monitorValue)
 {
     ContentsCPacket packet = ContentsCPacket::MakeContentsPacket();
     packet.packetBuffer_->InitLan();
-    packet << static_cast<WORD>(en_PACKET_SS_MONITOR_DATA_UPDATE);
+
+    packet << PacketSsMonitorDataUpdate;
     packet << dataType;
     packet << monitorValue.value_;
     packet << monitorValue.timestamp_;
 
     SendPacket(packet);
-}
-
-void GameMonitoringClient::SendMonitorData()
-{
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_SERVER_RUN, gameServerData_.isRunning_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_SERVER_CPU, gameServerData_.cpuUsage_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_SERVER_MEM, gameServerData_.memoryMBytes_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_SESSION, gameServerData_.sessionCount_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_AUTH_PLAYER, gameServerData_.authPlayerCount_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_GAME_PLAYER, gameServerData_.gamePlayerCount_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_ACCEPT_TPS, gameServerData_.acceptTps_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_PACKET_RECV_TPS, gameServerData_.packetRecvTps_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_PACKET_SEND_TPS, gameServerData_.packetSendTps_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_DB_WRITE_TPS, gameServerData_.dbWriteTps_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_DB_WRITE_MSG, gameServerData_.dbWriteMessageQueueCount_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_AUTH_THREAD_FPS, gameServerData_.authThreadFps_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_GAME_THREAD_FPS, gameServerData_.gameThreadFps_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_GAME_PACKET_POOL, gameServerData_.packetPoolUsage_);
 }

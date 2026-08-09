@@ -2,20 +2,14 @@
 
 #include "ContentGroupBase.h"
 
-#include "ObjectFreeList.h"
 #include <unordered_map>
 
-
-
-
-
+struct Player;
 
 class AuthGroup : public ContentGroupBase
 {
 public:
-
-
-    AuthGroup(GroupId groupId, DWORD FrameMS = INFINITE);
+    AuthGroup(GroupId groupId, DWORD frameMs = INFINITE);
     virtual ~AuthGroup() override;
 
     virtual void OnEnter(SessionId sessionId) override;
@@ -27,20 +21,16 @@ public:
     virtual void OnInitializeTPS() override;
 
 private:
-    std::unordered_map<__int64, Player*> authPlayerMap_;
-    long UpdateCount=0;
-    long UpdateTPS = 0;
+    std::unordered_map<SessionId, Player*> authPlayerMap_;
 
+    long updateCount_{ 0 };
+    long updateTps_{ 0 };
 };
-
-
 
 class EchoGroup : public ContentGroupBase
 {
 public:
-
-
-    EchoGroup(GroupId groupId, DWORD FrameMS = INFINITE);
+    EchoGroup(GroupId groupId, DWORD frameMs = INFINITE);
     virtual ~EchoGroup() override;
 
     virtual void OnEnter(SessionId sessionId) override;
@@ -50,11 +40,10 @@ public:
     virtual int GetPlayerNum() override;
     virtual int GetFPS() override;
     virtual void OnInitializeTPS() override;
+
 private:
-    long UpdateCount=0;
-    long UpdateTPS = 0;
-    std::unordered_map<__int64, Player*> echoPlayerMap_;
+    std::unordered_map<SessionId, Player*> echoPlayerMap_;
 
+    long updateCount_{ 0 };
+    long updateTps_{ 0 };
 };
-
-

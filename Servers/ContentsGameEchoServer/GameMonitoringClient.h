@@ -1,4 +1,5 @@
 #pragma once
+
 #include "LanClient.h"
 
 struct MonitorValue
@@ -29,7 +30,7 @@ class GameMonitoringClient : public LanClient
 {
 public:
     GameMonitoringClient();
-    virtual ~GameMonitoringClient();
+    virtual ~GameMonitoringClient() override;
 
     virtual void OnConnect() override;
     virtual void OnRelease() override;
@@ -44,7 +45,5 @@ private:
     void SendMonitorValue(BYTE dataType, const MonitorValue& monitorValue);
 
 private:
-    //등록을 시키는 느낌으로 갈까? 
     GameServerMonitorData gameServerData_;
 };
-

@@ -150,7 +150,6 @@
     <None Include="LoginServer.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="GameDefine.h" />
     <ClInclude Include="LoginMonitoringClient.h" />
     <ClInclude Include="LoginServer.h" />

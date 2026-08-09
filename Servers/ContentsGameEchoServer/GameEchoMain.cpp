@@ -1,195 +1,167 @@
 #include <iostream>
-#include "GameEchoServer.h"
+#include <memory>
 
+#include "GameEchoServer.h"
+#include "windows.h"
 #include "conio.h"
 #include "Profiler.h"
-
 #include "CrashDump.h"
+#include "DKParser.h"
+#include "ServerStartConfig.h"
+#include "GameDefine.h"
 
-#include "SystemMonitoring.h"
-#include "ProcessMonitoring.h"
+#pragma comment(lib, "Winmm.lib")
 
+CrashDump crashDump;
 
-CrashDump zz;
-
-#pragma comment(lib, "winmm.lib")
-
-#define FILENAME "GameEchoServer.config"
-
-
-enum thread_setting_enum // 여기에 SendBuffer 사이즈 설정 옵션도 넣기. 
-{
-	IP, PORT, THREADS, CONCURRENT, NAGLE, SESSIONS, HEADERSIZE, SYNCASYNC, SENDTHREADS, PACKETCODE
-};
 unsigned int GlobalChecksum;
 
-#define RFLAG 0x80000000
-
-bool ParseThreadDataFile(const char* file_name);
-
-char ThreadData[10][200];
-
+bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config);
+void PrintMonitoring(GameEchoServer* gameEchoServer);
+void ProcessConsoleInput();
 
 int main()
 {
+    timeBeginPeriod(1);
+    InitProfile();
 
-	timeBeginPeriod(1);
-	InitProfile();
-	ParseThreadDataFile(FILENAME);
+    DKParser parser;
 
+    if (!parser.Load("GameEchoServer.config"))
+    {
+        printf("Config load failed: %s\n", parser.GetLastError().c_str());
+        timeEndPeriod(1);
 
-	GameEchoServer* GameEchoInstance = new GameEchoServer;
-	GameEchoInstance->Start(ThreadData[IP], atoi(ThreadData[PORT]), atoi(ThreadData[THREADS]), atoi(ThreadData[CONCURRENT]), atoi(ThreadData[NAGLE]), atoi(ThreadData[SESSIONS]), atoi(ThreadData[HEADERSIZE]), atoi(ThreadData[SYNCASYNC]), atoi(ThreadData[SENDTHREADS]), atoi(ThreadData[PACKETCODE])); 
+        return 1;
+    }
 
+    DKServerCore::IocpServerStartConfig config;
 
+    if (!SetConfigValue(parser, config))
+    {
+        printf("Config value load failed.\n");
+        timeEndPeriod(1);
 
-	while (1)
-	{
-		wprintf(L"\n------------------------------------------------------------ \n");
+        return 1;
+    }
 
-		wprintf(L"CPakcet \n");
-		wprintf(L"UseSize  : %d   Capacity  :  %d\n", CPacket::GetUseSize(), CPacket::GetCapacity());
-		wprintf(L"Contents \n");
-		wprintf(L"AcceptTotal  :  %lld  \n", GameEchoInstance->GetAcceptTotal());
-		wprintf(L"Session  :  %d  \n", GameEchoInstance->GetSessionNum());
-		wprintf(L"UnloginPlayer  :  %d  Player  :  %d   \n", GameEchoInstance->GetUnloginPlayer(), GameEchoInstance->GetLoginPlayer());
+    std::unique_ptr<GameEchoServer> gameEchoServer = std::make_unique<GameEchoServer>();
 
+    if (!gameEchoServer->Start(config, parser))
+    {
+        printf("GameEchoServer start failed.\n");
+        timeEndPeriod(1);
 
-		wprintf(L"\n------------------------------------------------------------ \n");
-		wprintf(L"Disconnect \n");
-		wprintf(L"DisconnectTotal  :  %d \n", GameEchoInstance->GetDisconnectCount());
-		wprintf(L"DCWrongPacket :  %d	    DCAuthFailed  :  %d \n", GameEchoInstance->GetDCWrongPacket(), GameEchoInstance->GetDCAuthFailed());
-		wprintf(L"DCUnloginTimeout  :  %d     DCLoginTimeout  :  %d \n", GameEchoInstance->GetDCUnloginTimeout(), GameEchoInstance->GetDCLoginTimeout());
-		wprintf(L"DCSendBufferFull  :  %d     DCDuplicateLogin  :  %d\n", GameEchoInstance->GetDCSendBufferFull(), GameEchoInstance->GetDCDuplicateLogin());
-		wprintf(L"DCPacketCodeError  :  %d   DCSessionFull  :  %d \n", GameEchoInstance->GetDCPacketCodeError(), GameEchoInstance->GetDCSessionFull());
-		wprintf(L"DCDecodeError  :  %d  DCImpossiblePacketLength  :  %d \n", GameEchoInstance->GetDCDecodeError(), GameEchoInstance->GetDCImpossiblePacketLength());
+        return 1;
+    }
 
-		wprintf(L"\n------------------------------------------------------------ \n");
-		wprintf(L"FPS \n");
-		wprintf(L"AccpetFPS  :  %d GameFPS  :  %d \n", GameEchoInstance->groupManager_.GetGroupFPS(0), GameEchoInstance->groupManager_.GetGroupFPS(1));
-
-
-		wprintf(L"TPS \n");
-		wprintf(L"AccpetTPS  :  %d \n", GameEchoInstance->GetAcceptTPS());
-		wprintf(L"Game RecvTPS  :  %d     SendTPS  :  %d  \n", GameEchoInstance->GetRecvMessageTPS(), GameEchoInstance->GetSendMessageTPS());
-
-
-		Sleep(1000);
-
-
-		if (_kbhit())
-		{
-			char c = _getch();
-			if (c == 's' || c == 'C')
-			{
-				ProfileDataOutText(L"EchoProfileData");
-			}
-
-			if (c == 'r' || c == 'R')
-			{
-				ProfileReset();
-			}
-		}
-	}
-
-
-
-
-	timeEndPeriod(1);
-
+    while (true)
+    {
+        PrintMonitoring(gameEchoServer.get());
+        Sleep(1000);
+        ProcessConsoleInput();
+    }
 }
 
-
-bool ParseThreadDataFile(const char* file_name)
+bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config)
 {
-	FILE* worker_information;
-	int file_size;
-	char* file_buffer;
+    if (!parser.GetString("GAMEECHO", "IP", &config.ip))
+    {
+        return false;
+    }
 
-	if (fopen_s(&worker_information, file_name, "rb") == 0)
-	{
-		if (worker_information == NULL)
-		{
-			return false;
-		}
+    if (!parser.GetUnsignedInt("GAMEECHO", "PORT", &config.port))
+    {
+        return false;
+    }
 
+    if (!parser.GetUnsignedInt("GAMEECHO", "WORKERTHREADS", &config.workerThreadCount))
+    {
+        return false;
+    }
 
-		fseek(worker_information, 0, SEEK_END);
-		file_size = ftell(worker_information);
-		rewind(worker_information);
+    if (!parser.GetUnsignedInt("GAMEECHO", "CONCURRENTTHREADS", &config.concurrentThreadCount))
+    {
+        return false;
+    }
 
+    if (!parser.GetUnsignedInt("GAMEECHO", "NAGLE", &config.nagle))
+    {
+        return false;
+    }
 
-		file_buffer = (char*)malloc(file_size);
-		if (file_buffer == NULL) {
-			printf("Error: Memory allocation failed.\n");
-			DebugBreak();
-			return false;
-		}
+    if (!parser.GetUnsignedInt("GAMEECHO", "SESSIONS", &config.maxSessionCount))
+    {
+        return false;
+    }
 
-		size_t bytesRead = fread_s(file_buffer, file_size, 1, file_size, worker_information);
-		if (bytesRead != file_size)
-		{
+    if (!parser.GetUnsignedInt("GAMEECHO", "HEADERSIZE", &config.headerSize))
+    {
+        return false;
+    }
 
-			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", file_size, bytesRead);
+    if (!parser.GetUnsignedChar("GAMEECHO", "PACKETCODE", &config.packetCode))
+    {
+        return false;
+    }
 
-			return false;
-		}
+    return true;
+}
 
-		int start_position = 0;
-		int end_postiion = 0;
+void PrintMonitoring(GameEchoServer* gameEchoServer)
+{
+    if (gameEchoServer == nullptr)
+    {
+        return;
+    }
 
-		//시작위치 + 0d 0a 넘기기. 
+    wprintf(L"\n------------------------------------------------------------\n");
 
-		for (int i = 0; i < file_size; ++i)
-		{
-			if (file_buffer[i] == '{')
-			{
-				start_position = i + 2;
-				break;
-			}
-		}
+    wprintf(L"CPacket\n");
+    wprintf(L"UseSize : %d    Capacity : %d\n", CPacket::GetUseSize(), CPacket::GetCapacity());
 
-		for (int i = file_size - 1; i >= 0; --i)
-		{
+    wprintf(L"\nContents\n");
+    wprintf(L"AcceptTotal : %llu\n", gameEchoServer->GetAcceptTotal());
+    wprintf(L"Session : %u\n", gameEchoServer->GetSessionNum());
+    wprintf(L"UnloginPlayer : %u    Player : %u\n", gameEchoServer->GetUnloginPlayer(), gameEchoServer->GetLoginPlayer());
 
+    wprintf(L"\n------------------------------------------------------------\n");
 
-			if (file_buffer[i] == '}')
-			{
-				end_postiion = i;
-				break;
-			}
-		}
+    wprintf(L"Disconnect\n");
+    wprintf(L"DisconnectTotal : %u\n", gameEchoServer->GetDisconnectCount());
+    wprintf(L"DCWrongPacket : %u    DCAuthFailed : %u\n", gameEchoServer->GetDCWrongPacket(), gameEchoServer->GetDCAuthFailed());
+    wprintf(L"DCUnloginTimeout : %u    DCLoginTimeout : %u\n", gameEchoServer->GetDCUnloginTimeout(), gameEchoServer->GetDCLoginTimeout());
+    wprintf(L"DCSendBufferFull : %u    DCDuplicateLogin : %u\n", gameEchoServer->GetDCSendBufferFull(), gameEchoServer->GetDCDuplicateLogin());
+    wprintf(L"DCPacketCodeError : %u    DCSessionFull : %u\n", gameEchoServer->GetDCPacketCodeError(), gameEchoServer->GetDCSessionFull());
+    wprintf(L"DCDecodeError : %u    DCImpossiblePacketLength : %u\n", gameEchoServer->GetDCDecodeError(), gameEchoServer->GetDCImpossiblePacketLength());
 
-		int Index = 0;
+    wprintf(L"\n------------------------------------------------------------\n");
 
-		int size;
-		for (int i = start_position; i < end_postiion; ++i)
-		{
+    wprintf(L"FPS\n");
+    wprintf(L"AuthFPS : %d    EchoFPS : %d\n", gameEchoServer->groupManager_.GetGroupFPS(AuthGroupId), gameEchoServer->groupManager_.GetGroupFPS(EchoGroupId));
 
+    wprintf(L"\nTPS\n");
+    wprintf(L"AcceptTPS : %d\n", gameEchoServer->GetAcceptTPS());
+    wprintf(L"RecvTPS : %d    SendTPS : %d\n", gameEchoServer->GetRecvMessageTPS(), gameEchoServer->GetSendMessageTPS());
+}
 
-			if (file_buffer[i] == ':')
-			{
-				for (int j = i + 1; ; ++j)
-				{
-					if (file_buffer[j] == 0x0d)
-					{
-						size = j - i - 1;
-						memcpy_s(ThreadData[Index], size, file_buffer + i + 1, size);
-						ThreadData[Index][size] = '\0';
-						Index++;
-						break;
-					}
-				}
-				start_position = i + size;
-			}
-		}
+void ProcessConsoleInput()
+{
+    if (!_kbhit())
+    {
+        return;
+    }
 
-		free(file_buffer);
+    char input = _getch();
 
-		fclose(worker_information);
-	}
+    if (input == 's' || input == 'S')
+    {
+        ProfileDataOutText(L"EchoProfileData");
+        return;
+    }
 
-
-	return true;
-
+    if (input == 'r' || input == 'R')
+    {
+        ProfileReset();
+    }
 }

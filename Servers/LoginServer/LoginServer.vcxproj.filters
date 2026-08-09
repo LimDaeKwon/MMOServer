@@ -20,9 +20,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommonProtocol.h">
-      <Filter>Contents</Filter>
-    </ClInclude>
     <ClInclude Include="LoginServer.h">
       <Filter>Contents</Filter>
     </ClInclude>
