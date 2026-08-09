@@ -140,11 +140,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChatMonitoringClient.h" />
+    <ClInclude Include="GameDefine.h" />
+    <ClInclude Include="MonitoringDefine.h" />
     <ClInclude Include="MultiChatServer.h" />
-    <ClInclude Include="CommonProtocol.h" />
+    <ClInclude Include="PacketDefine.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="Sector.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="MultiChatThreadSetting.config" />
+    <None Include="MultiChatServer.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Libs\DKServerCore\DKServerCore.vcxproj">

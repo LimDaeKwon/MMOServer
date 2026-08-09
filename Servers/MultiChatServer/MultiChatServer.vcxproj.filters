@@ -26,15 +26,27 @@
     <ClInclude Include="MultiChatServer.h">
       <Filter>Contents</Filter>
     </ClInclude>
-    <ClInclude Include="CommonProtocol.h">
+    <ClInclude Include="ChatMonitoringClient.h">
       <Filter>Contents</Filter>
     </ClInclude>
-    <ClInclude Include="ChatMonitoringClient.h">
+    <ClInclude Include="GameDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="MonitoringDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="Sector.h">
       <Filter>Contents</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="MultiChatThreadSetting.config">
+    <None Include="MultiChatServer.config">
       <Filter>Config</Filter>
     </None>
   </ItemGroup>

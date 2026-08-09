@@ -1,4 +1,5 @@
 #pragma once
+
 #include "LanClient.h"
 
 struct MonitorValue
@@ -23,7 +24,7 @@ class ChatMonitoringClient : public LanClient
 {
 public:
     ChatMonitoringClient();
-    virtual ~ChatMonitoringClient();
+    virtual ~ChatMonitoringClient() override;
 
     virtual void OnConnect() override;
     virtual void OnRelease() override;
@@ -38,7 +39,5 @@ private:
     void SendMonitorValue(BYTE dataType, const MonitorValue& monitorValue);
 
 private:
-    //등록을 시키는 느낌으로 갈까? 
     ChatServerMonitorData chatServerData_;
 };
-

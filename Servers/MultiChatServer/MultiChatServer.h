@@ -1,140 +1,103 @@
 #pragma once
 
 #include "NetLibrary.h"
-#include "LockFreeQueue.h"
 #include "TLSObjectFreeList.h"
-#include "CommonProtocol.h"
-#include "LockFreeObjectFreeList.h"
-#include <unordered_map>
-#include <list>
 #include "ChatMonitoringClient.h"
+#include "GameDefine.h"
+#include "Player.h"
 #include "ProcessMonitoring.h"
-#include <cpp_redis/cpp_redis>
-#pragma comment (lib, "cpp_redis.lib")
-#pragma comment (lib, "tacopie.lib")
-#pragma comment (lib, "ws2_32.lib")
-//class ContentsCPacket;
+#include "Sector.h"
 
+#include <cpp_redis/cpp_redis>
+#include <list>
+#include <unordered_map>
+
+#pragma comment(lib, "cpp_redis.lib")
+#pragma comment(lib, "tacopie.lib")
+#pragma comment(lib, "ws2_32.lib")
+
+class DKParser;
 
 class MultiChatServer : public NetLibrary
 {
 public:
+    MultiChatServer();
+    virtual ~MultiChatServer() override;
 
-	struct Player
-	{
-		INT64 SessionID = 0;
-		INT64 AccountNo = 0;
+    bool Start(const DKServerCore::IocpServerStartConfig& config, DKParser& parser);
 
-		WORD SectorX = 0;
-		WORD SectorY = 0;
+    DWORD GetLogicTPS();
+    DWORD GetLoginTPS();
+    DWORD GetSectorMoveTPS();
+    DWORD GetChatTPS();
+    DWORD GetHeartBeatTPS();
 
-		WCHAR ID[20];
-		WCHAR NickName[20];
+    DWORD GetDCWrongPacket();
+    DWORD GetDCLoginAgain();
+    DWORD GetDCAuthFailed();
+    DWORD GetDCDuplicateLogin();
 
-		bool AuthFlag = 0; //인증되지 않은 유저로부터 온 메시지는 결함이니까.
-		bool Duplicate = 0;
+    DWORD GetLoginPlayer();
+    DWORD GetUnloginPlayer();
 
-	};
+    ChatMonitoringClient monitoringClient_;
 
-	
-	TLSObjectFreeList<Player> PlayerPool;
-	std::unordered_map<__int64, Player*> PlayerMap;
-	SRWLOCK PlayerMapLock;
+protected:
+    virtual bool OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort) override;
+    virtual void OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId) override;
+    virtual void OnRelease(__int64 sessionId) override;
+    virtual void OnMessage(__int64 sessionId, ContentsCPacket* contentsPacket) override;
+    virtual void OnError(int errorCode, const wchar_t* errorLog) override;
+    virtual void OnInitializeTPS() override;
 
+private:
+    bool StartMonitoringClient(DKParser& parser);
+    bool ConnectRedis(DKParser& parser);
+    bool AuthToken(__int64 accountNo, char* sessionKey);
 
-	std::unordered_map<__int64, Player*> AccountMap;
-	SRWLOCK AccountMapLock;
+    void NetPacketProcLogin(Player* target, __int64 accountNo, wchar_t* id, wchar_t* nickname, char* sessionKey);
+    void NetPacketProcSectorMove(Player* target, __int64 accountNo, unsigned short sectorX, unsigned short sectorY);
+    void NetPacketProcMessage(Player* target, __int64 accountNo, unsigned short messageLength, wchar_t* message);
+    void NetPacketProcHeartbeat(Player* target);
 
-	struct SectorPos
-	{
-		WORD X;
-		WORD Y;
+    void GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector);
+    void LockSectorMove(unsigned short firstX, unsigned short firstY, unsigned short secondX, unsigned short secondY);
+    void UnlockSectorMove(unsigned short firstX, unsigned short firstY, unsigned short secondX, unsigned short secondY);
 
-	};
+private:
+    TLSObjectFreeList<Player> playerPool_;
 
-	struct SectorAround
-	{
-		unsigned int Count;
-		SectorPos Around[9];
-	};
+    std::unordered_map<__int64, Player*> playerMap_;
+    SRWLOCK playerMapLock_;
 
-	std::list<Player*> SectorList[MAXSECTORY][MAXSECTORX];
-	SRWLOCK SectorLock[MAXSECTORY][MAXSECTORX];
+    std::unordered_map<__int64, Player*> accountMap_;
+    SRWLOCK accountMapLock_;
 
-	//DWORD TLSRedisConnectionIndex;
+    std::list<Player*> sectorList_[SectorMaxY][SectorMaxX];
+    SRWLOCK sectorLock_[SectorMaxY][SectorMaxX];
 
-	//struct TLSRedisConnection
-	//{
-	//	cpp_redis::client Connection;
-	//	std::string Key;
-	//	std::string Value;
-	//};
+    cpp_redis::client* connection_{ nullptr };
+    SRWLOCK connectionLock_;
 
-	cpp_redis::client* Connection_;
-	SRWLOCK connectionLock_;
+    ProcessMonitoring processMonitoring_;
 
+    DWORD logicTps_{ 0 };
+    DWORD loginTps_{ 0 };
+    DWORD sectorMoveTps_{ 0 };
+    DWORD chatTps_{ 0 };
+    DWORD heartbeatTps_{ 0 };
 
+    DWORD logicCount_{ 0 };
+    DWORD loginCount_{ 0 };
+    DWORD sectorMoveCount_{ 0 };
+    DWORD chatCount_{ 0 };
+    DWORD heartbeatCount_{ 0 };
 
-	bool AuthToken(INT64 AccountNo, char* SessionKey);
+    DWORD dcWrongPacket_{ 0 };
+    DWORD dcLoginAgain_{ 0 };
+    DWORD dcAuthFailed_{ 0 };
+    DWORD dcDuplicateLogin_{ 0 };
 
-	MultiChatServer();
-	virtual ~MultiChatServer();
-
-	virtual bool OnConnectionRequest(const wchar_t* server_IP, unsigned short server_port);
-	virtual void OnAccept(const wchar_t* server_IP, unsigned short server_port, __int64 session_ID);
-	virtual void OnRelease(__int64 session_ID);
-	virtual void OnMessage(__int64 session_ID, ContentsCPacket* send_packet);
-	virtual void OnError(int errorcode, const wchar_t* error_log);
-	virtual void OnInitializeTPS();
-
-
-	void NetPacketProc_Login(Player* target, INT64 AccountNo, WCHAR* ID, WCHAR* NickName, char* SessionKey);
-	void NetPacketProc_SectorMove(Player* target, INT64 AccountNo, WORD SectorX, WORD SectorY);
-	void NetPacketProc_Message(Player* target, INT64 AccountNo, WORD MessageLen, WCHAR* Message);
-	void NetPacketProc_Heartbeat(Player* target);
-
-	void GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector);
-
-	void LockSectorMove(WORD FirstX, WORD FirstY, WORD SecondX, WORD SecondY);
-	void UnlockSectorMove(WORD FirstX, WORD FirstY, WORD SecondX, WORD SecondY);
-
-	DWORD LogicTPS;
-	DWORD LoginTPS;
-	DWORD SectorMoveTPS;
-	DWORD ChatTPS;
-	DWORD HeartBeatTPS;
-
-	DWORD LogicCount;
-	DWORD LoginCount;
-	DWORD SectorMoveCount;
-	DWORD ChatCount;
-	DWORD HeartBeatCount;
-
-	DWORD DCWrongPacket;
-	DWORD DCLoginAgain;
-	DWORD DCAuthFailed;
-	DWORD DCDuplicateLogin;
-
-
-	DWORD LoginPlayer;
-	DWORD UnloginPlayer;
-
-
-	DWORD GetLogicTPS();
-	DWORD GetLoginTPS();
-	DWORD GetSectorMoveTPS();
-	DWORD GetChatTPS();
-	DWORD GetHeartBeatTPS();
-
-	DWORD GetDCWrongPacket();
-	DWORD GetDCLoginAgain();
-	DWORD GetDCAuthFailed();
-	DWORD GetDCDuplicateLogin();
-
-	DWORD GetLoginPlayer();
-	DWORD GetUnloginPlayer();
-
-	ChatMonitoringClient monitoringClient_;
-
-	ProcessMonitoring processMonitoring_;
+    DWORD loginPlayer_{ 0 };
+    DWORD unloginPlayer_{ 0 };
 };

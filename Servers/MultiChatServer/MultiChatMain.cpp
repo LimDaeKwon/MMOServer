@@ -1,195 +1,167 @@
 #include <iostream>
+#include <memory>
+
 #include "MultiChatServer.h"
 #include "windows.h"
 #include "conio.h"
 #include "Profiler.h"
 #include "CrashDump.h"
-#include "SystemMonitoring.h"
-#include "ProcessMonitoring.h"
+#include "DKParser.h"
+#include "ServerStartConfig.h"
 
+#pragma comment(lib, "Winmm.lib")
 
-CrashDump zz;
+CrashDump crashDump;
 
-#pragma comment(lib, "winmm.lib")
-
-#define FILENAME "MultiChatThreadSetting.config"
-
-
-enum thread_setting_enum // 여기에 SendBuffer 사이즈 설정 옵션도 넣기. 
-{
-	IP, PORT, THREADS, CONCURRENT, NAGLE, SESSIONS, HEADERSIZE, PACKETCODE
-};
 unsigned int GlobalChecksum;
 
-#define RFLAG 0x80000000
-
-bool ParseThreadDataFile(const char* file_name);
-
-char ThreadData[8][200];
-
+bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config);
+void PrintMonitoring(MultiChatServer* chatServer);
+void ProcessConsoleInput();
 
 int main()
 {
+    timeBeginPeriod(1);
+    InitProfile();
 
-	timeBeginPeriod(1);
-	InitProfile();
-	ParseThreadDataFile(FILENAME);
+    DKParser parser;
 
+    if (!parser.Load("MultiChatServer.config"))
+    {
+        printf("Config load failed: %s\n", parser.GetLastError().c_str());
+        timeEndPeriod(1);
 
-	MultiChatServer* ChatInstance = new MultiChatServer;
-	ChatInstance->Start(ThreadData[IP], atoi(ThreadData[PORT]), atoi(ThreadData[THREADS]), atoi(ThreadData[CONCURRENT]), atoi(ThreadData[NAGLE]), atoi(ThreadData[SESSIONS]), atoi(ThreadData[HEADERSIZE]), atoi(ThreadData[PACKETCODE]));
+        return 1;
+    }
 
+    DKServerCore::IocpServerStartConfig config;
 
+    if (!SetConfigValue(parser, config))
+    {
+        printf("Config value load failed.\n");
+        timeEndPeriod(1);
 
-	while (1)
-	{
-		wprintf(L"\n------------------------------------------------------------ \n");
+        return 1;
+    }
 
-		wprintf(L"CPakcet \n");
-		wprintf(L"UseSize  : %d   Capacity  :  %d\n", CPacket::GetUseSize(), CPacket::GetCapacity());
-		wprintf(L"Contents \n");
-		wprintf(L"AcceptTotal  :  %lld  \n", ChatInstance->GetAcceptTotal());
-		wprintf(L"Session  :  %d  \n", ChatInstance->GetSessionNum());
-		wprintf(L"UnloginPlayer  :  %d  Player  :  %d   \n", ChatInstance->GetUnloginPlayer(), ChatInstance->GetLoginPlayer());
+    std::unique_ptr<MultiChatServer> chatServer = std::make_unique<MultiChatServer>();
 
+    if (!chatServer->Start(config, parser))
+    {
+        printf("MultiChatServer start failed.\n");
+        timeEndPeriod(1);
 
-		wprintf(L"\n------------------------------------------------------------ \n");
-		wprintf(L"Disconnect \n");
-		wprintf(L"DisconnectTotal  :  %d \n", ChatInstance->GetDisconnectCount());
-		wprintf(L"DCWrongPacket :  %d	    DCAuthFailed  :  %d \n", ChatInstance->GetDCWrongPacket(), ChatInstance->GetDCAuthFailed());
-		wprintf(L"DCUnloginTimeout  :  %d     GetDCLoginAgain  :  %d \n", ChatInstance->GetDCUnloginTimeout(), ChatInstance->GetDCLoginAgain());
-		wprintf(L"DCSendBufferFull  :  %d     DCDuplicateLogin  :  %d\n", ChatInstance->GetDCSendBufferFull(), ChatInstance->GetDCDuplicateLogin());
-		wprintf(L"DCPacketCodeError  :  %d   DCSessionFull  :  %d \n", ChatInstance->GetDCPacketCodeError(), ChatInstance->GetDCSessionFull());
-		wprintf(L"DCDecodeError  :  %d  DCImpossiblePacketLength  :  %d \n", ChatInstance->GetDCDecodeError(), ChatInstance->GetDCImpossiblePacketLength());
+        return 1;
+    }
 
-		wprintf(L"\n------------------------------------------------------------ \n");
-		wprintf(L"TPS \n");
-		wprintf(L"AccpetTPS  :  %d \n", ChatInstance->GetAcceptTPS());
-		wprintf(L"RecvTPS  :  %d     SendTPS  :  %d  MonitorSendTPS  :  %d\n", ChatInstance->GetRecvMessageTPS(), ChatInstance->GetSendMessageTPS(), ChatInstance->monitoringClient_.sendMessageCount_);
-		wprintf(L"LogicTPS  :  %d      LoginTPS  :  %d\n", ChatInstance->GetLogicTPS(), ChatInstance->GetLoginTPS());
-		wprintf(L"SectorMoveTPS  :  %d     ChatTPS  :  %d \n", ChatInstance->GetSectorMoveTPS(), ChatInstance->GetChatTPS());
-
-		InterlockedExchange(&ChatInstance->monitoringClient_.sendMessageCount_, 0);
-
-
-
-
-		Sleep(1000);
-
-
-		if (_kbhit())
-		{
-			char c = _getch();
-			if (c == 's' || c == 'C')
-			{
-				ProfileDataOutText(L"EchoProfileData");
-			}
-
-			if (c == 'r' || c == 'R')
-			{
-				ProfileReset();
-			}
-		}
-	}
-
-
-
-
-	timeEndPeriod(1);
-
+    while (true)
+    {
+        PrintMonitoring(chatServer.get());
+        Sleep(1000);
+        ProcessConsoleInput();
+    }
 }
 
-
-bool ParseThreadDataFile(const char* file_name)
+bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config)
 {
-	FILE* worker_information;
-	int file_size;
-	char* file_buffer;
+    if (!parser.GetString("MULTICHAT", "IP", &config.ip))
+    {
+        return false;
+    }
 
-	if (fopen_s(&worker_information, file_name, "rb") == 0)
-	{
-		if (worker_information == NULL)
-		{
-			return false;
-		}
+    if (!parser.GetUnsignedInt("MULTICHAT", "PORT", &config.port))
+    {
+        return false;
+    }
 
+    if (!parser.GetUnsignedInt("MULTICHAT", "WORKERTHREADS", &config.workerThreadCount))
+    {
+        return false;
+    }
 
-		fseek(worker_information, 0, SEEK_END);
-		file_size = ftell(worker_information);
-		rewind(worker_information);
+    if (!parser.GetUnsignedInt("MULTICHAT", "CONCURRENTTHREADS", &config.concurrentThreadCount))
+    {
+        return false;
+    }
 
+    if (!parser.GetUnsignedInt("MULTICHAT", "NAGLE", &config.nagle))
+    {
+        return false;
+    }
 
-		file_buffer = (char*)malloc(file_size);
-		if (file_buffer == NULL) {
-			printf("Error: Memory allocation failed.\n");
-			DebugBreak();
-			return false;
-		}
+    if (!parser.GetUnsignedInt("MULTICHAT", "SESSIONS", &config.maxSessionCount))
+    {
+        return false;
+    }
 
-		size_t bytesRead = fread_s(file_buffer, file_size, 1, file_size, worker_information);
-		if (bytesRead != file_size)
-		{
+    if (!parser.GetUnsignedInt("MULTICHAT", "HEADERSIZE", &config.headerSize))
+    {
+        return false;
+    }
 
-			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", file_size, bytesRead);
+    if (!parser.GetUnsignedChar("MULTICHAT", "PACKETCODE", &config.packetCode))
+    {
+        return false;
+    }
 
-			return false;
-		}
+    return true;
+}
 
-		int start_position = 0;
-		int end_postiion = 0;
+void PrintMonitoring(MultiChatServer* chatServer)
+{
+    if (chatServer == nullptr)
+    {
+        return;
+    }
 
-		//시작위치 + 0d 0a 넘기기. 
+    wprintf(L"\n------------------------------------------------------------\n");
 
-		for (int i = 0; i < file_size; ++i)
-		{
-			if (file_buffer[i] == '{')
-			{
-				start_position = i + 2;
-				break;
-			}
-		}
+    wprintf(L"CPacket\n");
+    wprintf(L"UseSize : %d    Capacity : %d\n", CPacket::GetUseSize(), CPacket::GetCapacity());
 
-		for (int i = file_size - 1; i >= 0; --i)
-		{
+    wprintf(L"\nContents\n");
+    wprintf(L"AcceptTotal : %lld\n", chatServer->GetAcceptTotal());
+    wprintf(L"Session : %u\n", chatServer->GetSessionNum());
+    wprintf(L"UnloginPlayer : %u    Player : %u\n", chatServer->GetUnloginPlayer(), chatServer->GetLoginPlayer());
 
+    wprintf(L"\n------------------------------------------------------------\n");
 
-			if (file_buffer[i] == '}')
-			{
-				end_postiion = i;
-				break;
-			}
-		}
+    wprintf(L"Disconnect\n");
+    wprintf(L"DisconnectTotal : %u\n", chatServer->GetDisconnectCount());
+    wprintf(L"DCWrongPacket : %u    DCAuthFailed : %u\n", chatServer->GetDCWrongPacket(), chatServer->GetDCAuthFailed());
+    wprintf(L"DCUnloginTimeout : %u    DCLoginAgain : %u\n", chatServer->GetDCUnloginTimeout(), chatServer->GetDCLoginAgain());
+    wprintf(L"DCSendBufferFull : %u    DCDuplicateLogin : %u\n", chatServer->GetDCSendBufferFull(), chatServer->GetDCDuplicateLogin());
+    wprintf(L"DCPacketCodeError : %u    DCSessionFull : %u\n", chatServer->GetDCPacketCodeError(), chatServer->GetDCSessionFull());
+    wprintf(L"DCDecodeError : %u    DCImpossiblePacketLength : %u\n", chatServer->GetDCDecodeError(), chatServer->GetDCImpossiblePacketLength());
 
-		int Index = 0;
+    wprintf(L"\n------------------------------------------------------------\n");
 
-		int size;
-		for (int i = start_position; i < end_postiion; ++i)
-		{
+    wprintf(L"TPS\n");
+    wprintf(L"AcceptTPS : %d\n", chatServer->GetAcceptTPS());
+    wprintf(L"RecvTPS : %d    SendTPS : %d    MonitorSendTPS : %d\n", chatServer->GetRecvMessageTPS(), chatServer->GetSendMessageTPS(), chatServer->monitoringClient_.sendMessageCount_);
+    wprintf(L"LogicTPS : %u    LoginTPS : %u\n", chatServer->GetLogicTPS(), chatServer->GetLoginTPS());
+    wprintf(L"SectorMoveTPS : %u    ChatTPS : %u\n", chatServer->GetSectorMoveTPS(), chatServer->GetChatTPS());
 
+    InterlockedExchange(&chatServer->monitoringClient_.sendMessageCount_, 0);
+}
 
-			if (file_buffer[i] == ':')
-			{
-				for (int j = i + 1; ; ++j)
-				{
-					if (file_buffer[j] == 0x0d)
-					{
-						size = j - i - 1;
-						memcpy_s(ThreadData[Index], size, file_buffer + i + 1, size);
-						ThreadData[Index][size] = '\0';
-						Index++;
-						break;
-					}
-				}
-				start_position = i + size;
-			}
-		}
+void ProcessConsoleInput()
+{
+    if (!_kbhit())
+    {
+        return;
+    }
 
-		free(file_buffer);
+    char input = _getch();
 
-		fclose(worker_information);
-	}
+    if (input == 's' || input == 'S')
+    {
+        ProfileDataOutText(L"MultiChatProfileData.txt");
+        return;
+    }
 
-
-	return true;
-
+    if (input == 'r' || input == 'R')
+    {
+        ProfileReset();
+    }
 }

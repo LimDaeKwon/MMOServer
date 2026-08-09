@@ -1,657 +1,697 @@
 #include "MultiChatServer.h"
 #include "ContentsCPacket.h"
-#include <process.h>
+#include "DKParser.h"
+#include "MonitoringDefine.h"
+#include "PacketDefine.h"
 
+#include <cstring>
+#include <ctime>
+#include <string>
 
-
-
-
-
-MultiChatServer::MultiChatServer() : PlayerPool(0)
+MultiChatServer::MultiChatServer() : playerPool_(0)
 {
-	InitializeSRWLock(&PlayerMapLock);
-	InitializeSRWLock(&AccountMapLock);
+    InitializeSRWLock(&playerMapLock_);
+    InitializeSRWLock(&accountMapLock_);
 
-	for (int i = 0; i < MAXSECTORY; i++)
-	{
-		for (int j = 0; j < MAXSECTORX; j++)
-		{
-			InitializeSRWLock(&SectorLock[i][j]);
-		}
-	}
+    for (int sectorY = 0; sectorY < SectorMaxY; ++sectorY)
+    {
+        for (int sectorX = 0; sectorX < SectorMaxX; ++sectorX)
+        {
+            InitializeSRWLock(&sectorLock_[sectorY][sectorX]);
+        }
+    }
 
-	monitoringClient_.Start("127.0.0.1", 5670, 1, 2);
+    WORD version = MAKEWORD(2, 2);
+    WSADATA data;
+    WSAStartup(version, &data);
 
-	WORD version = MAKEWORD(2, 2);
-	WSADATA data;
-	WSAStartup(version, &data);
-	Connection_ = new cpp_redis::client;
+    connection_ = new cpp_redis::client;
 
-	InitializeSRWLock(&connectionLock_);
-
-	Connection_->connect();
-
+    InitializeSRWLock(&connectionLock_);
 }
-
 
 MultiChatServer::~MultiChatServer()
 {
-
 }
 
-bool MultiChatServer::OnConnectionRequest(const wchar_t* server_IP, unsigned short server_port)
+bool MultiChatServer::Start(const DKServerCore::IocpServerStartConfig& config, DKParser& parser)
 {
-	return false;
+    if (!StartMonitoringClient(parser))
+    {
+        return false;
+    }
+
+    if (!ConnectRedis(parser))
+    {
+        return false;
+    }
+
+    return NetLibrary::Start(config);
 }
 
-void MultiChatServer::OnAccept(const wchar_t* server_IP, unsigned short server_port, __int64 SessionID)
+bool MultiChatServer::StartMonitoringClient(DKParser& parser)
 {
+    std::string monitoringIp;
+    unsigned int monitoringPort;
+    unsigned int monitoringNagle;
+    unsigned int monitoringHeaderSize;
 
-	Player* NewPlayer = PlayerPool.Alloc();
-	NewPlayer->SessionID = SessionID;
-	NewPlayer->SectorX = INITSECTORX;
-	NewPlayer->AuthFlag = false;
-	NewPlayer->Duplicate = false;
-	InterlockedIncrement(&UnloginPlayer);
+    if (!parser.GetString("MONITORING", "IP", &monitoringIp))
+    {
+        return false;
+    }
 
-	AcquireSRWLockExclusive(&PlayerMapLock);
-	PlayerMap.insert(std::unordered_map<__int64, Player*>::value_type(NewPlayer->SessionID, NewPlayer));
-	ReleaseSRWLockExclusive(&PlayerMapLock);
+    if (!parser.GetUnsignedInt("MONITORING", "PORT", &monitoringPort))
+    {
+        return false;
+    }
 
+    if (!parser.GetUnsignedInt("MONITORING", "NAGLE", &monitoringNagle))
+    {
+        return false;
+    }
 
+    if (!parser.GetUnsignedInt("MONITORING", "HEADERSIZE", &monitoringHeaderSize))
+    {
+        return false;
+    }
 
+    return monitoringClient_.Start(monitoringIp.c_str(), monitoringPort, monitoringNagle, monitoringHeaderSize);
 }
 
-void MultiChatServer::OnRelease(__int64 SessionID)
+bool MultiChatServer::ConnectRedis(DKParser& parser)
 {
-	Player* TargetPlayer;
-	AcquireSRWLockExclusive(&PlayerMapLock);
-	std::unordered_map<__int64, Player*>::iterator PI = PlayerMap.find(SessionID);
-	if (PI == PlayerMap.end())
-	{
-		//왜 없니
-		//__debugbreak();
-	}
-	TargetPlayer = PI->second;
-	PlayerMap.erase(TargetPlayer->SessionID);
-	ReleaseSRWLockExclusive(&PlayerMapLock);
+    std::string redisIp;
+    unsigned int redisPort;
 
+    if (!parser.GetString("REDIS", "IP", &redisIp))
+    {
+        return false;
+    }
 
-	if (TargetPlayer->SectorX != INITSECTORX)
-	{
-		AcquireSRWLockExclusive(&SectorLock[TargetPlayer->SectorY][TargetPlayer->SectorX]);
+    if (!parser.GetUnsignedInt("REDIS", "PORT", &redisPort))
+    {
+        return false;
+    }
 
-		std::list<Player*>::iterator LI = SectorList[TargetPlayer->SectorY][TargetPlayer->SectorX].begin();
+    connection_->connect(redisIp, redisPort);
 
-		for (; LI != SectorList[TargetPlayer->SectorY][TargetPlayer->SectorX].end(); ++LI)
-		{
-			Player* Target = *LI;
-			if (Target->SessionID == TargetPlayer->SessionID)
-			{
-				SectorList[TargetPlayer->SectorY][TargetPlayer->SectorX].erase(LI);
-				break;
-			}
-		}
-		ReleaseSRWLockExclusive(&SectorLock[TargetPlayer->SectorY][TargetPlayer->SectorX]);
-
-	}
-
-	if (TargetPlayer->AuthFlag)
-	{
-		InterlockedDecrement(&LoginPlayer);
-	}
-	else
-	{
-		InterlockedDecrement(&UnloginPlayer);
-	}
-
-	AcquireSRWLockExclusive(&AccountMapLock);
-	std::unordered_map<__int64, Player*>::iterator AI = AccountMap.find(TargetPlayer->AccountNo);
-	if (AI != AccountMap.end())
-	{
-		if (TargetPlayer->SessionID == AI->second->SessionID)
-		{
-			AccountMap.erase(TargetPlayer->AccountNo);
-		}
-	}
-	ReleaseSRWLockExclusive(&AccountMapLock);
-	PlayerPool.Free(TargetPlayer);
-
+    return true;
 }
 
-void MultiChatServer::OnMessage(__int64 SessionID, ContentsCPacket* contents_send_packet)
+bool MultiChatServer::OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort)
 {
-
-	WORD MessageType;
-
-	ContentsCPacket ContentsPacket = contents_send_packet;
-
-	ContentsPacket >> MessageType;
-
-	Player* TargetPlayer;
-
-	AcquireSRWLockShared(&PlayerMapLock);
-	std::unordered_map<__int64, Player*>::iterator PI = PlayerMap.find(SessionID);
-	if (PI == PlayerMap.end())
-	{
-		//__debugbreak();
-		//음.. 문제가 있는 상황이다. 
-	}
-	TargetPlayer = PI->second;
-	ReleaseSRWLockShared(&PlayerMapLock);
-
-	//채팅서버 로그인 요청 : 152
-	//채팅서버 섹터 이동 요청 12 / 정상적인 섹터의 범위가 온 것인지.
-	//채팅서버 메시지 요청 8 + 2 + 106  116
-
-	switch (MessageType)
-	{
-	case en_PACKET_CS_CHAT_REQ_LOGIN:
-	{
-
-		INT64	AccountNo;
-		WCHAR	ID[20];				// null 포함
-		WCHAR	Nickname[20];		// null 포함
-		char	SessionKey[64];		// 인증토큰
-
-		if (ContentsPacket.GetDataSize() != 152)
-		{
-			InterlockedIncrement(&DCWrongPacket);
-			Disconnect(SessionID);
-			break;
-		}
-
-		ContentsPacket >> AccountNo;
-		ContentsPacket.GetData((char*)ID, 40);
-		ContentsPacket.GetData((char*)Nickname, 40);
-		ContentsPacket.GetData((char*)SessionKey, sizeof(SessionKey));
-
-		NetPacketProc_Login(TargetPlayer, AccountNo, ID, Nickname, SessionKey);
-		InterlockedIncrement(&LoginCount);
-
-		break;
-	}
-	case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
-	{
-
-		INT64	AccountNo;
-		WORD	SectorX;
-		WORD	SectorY;
-
-		if (ContentsPacket.GetDataSize() != 12)
-		{
-			InterlockedIncrement(&DCWrongPacket);
-			Disconnect(SessionID);
-			break;
-		}
-
-		ContentsPacket >> AccountNo;
-		ContentsPacket >> SectorX;
-		ContentsPacket >> SectorY;
-
-		//유효성 검사
-		if (SectorX >= MAXSECTORX || SectorY >= MAXSECTORY)
-		{
-			Disconnect(SessionID);
-			InterlockedIncrement(&DCWrongPacket);
-			break;
-		}
-
-		NetPacketProc_SectorMove(TargetPlayer, AccountNo, SectorX, SectorY);
-		InterlockedIncrement(&SectorMoveCount);
-
-		break;
-	}
-	case en_PACKET_CS_CHAT_REQ_MESSAGE:
-	{
-
-		INT64	AccountNo;
-		WORD	MessageLen;
-		WCHAR	Message[MAXCHATSIZE]; // null 미포함
-
-		if (ContentsPacket.GetDataSize() > 116)
-		{
-			InterlockedIncrement(&DCWrongPacket);
-			Disconnect(SessionID);
-			break;
-		}
-
-
-		ContentsPacket >> AccountNo;
-		ContentsPacket >> MessageLen;
-
-		if (MessageLen > 106)
-		{
-			InterlockedIncrement(&DCWrongPacket);
-			Disconnect(SessionID);
-			break;
-		}
-
-		ContentsPacket.GetData((char*)Message, MessageLen);
-		Message[MessageLen / 2] = L'\0';
-
-		NetPacketProc_Message(TargetPlayer, AccountNo, MessageLen, Message);
-		InterlockedIncrement(&ChatCount);
-
-		break;
-	}
-	case en_PACKET_CS_CHAT_REQ_HEARTBEAT:
-	{
-		if (ContentsPacket.GetDataSize() != 0)
-		{
-			InterlockedIncrement(&DCWrongPacket);
-			Disconnect(SessionID);
-			break;
-		}
-		NetPacketProc_Heartbeat(TargetPlayer);
-		InterlockedIncrement(&HeartBeatCount);
-		break;
-	}
-	default:
-	{
-		//잘못된 데이터
-		InterlockedIncrement(&DCWrongPacket);
-		Disconnect(SessionID);
-		break;
-	}
-
-	}
-	InterlockedIncrement(&LogicCount);
-
-
-
+    return false;
 }
 
-void MultiChatServer::OnError(int errorcode, const wchar_t* error_log)
+void MultiChatServer::OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId)
 {
+    Player* newPlayer = playerPool_.Alloc();
 
+    newPlayer->sessionId_ = sessionId;
+    newPlayer->sectorPosition_.x_ = InitialSectorX;
+    newPlayer->sectorPosition_.y_ = InitialSectorY;
+    newPlayer->authFlag_ = false;
+    newPlayer->duplicate_ = false;
+
+    InterlockedIncrement(&unloginPlayer_);
+
+    AcquireSRWLockExclusive(&playerMapLock_);
+    playerMap_.insert({ newPlayer->sessionId_, newPlayer });
+    ReleaseSRWLockExclusive(&playerMapLock_);
+}
+
+void MultiChatServer::OnRelease(__int64 sessionId)
+{
+    Player* targetPlayer;
+
+    AcquireSRWLockExclusive(&playerMapLock_);
+
+    std::unordered_map<__int64, Player*>::iterator playerIter = playerMap_.find(sessionId);
+
+    if (playerIter == playerMap_.end())
+    {
+        DebugBreak();
+    }
+
+    targetPlayer = playerIter->second;
+    playerMap_.erase(targetPlayer->sessionId_);
+
+    ReleaseSRWLockExclusive(&playerMapLock_);
+
+    if (targetPlayer->sectorPosition_.x_ != InitialSectorX)
+    {
+        unsigned int sectorX = targetPlayer->sectorPosition_.x_;
+        unsigned int sectorY = targetPlayer->sectorPosition_.y_;
+
+        AcquireSRWLockExclusive(&sectorLock_[sectorY][sectorX]);
+
+        std::list<Player*>::iterator playerListIter = sectorList_[sectorY][sectorX].begin();
+
+        for (; playerListIter != sectorList_[sectorY][sectorX].end(); ++playerListIter)
+        {
+            Player* sectorPlayer = *playerListIter;
+
+            if (sectorPlayer->sessionId_ == targetPlayer->sessionId_)
+            {
+                sectorList_[sectorY][sectorX].erase(playerListIter);
+                break;
+            }
+        }
+
+        ReleaseSRWLockExclusive(&sectorLock_[sectorY][sectorX]);
+    }
+
+    if (targetPlayer->authFlag_)
+    {
+        InterlockedDecrement(&loginPlayer_);
+    }
+    else
+    {
+        InterlockedDecrement(&unloginPlayer_);
+    }
+
+    AcquireSRWLockExclusive(&accountMapLock_);
+
+    std::unordered_map<__int64, Player*>::iterator accountIter = accountMap_.find(targetPlayer->accountNo_);
+
+    if (accountIter != accountMap_.end())
+    {
+        if (targetPlayer->sessionId_ == accountIter->second->sessionId_)
+        {
+            accountMap_.erase(targetPlayer->accountNo_);
+        }
+    }
+
+    ReleaseSRWLockExclusive(&accountMapLock_);
+
+    playerPool_.Free(targetPlayer);
+}
+
+void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPacketPtr)
+{
+    unsigned short messageType;
+
+    ContentsCPacket contentsPacket = contentsPacketPtr;
+    contentsPacket >> messageType;
+
+    Player* targetPlayer;
+
+    AcquireSRWLockShared(&playerMapLock_);
+
+    std::unordered_map<__int64, Player*>::iterator playerIter = playerMap_.find(sessionId);
+
+    if (playerIter == playerMap_.end())
+    {
+        DebugBreak();
+    }
+
+    targetPlayer = playerIter->second;
+
+    ReleaseSRWLockShared(&playerMapLock_);
+
+    switch (messageType)
+    {
+    case PacketCsChatReqLogin:
+    {
+        __int64 accountNo;
+        wchar_t id[PlayerIdLength];
+        wchar_t nickname[PlayerNicknameLength];
+        char sessionKey[SessionKeyLength];
+
+        if (contentsPacket.GetDataSize() != PacketChatLoginRequestDataSize)
+        {
+            InterlockedIncrement(&dcWrongPacket_);
+            Disconnect(sessionId);
+            break;
+        }
+
+        contentsPacket >> accountNo;
+        contentsPacket.GetData(reinterpret_cast<char*>(id), PlayerIdByteSize);
+        contentsPacket.GetData(reinterpret_cast<char*>(nickname), PlayerNicknameByteSize);
+        contentsPacket.GetData(sessionKey, SessionKeyLength);
+
+        NetPacketProcLogin(targetPlayer, accountNo, id, nickname, sessionKey);
+        InterlockedIncrement(&loginCount_);
+
+        break;
+    }
+    case PacketCsChatReqSectorMove:
+    {
+        __int64 accountNo;
+        unsigned short sectorX;
+        unsigned short sectorY;
+
+        if (contentsPacket.GetDataSize() != PacketChatSectorMoveRequestDataSize)
+        {
+            InterlockedIncrement(&dcWrongPacket_);
+            Disconnect(sessionId);
+            break;
+        }
+
+        contentsPacket >> accountNo;
+        contentsPacket >> sectorX;
+        contentsPacket >> sectorY;
+
+        if (sectorX >= SectorMaxX || sectorY >= SectorMaxY)
+        {
+            InterlockedIncrement(&dcWrongPacket_);
+            Disconnect(sessionId);
+            break;
+        }
+
+        NetPacketProcSectorMove(targetPlayer, accountNo, sectorX, sectorY);
+        InterlockedIncrement(&sectorMoveCount_);
+
+        break;
+    }
+    case PacketCsChatReqMessage:
+    {
+        __int64 accountNo;
+        unsigned short messageLength;
+        wchar_t message[MaxChatSize];
+
+        if (contentsPacket.GetDataSize() > PacketChatMessageRequestMaxDataSize)
+        {
+            InterlockedIncrement(&dcWrongPacket_);
+            Disconnect(sessionId);
+            break;
+        }
+
+        contentsPacket >> accountNo;
+        contentsPacket >> messageLength;
+
+        if (messageLength > PacketChatMessageMaxByteSize)
+        {
+            InterlockedIncrement(&dcWrongPacket_);
+            Disconnect(sessionId);
+            break;
+        }
+
+        contentsPacket.GetData(reinterpret_cast<char*>(message), messageLength);
+        message[messageLength / sizeof(wchar_t)] = L'\0';
+
+        NetPacketProcMessage(targetPlayer, accountNo, messageLength, message);
+        InterlockedIncrement(&chatCount_);
+
+        break;
+    }
+    case PacketCsChatReqHeartbeat:
+    {
+        if (contentsPacket.GetDataSize() != 0)
+        {
+            InterlockedIncrement(&dcWrongPacket_);
+            Disconnect(sessionId);
+            break;
+        }
+
+        NetPacketProcHeartbeat(targetPlayer);
+        InterlockedIncrement(&heartbeatCount_);
+
+        break;
+    }
+    default:
+    {
+        InterlockedIncrement(&dcWrongPacket_);
+        Disconnect(sessionId);
+
+        break;
+    }
+    }
+
+    InterlockedIncrement(&logicCount_);
+}
+
+void MultiChatServer::OnError(int errorCode, const wchar_t* errorLog)
+{
 }
 
 void MultiChatServer::OnInitializeTPS()
 {
-	//여기서 하면 돼
-	int timeStamp = static_cast<int>(time(nullptr));
+    int timeStamp = static_cast<int>(time(nullptr));
 
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_CHAT_SERVER_RUN, 1, timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_CHAT_SERVER_CPU, static_cast<int>(processMonitoring_.ProcessTotal()), timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_CHAT_SERVER_MEM, static_cast<int>(processMonitoring_.GetProcessUserMemoryMBytes()), timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_CHAT_SESSION, GetSessionNum(), timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_CHAT_PLAYER, GetLoginPlayer(), timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_CHAT_UPDATE_TPS, LogicTPS, timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_CHAT_PACKET_POOL, CPacket::GetCapacity(), timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_CHAT_UPDATEMSG_POOL, 0, timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeChatServerRun, 1, timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeChatServerCpu, static_cast<int>(processMonitoring_.ProcessTotal()), timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeChatServerMemory, static_cast<int>(processMonitoring_.GetProcessUserMemoryMBytes()), timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeChatSession, GetSessionNum(), timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeChatPlayer, GetLoginPlayer(), timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeChatUpdateTps, logicTps_, timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeChatPacketPool, CPacket::GetCapacity(), timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeChatUpdateMessagePool, 0, timeStamp);
 
-	monitoringClient_.SendMonitorData();
+    monitoringClient_.SendMonitorData();
 
+    logicTps_ = logicCount_;
+    loginTps_ = loginCount_;
+    sectorMoveTps_ = sectorMoveCount_;
+    chatTps_ = chatCount_;
+    heartbeatTps_ = heartbeatCount_;
 
-	LogicTPS = LogicCount;
-	LoginTPS = LoginCount;
-	SectorMoveTPS = SectorMoveCount;
-	ChatTPS = ChatCount;
-	HeartBeatTPS = HeartBeatCount;
-
-	LogicCount = 0;
-	LoginCount = 0;
-	SectorMoveCount = 0;
-	ChatCount = 0;
-	HeartBeatCount = 0;
-
+    logicCount_ = 0;
+    loginCount_ = 0;
+    sectorMoveCount_ = 0;
+    chatCount_ = 0;
+    heartbeatCount_ = 0;
 }
 
-
-bool MultiChatServer::AuthToken(INT64 AccountNo, char* SessionKey)
+bool MultiChatServer::AuthToken(__int64 accountNo, char* sessionKey)
 {
-	//세션키를 레디스에 조회
-	AcquireSRWLockExclusive(&connectionLock_);
+    AcquireSRWLockExclusive(&connectionLock_);
 
-	std::string Key = std::to_string(AccountNo);
+    std::string key = std::to_string(accountNo);
+    std::string value;
 
-	std::string Value;
-	Connection_->get(Key, [&Value](cpp_redis::reply& reply) { if (reply.is_string()) { Value = reply.as_string(); } });
+    connection_->get(key, [&value](cpp_redis::reply& reply)
+        {
+            if (reply.is_string())
+            {
+                value = reply.as_string();
+            }
+        });
 
-	Connection_->sync_commit();
+    connection_->sync_commit();
 
-	if (memcmp(Value.c_str(), SessionKey, 64) != 0)
-	{
-		//세션키 오류
-		//디버그 브레이크
-		//상황이 나오긴 하는지 체크 
-		ReleaseSRWLockExclusive(&connectionLock_);
-		return false;
-	}
-	Connection_->del({ Key });
-	Connection_->sync_commit();
-	ReleaseSRWLockExclusive(&connectionLock_);
+    if (memcmp(value.c_str(), sessionKey, SessionKeyLength) != 0)
+    {
+        ReleaseSRWLockExclusive(&connectionLock_);
+        return false;
+    }
 
-	return true;
+    connection_->del({ key });
+    connection_->sync_commit();
+
+    ReleaseSRWLockExclusive(&connectionLock_);
+
+    return true;
 }
 
-
-
-void MultiChatServer::NetPacketProc_Login(Player* TargetPlayer, INT64 AccountNo, WCHAR* ID, WCHAR* NickName, char* SessionKey)
+void MultiChatServer::NetPacketProcLogin(Player* targetPlayer, __int64 accountNo, wchar_t* id, wchar_t* nickname, char* sessionKey)
 {
-	if (TargetPlayer->AuthFlag == TRUE)
-	{
-		//공격 로그인 메시지가 중복으로 옴.
-		InterlockedIncrement(&DCLoginAgain);
-		Disconnect(TargetPlayer->SessionID);
-		return;
+    if (targetPlayer->authFlag_)
+    {
+        InterlockedIncrement(&dcLoginAgain_);
+        Disconnect(targetPlayer->sessionId_);
 
-	}
+        return;
+    }
 
+    targetPlayer->accountNo_ = accountNo;
 
-	TargetPlayer->AccountNo = AccountNo;
-	wmemcpy_s(TargetPlayer->ID, 20, ID, 20);
-	wmemcpy_s(TargetPlayer->NickName, 20, NickName, 20);
+    wmemcpy_s(targetPlayer->id_, PlayerIdLength, id, PlayerIdLength);
+    wmemcpy_s(targetPlayer->nickname_, PlayerNicknameLength, nickname, PlayerNicknameLength);
 
-	if (!AuthToken(AccountNo, SessionKey))
-	{
-		Disconnect(TargetPlayer->SessionID);
-		InterlockedIncrement(&DCAuthFailed);
-		return;
-	}
+    if (!AuthToken(accountNo, sessionKey))
+    {
+        InterlockedIncrement(&dcAuthFailed_);
+        Disconnect(targetPlayer->sessionId_);
 
-	AcquireSRWLockExclusive(&AccountMapLock);
-	std::unordered_map<__int64, Player*>::iterator AI = AccountMap.find(AccountNo);
-	if (AI != AccountMap.end())
-	{
-		Player* DisconnectPlayer = AI->second;
-		//중복 로그인
-		Disconnect(DisconnectPlayer->SessionID);
-		DisconnectPlayer->Duplicate = true;
-		InterlockedIncrement(&DCDuplicateLogin);
-		AccountMap.erase(AccountNo);
+        return;
+    }
 
-	}
+    AcquireSRWLockExclusive(&accountMapLock_);
 
-	AccountMap.insert(std::unordered_map<__int64, Player*>::value_type(TargetPlayer->AccountNo, TargetPlayer));
+    std::unordered_map<__int64, Player*>::iterator accountIter = accountMap_.find(accountNo);
 
-	ReleaseSRWLockExclusive(&AccountMapLock);
+    if (accountIter != accountMap_.end())
+    {
+        Player* disconnectPlayer = accountIter->second;
 
+        Disconnect(disconnectPlayer->sessionId_);
+        disconnectPlayer->duplicate_ = true;
 
-	TargetPlayer->AuthFlag = TRUE;
+        InterlockedIncrement(&dcDuplicateLogin_);
 
-	ContentsCPacket login_packet = ContentsCPacket::MakeContentsPacket();
-	login_packet << (WORD)en_PACKET_CS_CHAT_RES_LOGIN << BYTE(TRUE) << TargetPlayer->AccountNo;
+        accountMap_.erase(accountNo);
+    }
 
-	SendPacket(TargetPlayer->SessionID, login_packet);
-	InterlockedDecrement(&UnloginPlayer);
-	InterlockedIncrement(&LoginPlayer);
+    accountMap_.insert({ targetPlayer->accountNo_, targetPlayer });
 
+    ReleaseSRWLockExclusive(&accountMapLock_);
 
+    targetPlayer->authFlag_ = true;
+
+    ContentsCPacket loginPacket = ContentsCPacket::MakeContentsPacket();
+
+    loginPacket << PacketScChatResLogin;
+    loginPacket << static_cast<unsigned char>(TRUE);
+    loginPacket << targetPlayer->accountNo_;
+
+    SendPacket(targetPlayer->sessionId_, loginPacket);
+
+    InterlockedDecrement(&unloginPlayer_);
+    InterlockedIncrement(&loginPlayer_);
 }
 
-void MultiChatServer::NetPacketProc_SectorMove(Player* TargetPlayer, INT64 AccountNo, WORD SectorX, WORD SectorY)
+void MultiChatServer::NetPacketProcSectorMove(Player* targetPlayer, __int64 accountNo, unsigned short sectorX, unsigned short sectorY)
 {
+    if (targetPlayer->sectorPosition_.x_ == InitialSectorX)
+    {
+        targetPlayer->sectorPosition_.x_ = sectorX;
+        targetPlayer->sectorPosition_.y_ = sectorY;
 
+        AcquireSRWLockExclusive(&sectorLock_[sectorY][sectorX]);
+        sectorList_[sectorY][sectorX].push_back(targetPlayer);
+        ReleaseSRWLockExclusive(&sectorLock_[sectorY][sectorX]);
+    }
+    else
+    {
+        unsigned short previousSectorX = static_cast<unsigned short>(targetPlayer->sectorPosition_.x_);
+        unsigned short previousSectorY = static_cast<unsigned short>(targetPlayer->sectorPosition_.y_);
 
-	if (TargetPlayer->SectorX == INITSECTORX) // 최초의 섹터 진입 , 내것만 추가하면 돼
-	{
-		TargetPlayer->SectorX = SectorX;
-		TargetPlayer->SectorY = SectorY;
+        targetPlayer->sectorPosition_.x_ = sectorX;
+        targetPlayer->sectorPosition_.y_ = sectorY;
 
-		AcquireSRWLockExclusive(&SectorLock[TargetPlayer->SectorY][TargetPlayer->SectorX]);
-		SectorList[TargetPlayer->SectorY][TargetPlayer->SectorX].push_back(TargetPlayer);
-		ReleaseSRWLockExclusive(&SectorLock[TargetPlayer->SectorY][TargetPlayer->SectorX]);
+        if (previousSectorX != sectorX || previousSectorY != sectorY)
+        {
+            LockSectorMove(previousSectorX, previousSectorY, sectorX, sectorY);
 
+            std::list<Player*>::iterator playerIter = sectorList_[previousSectorY][previousSectorX].begin();
 
-	}
-	else
-	{
-		WORD PrevX = TargetPlayer->SectorX;
-		WORD PrevY = TargetPlayer->SectorY;
+            for (; playerIter != sectorList_[previousSectorY][previousSectorX].end(); ++playerIter)
+            {
+                Player* sectorPlayer = *playerIter;
 
-		TargetPlayer->SectorX = SectorX;
-		TargetPlayer->SectorY = SectorY;
-		if (!(TargetPlayer->SectorX == PrevX && TargetPlayer->SectorY == PrevY))
-		{
-			LockSectorMove(PrevX, PrevY, TargetPlayer->SectorX, TargetPlayer->SectorY);
-			std::list<Player*>::iterator LI = SectorList[PrevY][PrevX].begin();
-			for (; LI != SectorList[PrevY][PrevX].end(); ++LI)
-			{
-				Player* Target = *LI;
+                if (sectorPlayer->sessionId_ == targetPlayer->sessionId_)
+                {
+                    sectorList_[previousSectorY][previousSectorX].erase(playerIter);
+                    break;
+                }
+            }
 
-				if (Target->SessionID == TargetPlayer->SessionID)
-				{
-					SectorList[PrevY][PrevX].erase(LI);
-					break;
-				}
-			}
-			SectorList[TargetPlayer->SectorY][TargetPlayer->SectorX].push_back(TargetPlayer);
+            sectorList_[sectorY][sectorX].push_back(targetPlayer);
 
-			UnlockSectorMove(PrevX, PrevY, TargetPlayer->SectorX, TargetPlayer->SectorY);
-		}
+            UnlockSectorMove(previousSectorX, previousSectorY, sectorX, sectorY);
+        }
+    }
 
-	}
+    ContentsCPacket sectorMovePacket = ContentsCPacket::MakeContentsPacket();
 
-	ContentsCPacket SectorMovePacket = ContentsCPacket::MakeContentsPacket();
+    sectorMovePacket << PacketScChatResSectorMove;
+    sectorMovePacket << targetPlayer->accountNo_;
+    sectorMovePacket << static_cast<unsigned short>(targetPlayer->sectorPosition_.x_);
+    sectorMovePacket << static_cast<unsigned short>(targetPlayer->sectorPosition_.y_);
 
-	SectorMovePacket << (WORD)en_PACKET_CS_CHAT_RES_SECTOR_MOVE << TargetPlayer->AccountNo << TargetPlayer->SectorX << TargetPlayer->SectorY;
-
-	SendPacket(TargetPlayer->SessionID, SectorMovePacket);
-
-
+    SendPacket(targetPlayer->sessionId_, sectorMovePacket);
 }
 
-void MultiChatServer::NetPacketProc_Message(Player* TargetPlayer, INT64 AccountNo, WORD MessageLen, WCHAR* Message)
+void MultiChatServer::NetPacketProcMessage(Player* targetPlayer, __int64 accountNo, unsigned short messageLength, wchar_t* message)
 {
+    ContentsCPacket chatPacket = ContentsCPacket::MakeContentsPacket();
 
-	ContentsCPacket ChatPacket = ContentsCPacket::MakeContentsPacket();
+    if (targetPlayer->duplicate_)
+    {
+        return;
+    }
 
-	if (TargetPlayer->Duplicate == true)
-	{
-		return;
-	}
+    chatPacket << PacketScChatResMessage;
+    chatPacket << targetPlayer->accountNo_;
+    chatPacket.PutData(reinterpret_cast<char*>(targetPlayer->id_), PlayerIdByteSize);
+    chatPacket.PutData(reinterpret_cast<char*>(targetPlayer->nickname_), PlayerNicknameByteSize);
+    chatPacket << messageLength;
+    chatPacket.PutData(reinterpret_cast<char*>(message), messageLength);
 
+    SectorAround aroundSector;
+    GetSectorAround(static_cast<int>(targetPlayer->sectorPosition_.x_), static_cast<int>(targetPlayer->sectorPosition_.y_), &aroundSector);
 
-	ChatPacket << (WORD)en_PACKET_CS_CHAT_RES_MESSAGE << TargetPlayer->AccountNo;
-	ChatPacket.PutData((char*)TargetPlayer->ID, 40);
-	ChatPacket.PutData((char*)TargetPlayer->NickName, 40);
-	ChatPacket << MessageLen;
-	ChatPacket.PutData((char*)Message, MessageLen);
+    for (unsigned int i = 0; i < aroundSector.count_; ++i)
+    {
+        unsigned int aroundX = aroundSector.around_[i].x_;
+        unsigned int aroundY = aroundSector.around_[i].y_;
 
-	//주변 영향권 섹터를 순서에 맞게 구함 4~9개
-	SectorAround AroundSector;
-	GetSectorAround(TargetPlayer->SectorX, TargetPlayer->SectorY, &AroundSector);
+        AcquireSRWLockShared(&sectorLock_[aroundY][aroundX]);
 
-	for (unsigned int i = 0; i < AroundSector.Count; ++i)
-	{
-		DWORD AroundX = AroundSector.Around[i].X;
-		DWORD AroundY = AroundSector.Around[i].Y;
-		std::list<Player*>::iterator LI;
+        std::list<Player*>::iterator playerIter = sectorList_[aroundY][aroundX].begin();
 
-		AcquireSRWLockShared(&SectorLock[AroundY][AroundX]);
+        for (; playerIter != sectorList_[aroundY][aroundX].end(); ++playerIter)
+        {
+            Player* sectorPlayer = *playerIter;
+            SendPacket(sectorPlayer->sessionId_, chatPacket);
+        }
+    }
 
-		for (LI = SectorList[AroundY][AroundX].begin(); LI != SectorList[AroundY][AroundX].end(); ++LI)
-		{
-			Player* Target = *LI;
-			SendPacket(Target->SessionID, ChatPacket);
-		}
-	}
+    for (int i = static_cast<int>(aroundSector.count_) - 1; i >= 0; --i)
+    {
+        unsigned int aroundX = aroundSector.around_[i].x_;
+        unsigned int aroundY = aroundSector.around_[i].y_;
 
-	for (int i = AroundSector.Count - 1; i >= 0; --i)
-	{
-
-		DWORD AroundX = AroundSector.Around[i].X;
-		DWORD AroundY = AroundSector.Around[i].Y;
-		ReleaseSRWLockShared(&SectorLock[AroundY][AroundX]);
-	}
-
+        ReleaseSRWLockShared(&sectorLock_[aroundY][aroundX]);
+    }
 }
 
-
-void MultiChatServer::NetPacketProc_Heartbeat(Player* TargetPlayer)
+void MultiChatServer::NetPacketProcHeartbeat(Player* targetPlayer)
 {
-
-
-
 }
 
-void MultiChatServer::GetSectorAround(int SectorX, int SectorY, SectorAround* AroundSector)
+void MultiChatServer::GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector)
 {
-	//1. X가 더 작고 Y가 더 작을수록.
-	//2. 
+    aroundSector->count_ = 0;
 
-	AroundSector->Count = 0;
+    if (sectorY - 1 >= 0 && sectorX - 1 >= 0)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+        ++aroundSector->count_;
+    }
 
-	if (SectorY - 1 >= 0 && SectorX - 1 >= 0)
-	{
-		AroundSector->Around[AroundSector->Count].X = (WORD)SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY - 1;
-		AroundSector->Count++;
-	}
+    if (sectorY - 1 >= 0)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = sectorX;
+        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+        ++aroundSector->count_;
+    }
 
-	if (SectorY - 1 >= 0)
-	{
-		AroundSector->Around[AroundSector->Count].X = (WORD)SectorX;
-		AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY - 1;
-		AroundSector->Count++;
-	}
+    if (sectorY - 1 >= 0 && sectorX + 1 < SectorMaxX)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+        aroundSector->around_[aroundSector->count_].y_ = sectorY - 1;
+        ++aroundSector->count_;
+    }
 
-	if (SectorY - 1 >= 0 && SectorX + 1 < MAXSECTORX)
-	{
-		AroundSector->Around[AroundSector->Count].X = (WORD)SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY - 1;
-		AroundSector->Count++;
-	}
+    if (sectorX - 1 >= 0)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+        aroundSector->around_[aroundSector->count_].y_ = sectorY;
+        ++aroundSector->count_;
+    }
 
-	if (SectorX - 1 >= 0)
-	{
-		AroundSector->Around[AroundSector->Count].X = (WORD)SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY;
-		AroundSector->Count++;
-	}
+    aroundSector->around_[aroundSector->count_].x_ = sectorX;
+    aroundSector->around_[aroundSector->count_].y_ = sectorY;
+    ++aroundSector->count_;
 
-	AroundSector->Around[AroundSector->Count].X = (WORD)SectorX;
-	AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY;
-	AroundSector->Count++;
+    if (sectorX + 1 < SectorMaxX)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+        aroundSector->around_[aroundSector->count_].y_ = sectorY;
+        ++aroundSector->count_;
+    }
 
+    if (sectorY + 1 < SectorMaxY && sectorX - 1 >= 0)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = sectorX - 1;
+        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+        ++aroundSector->count_;
+    }
 
-	if (SectorX + 1 < MAXSECTORX)
-	{
-		AroundSector->Around[AroundSector->Count].X = (WORD)SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY;
-		AroundSector->Count++;
-	}
+    if (sectorY + 1 < SectorMaxY)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = sectorX;
+        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+        ++aroundSector->count_;
+    }
 
-	if (SectorY + 1 < MAXSECTORY && SectorX - 1 >= 0)
-	{
-		AroundSector->Around[AroundSector->Count].X = (WORD)SectorX - 1;
-		AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY + 1;
-		AroundSector->Count++;
-	}
-
-
-	if (SectorY + 1 < MAXSECTORY)
-	{
-		AroundSector->Around[AroundSector->Count].X = (WORD)SectorX;
-		AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY + 1;
-		AroundSector->Count++;
-	}
-
-	if (SectorY + 1 < MAXSECTORY && SectorX + 1 < MAXSECTORX)
-	{
-		AroundSector->Around[AroundSector->Count].X = (WORD)SectorX + 1;
-		AroundSector->Around[AroundSector->Count].Y = (WORD)SectorY + 1;
-		AroundSector->Count++;
-	}
-
-	//VisitedAround[SectorY][SectorX] = *AroundSector;
-	//VisitedAround[SectorY][SectorX].Flag = 1;
-
-
+    if (sectorY + 1 < SectorMaxY && sectorX + 1 < SectorMaxX)
+    {
+        aroundSector->around_[aroundSector->count_].x_ = sectorX + 1;
+        aroundSector->around_[aroundSector->count_].y_ = sectorY + 1;
+        ++aroundSector->count_;
+    }
 }
 
-void MultiChatServer::LockSectorMove(WORD FirstX, WORD FirstY, WORD SecondX, WORD SecondY)
+void MultiChatServer::LockSectorMove(unsigned short firstX, unsigned short firstY, unsigned short secondX, unsigned short secondY)
 {
+    if (firstY > secondY || firstY == secondY && firstX > secondX)
+    {
+        unsigned short temporaryX = firstX;
+        unsigned short temporaryY = firstY;
 
-	if ((FirstY > SecondY) || (FirstY == SecondY && FirstX > SecondX))
-	{
-		WORD TempX = FirstX;
-		WORD TempY = FirstY;
-		FirstX = SecondX;
-		FirstY = SecondY;
-		SecondX = TempX;
-		SecondY = TempY;
-	}
+        firstX = secondX;
+        firstY = secondY;
+        secondX = temporaryX;
+        secondY = temporaryY;
+    }
 
-	AcquireSRWLockExclusive(&SectorLock[FirstY][FirstX]);
-	AcquireSRWLockExclusive(&SectorLock[SecondY][SecondX]);
-
+    AcquireSRWLockExclusive(&sectorLock_[firstY][firstX]);
+    AcquireSRWLockExclusive(&sectorLock_[secondY][secondX]);
 }
 
-
-void MultiChatServer::UnlockSectorMove(WORD FirstX, WORD FirstY, WORD SecondX, WORD SecondY)
+void MultiChatServer::UnlockSectorMove(unsigned short firstX, unsigned short firstY, unsigned short secondX, unsigned short secondY)
 {
+    if (firstY > secondY || firstY == secondY && firstX > secondX)
+    {
+        unsigned short temporaryX = firstX;
+        unsigned short temporaryY = firstY;
 
-	if ((FirstY > SecondY) || (FirstY == SecondY && FirstX > SecondX))
-	{
-		WORD TempX = FirstX;
-		WORD TempY = FirstY;
-		FirstX = SecondX;
-		FirstY = SecondY;
-		SecondX = TempX;
-		SecondY = TempY;
-	}
+        firstX = secondX;
+        firstY = secondY;
+        secondX = temporaryX;
+        secondY = temporaryY;
+    }
 
-	ReleaseSRWLockExclusive(&SectorLock[SecondY][SecondX]);
-	ReleaseSRWLockExclusive(&SectorLock[FirstY][FirstX]);
-
+    ReleaseSRWLockExclusive(&sectorLock_[secondY][secondX]);
+    ReleaseSRWLockExclusive(&sectorLock_[firstY][firstX]);
 }
-
 
 DWORD MultiChatServer::GetLogicTPS()
 {
-	return LogicTPS;
+    return logicTps_;
 }
 
 DWORD MultiChatServer::GetLoginTPS()
 {
-	return LoginTPS;
+    return loginTps_;
 }
 
 DWORD MultiChatServer::GetSectorMoveTPS()
 {
-	return SectorMoveTPS;
+    return sectorMoveTps_;
 }
 
 DWORD MultiChatServer::GetChatTPS()
 {
-	return ChatTPS;
+    return chatTps_;
 }
 
 DWORD MultiChatServer::GetHeartBeatTPS()
 {
-	return HeartBeatTPS;
+    return heartbeatTps_;
 }
 
 DWORD MultiChatServer::GetDCWrongPacket()
 {
-	return DCWrongPacket;
+    return dcWrongPacket_;
 }
 
 DWORD MultiChatServer::GetDCLoginAgain()
 {
-	return DCLoginAgain;
+    return dcLoginAgain_;
 }
 
 DWORD MultiChatServer::GetDCAuthFailed()
 {
-	return DCAuthFailed;
+    return dcAuthFailed_;
 }
 
 DWORD MultiChatServer::GetDCDuplicateLogin()
 {
-	return DCDuplicateLogin;
+    return dcDuplicateLogin_;
 }
 
 DWORD MultiChatServer::GetLoginPlayer()
 {
-	return LoginPlayer;
+    return loginPlayer_;
 }
 
 DWORD MultiChatServer::GetUnloginPlayer()
 {
-	return UnloginPlayer;
+    return unloginPlayer_;
 }
-
