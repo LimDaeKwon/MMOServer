@@ -147,12 +147,15 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="LoginThreadSetting.config" />
+    <None Include="LoginServer.config" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonProtocol.h" />
+    <ClInclude Include="GameDefine.h" />
     <ClInclude Include="LoginMonitoringClient.h" />
     <ClInclude Include="LoginServer.h" />
+    <ClInclude Include="MonitoringDefine.h" />
+    <ClInclude Include="PacketDefine.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LoginMain.cpp" />

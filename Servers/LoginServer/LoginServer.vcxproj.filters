@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="LoginThreadSetting.config">
+    <None Include="LoginServer.config">
       <Filter>Config</Filter>
     </None>
   </ItemGroup>
@@ -28,6 +28,15 @@
     </ClInclude>
     <ClInclude Include="LoginMonitoringClient.h">
       <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="GameDefine.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketDefine.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="MonitoringDefine.h">
+      <Filter>Main</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

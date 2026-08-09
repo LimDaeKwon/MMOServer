@@ -1,5 +1,7 @@
 #pragma once
+
 #include "LanClient.h"
+
 struct MonitorValue
 {
     int value_{ 0 };
@@ -16,12 +18,11 @@ struct LoginServerMonitorData
     MonitorValue packetPoolUsage_;
 };
 
-
 class LoginMonitoringClient : public LanClient
 {
 public:
     LoginMonitoringClient();
-    virtual ~LoginMonitoringClient();
+    virtual ~LoginMonitoringClient() override;
 
     virtual void OnConnect() override;
     virtual void OnRelease() override;
@@ -36,7 +37,5 @@ private:
     void SendMonitorValue(BYTE dataType, const MonitorValue& monitorValue);
 
 private:
-
     LoginServerMonitorData loginServerData_;
 };
-

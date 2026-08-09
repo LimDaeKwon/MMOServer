@@ -1,5 +1,5 @@
 #include "LoginMonitoringClient.h"
-#include "CommonProtocol.h"
+#include "MonitoringDefine.h"
 
 LoginMonitoringClient::LoginMonitoringClient()
 {
@@ -14,29 +14,72 @@ void LoginMonitoringClient::OnConnect()
     ContentsCPacket loginPacket = ContentsCPacket::MakeContentsPacket();
     loginPacket.packetBuffer_->InitLan();
 
-    loginPacket << (WORD)en_PACKET_SS_MONITOR_LOGIN << (int)dfMONITOR_SERVER_TYPE_LOGIN;
+    loginPacket << PacketSsMonitorLogin << MonitorServerTypeLogin;
 
     SendPacket(loginPacket);
 }
 
 void LoginMonitoringClient::OnRelease()
 {
-
-
-
 }
-
 
 void LoginMonitoringClient::OnMessage(ContentsCPacket* packet)
 {
-    //근데 모니터링서버로부터 받을게 뭐 있나? 
-    //없지 않나? 
-
 }
 
 void LoginMonitoringClient::OnError(int errorCode, const wchar_t* errorLog)
 {
-    
+}
+
+void LoginMonitoringClient::UpdateMonitorData(BYTE dataType, int dataValue, int timeStamp)
+{
+    switch (dataType)
+    {
+    case MonitorDataTypeLoginServerRun:
+    {
+        UpdateMonitorValue(loginServerData_.isRunning_, dataValue, timeStamp);
+        break;
+    }
+    case MonitorDataTypeLoginServerCpu:
+    {
+        UpdateMonitorValue(loginServerData_.cpuUsage_, dataValue, timeStamp);
+        break;
+    }
+    case MonitorDataTypeLoginServerMemory:
+    {
+        UpdateMonitorValue(loginServerData_.memoryMBytes_, dataValue, timeStamp);
+        break;
+    }
+    case MonitorDataTypeLoginSession:
+    {
+        UpdateMonitorValue(loginServerData_.sessionCount_, dataValue, timeStamp);
+        break;
+    }
+    case MonitorDataTypeLoginAuthTps:
+    {
+        UpdateMonitorValue(loginServerData_.authTps_, dataValue, timeStamp);
+        break;
+    }
+    case MonitorDataTypeLoginPacketPool:
+    {
+        UpdateMonitorValue(loginServerData_.packetPoolUsage_, dataValue, timeStamp);
+        break;
+    }
+    default:
+    {
+        break;
+    }
+    }
+}
+
+void LoginMonitoringClient::SendMonitorData()
+{
+    SendMonitorValue(MonitorDataTypeLoginServerRun, loginServerData_.isRunning_);
+    SendMonitorValue(MonitorDataTypeLoginServerCpu, loginServerData_.cpuUsage_);
+    SendMonitorValue(MonitorDataTypeLoginServerMemory, loginServerData_.memoryMBytes_);
+    SendMonitorValue(MonitorDataTypeLoginSession, loginServerData_.sessionCount_);
+    SendMonitorValue(MonitorDataTypeLoginAuthTps, loginServerData_.authTps_);
+    SendMonitorValue(MonitorDataTypeLoginPacketPool, loginServerData_.packetPoolUsage_);
 }
 
 void LoginMonitoringClient::UpdateMonitorValue(MonitorValue& monitorValue, int dataValue, int timeStamp)
@@ -45,65 +88,15 @@ void LoginMonitoringClient::UpdateMonitorValue(MonitorValue& monitorValue, int d
     monitorValue.timestamp_ = timeStamp;
 }
 
-void LoginMonitoringClient::UpdateMonitorData(BYTE dataType, int dataValue, int timeStamp)
-{
-    switch (dataType)
-    {
-        case dfMONITOR_DATA_TYPE_LOGIN_SERVER_RUN:
-        {
-            UpdateMonitorValue(loginServerData_.isRunning_, dataValue, timeStamp);
-            break;
-        }
-        case dfMONITOR_DATA_TYPE_LOGIN_SERVER_CPU:
-        {
-            UpdateMonitorValue(loginServerData_.cpuUsage_, dataValue, timeStamp);
-            break;
-        }
-        case dfMONITOR_DATA_TYPE_LOGIN_SERVER_MEM:
-        {
-            UpdateMonitorValue(loginServerData_.memoryMBytes_, dataValue, timeStamp);
-            break;
-        }
-        case dfMONITOR_DATA_TYPE_LOGIN_SESSION:
-        {
-            UpdateMonitorValue(loginServerData_.sessionCount_, dataValue, timeStamp);
-            break;
-        }
-        case dfMONITOR_DATA_TYPE_LOGIN_AUTH_TPS:
-        {
-            UpdateMonitorValue(loginServerData_.authTps_, dataValue, timeStamp);
-            break;
-        }
-        case dfMONITOR_DATA_TYPE_LOGIN_PACKET_POOL:
-        {
-            UpdateMonitorValue(loginServerData_.packetPoolUsage_, dataValue, timeStamp);
-            break;
-        }
-        default:
-        {
-            break;
-        }
-    }
-}
-
 void LoginMonitoringClient::SendMonitorValue(BYTE dataType, const MonitorValue& monitorValue)
 {
     ContentsCPacket packet = ContentsCPacket::MakeContentsPacket();
     packet.packetBuffer_->InitLan();
-    packet << static_cast<WORD>(en_PACKET_SS_MONITOR_DATA_UPDATE);
+
+    packet << PacketSsMonitorDataUpdate;
     packet << dataType;
     packet << monitorValue.value_;
     packet << monitorValue.timestamp_;
 
     SendPacket(packet);
-}
-
-void LoginMonitoringClient::SendMonitorData()
-{
-    SendMonitorValue(dfMONITOR_DATA_TYPE_LOGIN_SERVER_RUN, loginServerData_.isRunning_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_LOGIN_SERVER_CPU, loginServerData_.cpuUsage_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_LOGIN_SERVER_MEM, loginServerData_.memoryMBytes_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_LOGIN_SESSION, loginServerData_.sessionCount_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_LOGIN_AUTH_TPS, loginServerData_.authTps_);
-    SendMonitorValue(dfMONITOR_DATA_TYPE_LOGIN_PACKET_POOL, loginServerData_.packetPoolUsage_);
 }

@@ -1,178 +1,139 @@
 #include <iostream>
-#include "LoginServer.h"
+#include <memory>
 
+#include "LoginServer.h"
 #include "windows.h"
-#include "conio.h"
 #include "Profiler.h"
 #include "CrashDump.h"
-#include "SystemMonitoring.h"
-#include "ProcessMonitoring.h"
+#include "DKParser.h"
+#include "ServerStartConfig.h"
 
+#pragma comment(lib, "Winmm.lib")
 
-CrashDump zz;
+CrashDump crashDump;
 
-#pragma comment(lib, "winmm.lib")
-
-#define FILENAME "LoginThreadSetting.config"
-
-
-enum thread_setting_enum // 여기에 SendBuffer 사이즈 설정 옵션도 넣기. 
-{
-	IP, PORT, THREADS, CONCURRENT, NAGLE, SESSIONS, HEADERSIZE, PACKETCODE
-};
 unsigned int GlobalChecksum;
 
-#define RFLAG 0x80000000
-
-bool ParseThreadDataFile(const char* file_name);
-
-char ThreadData[8][200];
+bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config);
+void PrintMonitoring(LoginServer* loginServer);
 
 int main()
 {
-	//Test();
-	timeBeginPeriod(1);
-	InitProfile();
-	ParseThreadDataFile(FILENAME);
+    timeBeginPeriod(1);
+    InitProfile();
 
-	//ChattingServerSingle* ChatInstance = new ChattingServerSingle;
-	//ChatInstance->Start(ThreadData[IP], atoi(ThreadData[PORT]), atoi(ThreadData[THREADS]), atoi(ThreadData[CONCURRENT]), atoi(ThreadData[NAGLE]), atoi(ThreadData[SESSIONS]), atoi(ThreadData[HEADERSIZE]));
+    DKParser parser;
 
+    if (!parser.Load("LoginServer.config"))
+    {
+        printf("Config load failed: %s\n", parser.GetLastError().c_str());
+        timeEndPeriod(1);
 
-	LoginServer* LoginInstance = new LoginServer;
-	LoginInstance->Start(ThreadData[IP], atoi(ThreadData[PORT]), atoi(ThreadData[THREADS]), atoi(ThreadData[CONCURRENT]), atoi(ThreadData[NAGLE]), atoi(ThreadData[SESSIONS]), atoi(ThreadData[HEADERSIZE]), atoi(ThreadData[PACKETCODE]));
+        return 1;
+    }
 
+    DKServerCore::IocpServerStartConfig config;
 
+    if (!SetConfigValue(parser, config))
+    {
+        printf("Config value load failed.\n");
+        timeEndPeriod(1);
 
-	while (1)
-	{
-		wprintf(L"\n------------------------------------------------------------ \n");
+        return 1;
+    }
 
-		wprintf(L"CPakcet \n");
-		wprintf(L"UseSize  : %d   Capacity  :  %d\n", CPacket::GetUseSize(), CPacket::GetCapacity());
-		wprintf(L"AcceptTotal  :  %lld  \n", LoginInstance->GetAcceptTotal());
-		wprintf(L"Contents \n");
-		wprintf(L"Session  :  %d  \n", LoginInstance->GetSessionNum());
+    std::unique_ptr<LoginServer> loginServer = std::make_unique<LoginServer>();
 
-		wprintf(L"\n------------------------------------------------------------ \n");
-		wprintf(L"Disconnect \n");
-		wprintf(L"DisconnectTotal  :  %d \n", LoginInstance->GetDisconnectCount());
-		wprintf(L"DCWrongPacket :  %d	    DCAuthFailed  :  %d \n", LoginInstance->GetDCWrongPacket(), LoginInstance->GetDCAuthFailed());
-		wprintf(L"DCUnloginTimeout  :  %d     DCLoginTimeout  :  %d \n", LoginInstance->GetDCUnloginTimeout(), LoginInstance->GetDCLoginTimeout());
-		wprintf(L"DCSendBufferFull  :  %d     DCDuplicateLogin  :  %d\n", LoginInstance->GetDCSendBufferFull(), LoginInstance->GetDCDuplicateLogin());
-		wprintf(L"DCPacketCodeError  :  %d   DCSessionFull  :  %d \n", LoginInstance->GetDCPacketCodeError(), LoginInstance->GetDCSessionFull());
-		wprintf(L"DCDecodeError  :  %d  DCImpossiblePacketLength  :  %d \n", LoginInstance->GetDCDecodeError(), LoginInstance->GetDCImpossiblePacketLength());
+    if (!loginServer->Start(config, parser))
+    {
+        printf("LoginServer start failed.\n");
+        timeEndPeriod(1);
 
-		wprintf(L"\n------------------------------------------------------------ \n");
-		wprintf(L"TPS \n");
-		wprintf(L"AccpetTPS  :  %d \n", LoginInstance->GetAcceptTPS());
-		wprintf(L"RecvTPS  :  %d     SendTPS  :  %d \n", LoginInstance->GetRecvMessageTPS(), LoginInstance->GetSendMessageTPS());
-		wprintf(L"LoginTPS  :  %d\n", LoginInstance->GetLoginTPS());
+        return 1;
+    }
 
-		Sleep(1000);
-
-	}
-
-	Sleep(INFINITE);
-
-
-
-
-	timeEndPeriod(1);
-
+    while (true)
+    {
+        PrintMonitoring(loginServer.get());
+        Sleep(1000);
+    }
 }
 
-
-bool ParseThreadDataFile(const char* file_name)
+bool SetConfigValue(DKParser& parser, DKServerCore::IocpServerStartConfig& config)
 {
-	FILE* worker_information;
-	int file_size;
-	char* file_buffer;
+    if (!parser.GetString("LOGIN", "IP", &config.ip))
+    {
+        return false;
+    }
 
-	if (fopen_s(&worker_information, file_name, "rb") == 0)
-	{
-		if (worker_information == NULL)
-		{
-			return false;
-		}
+    if (!parser.GetUnsignedInt("LOGIN", "PORT", &config.port))
+    {
+        return false;
+    }
 
+    if (!parser.GetUnsignedInt("LOGIN", "WORKERTHREADS", &config.workerThreadCount))
+    {
+        return false;
+    }
 
-		fseek(worker_information, 0, SEEK_END);
-		file_size = ftell(worker_information);
-		rewind(worker_information);
+    if (!parser.GetUnsignedInt("LOGIN", "CONCURRENTTHREADS", &config.concurrentThreadCount))
+    {
+        return false;
+    }
 
+    if (!parser.GetUnsignedInt("LOGIN", "NAGLE", &config.nagle))
+    {
+        return false;
+    }
 
-		file_buffer = (char*)malloc(file_size);
-		if (file_buffer == NULL) {
-			printf("Error: Memory allocation failed.\n");
-			DebugBreak();
-			return false;
-		}
+    if (!parser.GetUnsignedInt("LOGIN", "SESSIONS", &config.maxSessionCount))
+    {
+        return false;
+    }
 
-		size_t bytesRead = fread_s(file_buffer, file_size, 1, file_size, worker_information);
-		if (bytesRead != file_size)
-		{
+    if (!parser.GetUnsignedInt("LOGIN", "HEADERSIZE", &config.headerSize))
+    {
+        return false;
+    }
 
-			printf("Error: Failed to read entire file. Expected %d bytes, Read: %zu bytes.\n", file_size, bytesRead);
+    if (!parser.GetUnsignedChar("LOGIN", "PACKETCODE", &config.packetCode))
+    {
+        return false;
+    }
 
-			return false;
-		}
+    return true;
+}
 
-		int start_position = 0;
-		int end_postiion = 0;
+void PrintMonitoring(LoginServer* loginServer)
+{
+    if (loginServer == nullptr)
+    {
+        return;
+    }
 
-		//시작위치 + 0d 0a 넘기기. 
+    wprintf(L"\n------------------------------------------------------------\n");
 
-		for (int i = 0; i < file_size; ++i)
-		{
-			if (file_buffer[i] == '{')
-			{
-				start_position = i + 2;
-				break;
-			}
-		}
+    wprintf(L"CPacket\n");
+    wprintf(L"UseSize : %d    Capacity : %d\n", CPacket::GetUseSize(), CPacket::GetCapacity());
 
-		for (int i = file_size - 1; i >= 0; --i)
-		{
+    wprintf(L"\nContents\n");
+    wprintf(L"AcceptTotal : %lld\n", loginServer->GetAcceptTotal());
+    wprintf(L"Session : %u\n", loginServer->GetSessionNum());
 
+    wprintf(L"\n------------------------------------------------------------\n");
 
-			if (file_buffer[i] == '}')
-			{
-				end_postiion = i;
-				break;
-			}
-		}
+    wprintf(L"Disconnect\n");
+    wprintf(L"DisconnectTotal : %u\n", loginServer->GetDisconnectCount());
+    wprintf(L"DCWrongPacket : %u    DCAuthFailed : %u\n", loginServer->GetDCWrongPacket(), loginServer->GetDCAuthFailed());
+    wprintf(L"DCUnloginTimeout : %u    DCLoginTimeout : %u\n", loginServer->GetDCUnloginTimeout(), loginServer->GetDCLoginTimeout());
+    wprintf(L"DCSendBufferFull : %u    DCDuplicateLogin : %u\n", loginServer->GetDCSendBufferFull(), loginServer->GetDCDuplicateLogin());
+    wprintf(L"DCPacketCodeError : %u    DCSessionFull : %u\n", loginServer->GetDCPacketCodeError(), loginServer->GetDCSessionFull());
+    wprintf(L"DCDecodeError : %u    DCImpossiblePacketLength : %u\n", loginServer->GetDCDecodeError(), loginServer->GetDCImpossiblePacketLength());
 
-		int Index = 0;
+    wprintf(L"\n------------------------------------------------------------\n");
 
-		int size;
-		for (int i = start_position; i < end_postiion; ++i)
-		{
-
-
-			if (file_buffer[i] == ':')
-			{
-				for (int j = i + 1; ; ++j)
-				{
-					if (file_buffer[j] == 0x0d)
-					{
-						size = j - i - 1;
-						memcpy_s(ThreadData[Index], size, file_buffer + i + 1, size);
-						ThreadData[Index][size] = '\0';
-						Index++;
-						break;
-					}
-				}
-				start_position = i + size;
-			}
-		}
-
-		free(file_buffer);
-
-		fclose(worker_information);
-	}
-
-
-	return true;
-
+    wprintf(L"TPS\n");
+    wprintf(L"AcceptTPS : %d\n", loginServer->GetAcceptTPS());
+    wprintf(L"RecvTPS : %d    SendTPS : %d\n", loginServer->GetRecvMessageTPS(), loginServer->GetSendMessageTPS());
+    wprintf(L"LoginTPS : %u\n", loginServer->GetLoginTPS());
 }

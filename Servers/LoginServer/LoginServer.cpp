@@ -1,234 +1,351 @@
 #include "LoginServer.h"
-#include <process.h>
+#include "DKParser.h"
+#include "GameDefine.h"
+#include "MonitoringDefine.h"
+#include "PacketDefine.h"
 
-
-
-
+#include <cstdio>
+#include <cstring>
+#include <ctime>
+#include <string>
 
 LoginServer::LoginServer()
 {
-	TLSDBConnectionIndex = TlsAlloc();
-	if (TLSDBConnectionIndex == TLS_OUT_OF_INDEXES)
-	{
-		__debugbreak();
-	}
+    tlsDbConnectionIndex_ = TlsAlloc();
 
+    if (tlsDbConnectionIndex_ == TLS_OUT_OF_INDEXES)
+    {
+        DebugBreak();
+    }
 
+    InitializeSRWLock(&connectionLock_);
 
-	monitoringClient_.Start("127.0.0.1", 5670, 1, 2);
+    WORD version = MAKEWORD(2, 2);
+    WSADATA data;
+    WSAStartup(version, &data);
 
-	InitializeSRWLock(&connectionLock_);
-
-	WORD version = MAKEWORD(2, 2);
-	WSADATA data;
-	WSAStartup(version, &data);
-	Connection_ = new cpp_redis::client;
-
-	Connection_->connect();
-
+    connection_ = new cpp_redis::client;
 }
 
 LoginServer::~LoginServer()
 {
-
 }
 
-bool LoginServer::OnConnectionRequest(const wchar_t* server_IP, unsigned short server_port)
+bool LoginServer::Start(const DKServerCore::IocpServerStartConfig& config, DKParser& parser)
 {
-	return false;
+    if (!StartMonitoringClient(parser))
+    {
+        return false;
+    }
+
+    if (!ConnectRedis(parser))
+    {
+        return false;
+    }
+
+    if (!SetMySqlConfig(parser))
+    {
+        return false;
+    }
+
+    if (!SetTargetServerConfig(parser))
+    {
+        return false;
+    }
+
+    return NetLibrary::Start(config);
 }
 
-void LoginServer::OnAccept(const wchar_t* server_IP, unsigned short server_port, __int64 SessionID)
+bool LoginServer::StartMonitoringClient(DKParser& parser)
 {
+    std::string monitoringIp;
+    unsigned int monitoringPort;
+    unsigned int monitoringNagle;
+    unsigned int monitoringHeaderSize;
 
+    if (!parser.GetString("MONITORING", "IP", &monitoringIp))
+    {
+        return false;
+    }
+
+    if (!parser.GetUnsignedInt("MONITORING", "PORT", &monitoringPort))
+    {
+        return false;
+    }
+
+    if (!parser.GetUnsignedInt("MONITORING", "NAGLE", &monitoringNagle))
+    {
+        return false;
+    }
+
+    if (!parser.GetUnsignedInt("MONITORING", "HEADERSIZE", &monitoringHeaderSize))
+    {
+        return false;
+    }
+
+    return monitoringClient_.Start(monitoringIp.c_str(), monitoringPort, monitoringNagle, monitoringHeaderSize);
 }
 
-void LoginServer::OnRelease(__int64 SessionID)
+bool LoginServer::ConnectRedis(DKParser& parser)
 {
+    std::string redisIp;
+    unsigned int redisPort;
 
+    if (!parser.GetString("REDIS", "IP", &redisIp))
+    {
+        return false;
+    }
+
+    if (!parser.GetUnsignedInt("REDIS", "PORT", &redisPort))
+    {
+        return false;
+    }
+
+    connection_->connect(redisIp, redisPort);
+
+    return true;
 }
 
-void LoginServer::OnMessage(__int64 SessionID, ContentsCPacket* contents_send_packet)
+bool LoginServer::SetMySqlConfig(DKParser& parser)
 {
+    if (!parser.GetString("MYSQL", "IP", &mysqlIp_))
+    {
+        return false;
+    }
 
-	WORD MessageType;
+    if (!parser.GetUnsignedInt("MYSQL", "PORT", &mysqlPort_))
+    {
+        return false;
+    }
 
-	ContentsCPacket ContentsPacket = contents_send_packet;
+    if (!parser.GetString("MYSQL", "USER", &mysqlUser_))
+    {
+        return false;
+    }
 
-	ContentsPacket >> MessageType;
+    if (!parser.GetString("MYSQL", "PASSWORD", &mysqlPassword_))
+    {
+        return false;
+    }
 
+    if (!parser.GetString("MYSQL", "DATABASE", &mysqlDatabase_))
+    {
+        return false;
+    }
 
-	//로그인 서버 로그인 요청
-	//2  위에서 타입을 뺐다. 
-	// 
-	// 8 64
-	//-> 72
-
-	if (MessageType != en_PACKET_CS_LOGIN_REQ_LOGIN && ContentsPacket.GetDataSize() != 72)
-	{
-		InterlockedIncrement(&DCWrongPacket);
-		Disconnect(SessionID);
-	}
-
-	INT64	AccountNo;
-	char	SessionKey[64];		// 인증토큰
-	ContentsPacket >> AccountNo;
-	ContentsPacket.GetData((char*)SessionKey, sizeof(SessionKey));
-
-	//로그인 로직
-	ProcLogin(SessionID, AccountNo, SessionKey);
-
+    return true;
 }
 
-void LoginServer::ProcLogin(INT64 SessionID, INT64 AccountNo, char* SessionKey)
+bool LoginServer::SetTargetServerConfig(DKParser& parser)
 {
+    std::string gameServerIp;
+    std::string chatServerIp;
+    unsigned int gameServerPort;
+    unsigned int chatServerPort;
 
+    if (!parser.GetString("GAMESERVER", "IP", &gameServerIp))
+    {
+        return false;
+    }
 
-	WCHAR	ID[20];
-	WCHAR	Nickname[20];
+    if (!parser.GetUnsignedInt("GAMESERVER", "PORT", &gameServerPort))
+    {
+        return false;
+    }
 
-	//중복 로그인에 대해서는 어떻게 할 것인가...는 고민을 해보자 
-	BYTE AuthResult = ProcAuth(AccountNo, SessionKey, ID, Nickname);
+    if (!parser.GetString("CHATSERVER", "IP", &chatServerIp))
+    {
+        return false;
+    }
 
-	
-	
-	if (!AuthResult)
-	{
-		//로그인 실패 없는 계정에 대한 요청이 온 것 . 끊어내자. 
-		Disconnect(SessionID);
-		InterlockedIncrement(&DCAuthFailed);
-		return;
-	}
-	InterlockedIncrement(&LoginCount);
-	//레디스에 세션키 저장
-	StoreSessionKey(AccountNo, SessionKey);
+    if (!parser.GetUnsignedInt("CHATSERVER", "PORT", &chatServerPort))
+    {
+        return false;
+    }
 
-	ContentsCPacket login_packet = ContentsCPacket::MakeContentsPacket();
-	login_packet << (WORD)en_PACKET_CS_LOGIN_RES_LOGIN << (INT64)AccountNo << AuthResult;
-	login_packet.PutData((char*)ID, 40);
-	login_packet.PutData((char*)Nickname, 40);
-	login_packet.PutData((char*)GameServerIP, 32);
-	login_packet << (USHORT)GameServerPort;
-	login_packet.PutData((char*)ChatServerIP, 32);
-	login_packet << (USHORT)ChatServerPort;
+    if (MultiByteToWideChar(CP_UTF8, 0, gameServerIp.c_str(), -1, gameServerIp_, ServerIpLength) == 0)
+    {
+        return false;
+    }
 
-	SendPacket(SessionID, login_packet);
+    if (MultiByteToWideChar(CP_UTF8, 0, chatServerIp.c_str(), -1, chatServerIp_, ServerIpLength) == 0)
+    {
+        return false;
+    }
 
+    gameServerPort_ = static_cast<unsigned short>(gameServerPort);
+    chatServerPort_ = static_cast<unsigned short>(chatServerPort);
+
+    return true;
 }
 
-BYTE LoginServer::ProcAuth(INT64 AccountNo, char* SessionKey, WCHAR* ID, WCHAR* Nickname)
+bool LoginServer::OnConnectionRequest(const wchar_t* serverIp, unsigned short serverPort)
 {
-
-	TLSDBConnection* DBConnection = (TLSDBConnection*)TlsGetValue(TLSDBConnectionIndex);
-	if (DBConnection == nullptr)
-	{
-		DBConnection = new TLSDBConnection;
-		mysql_init(&DBConnection->conn);
-
-		DBConnection->Connection = mysql_real_connect(&DBConnection->conn, "127.0.0.1", "root", "dlaeornjs", "accountdb", 3306, NULL, 0);
-
-		TlsSetValue(TLSDBConnectionIndex, DBConnection);
-
-		if (DBConnection->Connection == NULL)
-		{
-			//printf("DBWriterThread connection failed: %s\n", mysql_error(&DBConnection->conn));
-			DebugBreak();
-		}
-		mysql_set_server_option(DBConnection->Connection, MYSQL_OPTION_MULTI_STATEMENTS_ON);
-	}
-
-	//DB로 AccountNo를 포함한 모든 정보 조회 
-	char Query[256];
-	sprintf_s(Query, "SELECT userid, usernick ""FROM accountdb.account ""WHERE accountno = %lld", AccountNo);
-
-	if (mysql_query(DBConnection->Connection, Query) != 0)
-	{
-		//DebugBreak();
-	}
-
-	MYSQL_RES* Result = mysql_store_result(DBConnection->Connection);
-	if (Result == nullptr)
-	{
-		//DebugBreak();
-	}
-
-	MYSQL_ROW row;
-
-	if ((row = mysql_fetch_row(Result)) != nullptr)
-	{
-		MultiByteToWideChar(CP_UTF8, 0, row[0], -1, ID, 20);
-
-		MultiByteToWideChar(CP_UTF8, 0, row[1], -1, Nickname, 20);
-	}
-	else
-	{
-		//실패
-		return 0;
-	}
-	mysql_free_result(Result);
-
-	return 1;
+    return false;
 }
 
-
-void LoginServer::OnError(int errorcode, const wchar_t* error_log)
+void LoginServer::OnAccept(const wchar_t* serverIp, unsigned short serverPort, __int64 sessionId)
 {
+}
 
+void LoginServer::OnRelease(__int64 sessionId)
+{
+}
+
+void LoginServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPacket)
+{
+    unsigned short messageType;
+
+    ContentsCPacket receivedPacket = contentsPacket;
+    receivedPacket >> messageType;
+
+    if (messageType != PacketCsLoginReqLogin || receivedPacket.GetDataSize() != PacketLoginRequestDataSize)
+    {
+        InterlockedIncrement(&dcWrongPacket_);
+        Disconnect(sessionId);
+        return;
+    }
+
+    __int64 accountNo;
+    char sessionKey[SessionKeyLength];
+
+    receivedPacket >> accountNo;
+    receivedPacket.GetData(sessionKey, SessionKeyLength);
+
+    ProcessLogin(sessionId, accountNo, sessionKey);
+}
+
+void LoginServer::ProcessLogin(__int64 sessionId, __int64 accountNo, char* sessionKey)
+{
+    wchar_t id[PlayerIdLength];
+    wchar_t nickname[PlayerNicknameLength];
+
+    unsigned char authResult = ProcessAuth(accountNo, sessionKey, id, nickname);
+
+    if (authResult == LoginStatusFail)
+    {
+        Disconnect(sessionId);
+        InterlockedIncrement(&dcAuthFailed_);
+        return;
+    }
+
+    InterlockedIncrement(&loginCount_);
+
+    StoreSessionKey(accountNo, sessionKey);
+
+    ContentsCPacket loginPacket = ContentsCPacket::MakeContentsPacket();
+
+    loginPacket << PacketScLoginResLogin << accountNo << authResult;
+    loginPacket.PutData(reinterpret_cast<char*>(id), PlayerIdByteSize);
+    loginPacket.PutData(reinterpret_cast<char*>(nickname), PlayerNicknameByteSize);
+    loginPacket.PutData(reinterpret_cast<char*>(gameServerIp_), ServerIpByteSize);
+    loginPacket << gameServerPort_;
+    loginPacket.PutData(reinterpret_cast<char*>(chatServerIp_), ServerIpByteSize);
+    loginPacket << chatServerPort_;
+
+    SendPacket(sessionId, loginPacket);
+}
+
+unsigned char LoginServer::ProcessAuth(__int64 accountNo, char* sessionKey, wchar_t* id, wchar_t* nickname)
+{
+    TLSDBConnection* dbConnection = static_cast<TLSDBConnection*>(TlsGetValue(tlsDbConnectionIndex_));
+
+    if (dbConnection == nullptr)
+    {
+        dbConnection = new TLSDBConnection;
+
+        mysql_init(&dbConnection->connectionInfo_);
+
+        dbConnection->connection_ = mysql_real_connect(&dbConnection->connectionInfo_, mysqlIp_.c_str(), mysqlUser_.c_str(), mysqlPassword_.c_str(), mysqlDatabase_.c_str(), mysqlPort_, nullptr, 0);
+
+        TlsSetValue(tlsDbConnectionIndex_, dbConnection);
+
+        if (dbConnection->connection_ == nullptr)
+        {
+            DebugBreak();
+        }
+
+        mysql_set_server_option(dbConnection->connection_, MYSQL_OPTION_MULTI_STATEMENTS_ON);
+    }
+
+    char query[256];
+
+    sprintf_s(query, "SELECT userid, usernick FROM %s.account WHERE accountno = %lld", mysqlDatabase_.c_str(), accountNo);
+
+    if (mysql_query(dbConnection->connection_, query) != 0)
+    {
+    }
+
+    MYSQL_RES* result = mysql_store_result(dbConnection->connection_);
+
+    if (result == nullptr)
+    {
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if (row == nullptr)
+    {
+        return static_cast<unsigned char>(LoginStatusFail);
+    }
+
+    MultiByteToWideChar(CP_UTF8, 0, row[0], -1, id, PlayerIdLength);
+    MultiByteToWideChar(CP_UTF8, 0, row[1], -1, nickname, PlayerNicknameLength);
+
+    mysql_free_result(result);
+
+    return static_cast<unsigned char>(LoginStatusOk);
+}
+
+void LoginServer::StoreSessionKey(__int64 accountNo, char* sessionKey)
+{
+    AcquireSRWLockExclusive(&connectionLock_);
+
+    std::string value = sessionKey;
+
+    connection_->set(std::to_string(accountNo), value);
+    connection_->sync_commit();
+
+    ReleaseSRWLockExclusive(&connectionLock_);
+}
+
+void LoginServer::OnError(int errorCode, const wchar_t* errorLog)
+{
 }
 
 void LoginServer::OnInitializeTPS()
 {
+    int timeStamp = static_cast<int>(time(nullptr));
 
-	int timeStamp = static_cast<int>(time(nullptr));
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeLoginServerRun, 1, timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeLoginServerCpu, static_cast<int>(processMonitoring_.ProcessTotal()), timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeLoginServerMemory, static_cast<int>(processMonitoring_.GetProcessUserMemoryMBytes()), timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeLoginSession, GetSessionNum(), timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeLoginAuthTps, loginTps_, timeStamp);
+    monitoringClient_.UpdateMonitorData(MonitorDataTypeLoginPacketPool, CPacket::GetCapacity(), timeStamp);
 
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_LOGIN_SERVER_RUN, 1, timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_LOGIN_SERVER_CPU, static_cast<int>(processMonitoring_.ProcessTotal()), timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_LOGIN_SERVER_MEM, static_cast<int>(processMonitoring_.GetProcessUserMemoryMBytes()), timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_LOGIN_SESSION, GetSessionNum(), timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_LOGIN_AUTH_TPS, LoginTPS, timeStamp);
-	monitoringClient_.UpdateMonitorData(dfMONITOR_DATA_TYPE_LOGIN_PACKET_POOL, CPacket::GetCapacity(), timeStamp);
+    monitoringClient_.SendMonitorData();
 
-	monitoringClient_.SendMonitorData();
-
-	LoginTPS = LoginCount;
-	InterlockedExchange(&LoginCount,0);
-
+    loginTps_ = loginCount_;
+    InterlockedExchange(&loginCount_, 0);
 }
-
 
 DWORD LoginServer::GetLoginTPS()
 {
-	return LoginTPS;
+    return loginTps_;
 }
-
 
 DWORD LoginServer::GetDCWrongPacket()
 {
-	return DCWrongPacket;
+    return dcWrongPacket_;
 }
 
 DWORD LoginServer::GetDCAuthFailed()
 {
-	return DCAuthFailed;
+    return dcAuthFailed_;
 }
 
 DWORD LoginServer::GetDCDuplicateLogin()
 {
-	return DCDuplicateLogin;
-}
-
-void LoginServer::StoreSessionKey(INT64 AccountNo, char* SessionKey)
-{
-	AcquireSRWLockExclusive(&connectionLock_);
-	std::string Value = SessionKey;
-
-	//RedisConnection->Connection.set(RedisConnection->Key, RedisConnection->Value);
-	Connection_->set(std::to_string(AccountNo), Value);
-	Connection_->sync_commit();
-
-	ReleaseSRWLockExclusive(&connectionLock_);
-
-	//RedisConnection->Connection.send({ "SET",RedisConnection->Key,RedisConnection->Value,"EX","10" });
-
-
+    return dcDuplicateLogin_;
 }
