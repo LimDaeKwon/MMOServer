@@ -35,9 +35,15 @@
     <ClInclude Include="GameMonitoringClient.h">
       <Filter>Contents</Filter>
     </ClInclude>
-    <ClInclude Include="GameDefine.h" />
-    <ClInclude Include="MonitoringDefine.h" />
-    <ClInclude Include="PacketDefine.h" />
+    <ClInclude Include="GameDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="MonitoringDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameEchoServer.config">

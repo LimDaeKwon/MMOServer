@@ -8,21 +8,18 @@
     <Filter Include="Config">
       <UniqueIdentifier>{503ef281-1ac5-4f34-aaa0-26b4eed963aa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Main">
+      <UniqueIdentifier>{47543240-1d70-4d1e-bb82-ca1072fe14af}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SelectCore">
+      <UniqueIdentifier>{facb351e-cca0-4013-833b-a246f9913d78}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Main.cpp">
-      <Filter>Contents</Filter>
-    </ClCompile>
     <ClCompile Include="Character.h">
       <Filter>Contents</Filter>
     </ClCompile>
     <ClCompile Include="Sector.h">
-      <Filter>Contents</Filter>
-    </ClCompile>
-    <ClCompile Include="SelectServer.cpp">
-      <Filter>Contents</Filter>
-    </ClCompile>
-    <ClCompile Include="SelectServerPQ.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
     <ClCompile Include="SelectMMOTCPFighter.cpp">
@@ -31,20 +28,37 @@
     <ClCompile Include="BasicSelectMMOTCPFighter.cpp">
       <Filter>Contents</Filter>
     </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="SelectServer.cpp">
+      <Filter>SelectCore</Filter>
+    </ClCompile>
+    <ClCompile Include="SelectServerPQ.cpp">
+      <Filter>SelectCore</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PacketDefine.h">
       <Filter>Contents</Filter>
     </ClInclude>
-    <ClInclude Include="Session.h">
-      <Filter>Contents</Filter>
-    </ClInclude>
-    <ClInclude Include="GameDefine.h" />
-    <ClInclude Include="SelectServer.h" />
-    <ClInclude Include="SelectServerPQ.h" />
-    <ClInclude Include="SelectMMOTCPFighter.h" />
     <ClInclude Include="BasicSelectMMOTCPFighter.h">
       <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="GameDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectMMOTCPFighter.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectServer.h">
+      <Filter>SelectCore</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectServerPQ.h">
+      <Filter>SelectCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Session.h">
+      <Filter>SelectCore</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

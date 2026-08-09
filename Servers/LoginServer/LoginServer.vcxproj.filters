@@ -26,14 +26,14 @@
     <ClInclude Include="LoginMonitoringClient.h">
       <Filter>Contents</Filter>
     </ClInclude>
-    <ClInclude Include="GameDefine.h">
-      <Filter>Main</Filter>
+    <ClInclude Include="MonitoringDefine.h">
+      <Filter>Contents</Filter>
     </ClInclude>
     <ClInclude Include="PacketDefine.h">
-      <Filter>Main</Filter>
+      <Filter>Contents</Filter>
     </ClInclude>
-    <ClInclude Include="MonitoringDefine.h">
-      <Filter>Main</Filter>
+    <ClInclude Include="GameDefine.h">
+      <Filter>Contents</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

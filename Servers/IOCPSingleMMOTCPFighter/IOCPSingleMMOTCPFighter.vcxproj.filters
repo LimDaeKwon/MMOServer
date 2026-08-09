@@ -10,39 +10,36 @@
     <Filter Include="Contents">
       <UniqueIdentifier>{0c06eca7-674b-43b9-8109-91f9ac367ad3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Contents\TCPFighter">
-      <UniqueIdentifier>{442c0ebb-edaf-4eeb-8023-9ab805ecff9e}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
       <Filter>Main</Filter>
     </ClCompile>
     <ClCompile Include="MMOTCPServerSingle.cpp">
-      <Filter>Contents\TCPFighter</Filter>
+      <Filter>Contents</Filter>
     </ClCompile>
     <ClCompile Include="MMOTCPServerSingleRB.cpp">
-      <Filter>Contents\TCPFighter</Filter>
+      <Filter>Contents</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="MMOTCPServerSingle.h">
-      <Filter>Contents\TCPFighter</Filter>
-    </ClInclude>
-    <ClInclude Include="PacketDefine.h">
-      <Filter>Contents\TCPFighter</Filter>
-    </ClInclude>
     <ClInclude Include="Character.h">
-      <Filter>Contents\TCPFighter</Filter>
-    </ClInclude>
-    <ClInclude Include="Sector.h">
-      <Filter>Contents\TCPFighter</Filter>
+      <Filter>Contents</Filter>
     </ClInclude>
     <ClInclude Include="GameDefine.h">
-      <Filter>Contents\TCPFighter</Filter>
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="MMOTCPServerSingle.h">
+      <Filter>Contents</Filter>
     </ClInclude>
     <ClInclude Include="MMOTCPServerSingleRB.h">
-      <Filter>Contents\TCPFighter</Filter>
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketDefine.h">
+      <Filter>Contents</Filter>
+    </ClInclude>
+    <ClInclude Include="Sector.h">
+      <Filter>Contents</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

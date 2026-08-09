@@ -156,7 +156,6 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="framework.h" />
     <ClInclude Include="IOCPServerRB.h" />
     <ClInclude Include="Memory\LockFreeObjectFreeList.h" />
     <ClInclude Include="Memory\ObjectFreeList.h" />
@@ -180,7 +179,6 @@
     <ClInclude Include="Packet\LockFreeQueueCas2.h" />
     <ClInclude Include="Packet\MessageDataQueue.h" />
     <ClInclude Include="Packet\RingBuffer.h" />
-    <ClInclude Include="pch.h" />
     <ClInclude Include="Utils\CoreDefines.h" />
     <ClInclude Include="Utils\CrashDump.h" />
     <ClInclude Include="Utils\DKParser.h" />
@@ -188,7 +186,6 @@
     <ClInclude Include="Utils\SpinLock.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DKServerCore.cpp" />
     <ClCompile Include="IOCPServerRB.cpp" />
     <ClCompile Include="Monitoring\CPUUsage.cpp" />
     <ClCompile Include="Monitoring\ProcessMonitoring.cpp" />
@@ -206,12 +203,6 @@
     <ClCompile Include="Packet\CPacketQueue.cpp" />
     <ClCompile Include="Packet\MessageDataQueue.cpp" />
     <ClCompile Include="Packet\RingBuffer.cpp" />
-    <ClCompile Include="pch.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="Utils\DKParser.cpp" />
     <ClCompile Include="Utils\Profiler.cpp" />
     <ClCompile Include="Utils\SpinLock.cpp" />

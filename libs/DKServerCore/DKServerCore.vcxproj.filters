@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="��� ����">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="Utils">
       <UniqueIdentifier>{4cb66a56-2432-4c4f-96c8-39dce987ea4d}</UniqueIdentifier>
     </Filter>
@@ -20,18 +16,8 @@
     <Filter Include="Monitoring">
       <UniqueIdentifier>{677c2647-d2d5-4162-b69e-3fa62ad6f993}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Common">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="framework.h">
-      <Filter>��� ����</Filter>
-    </ClInclude>
-    <ClInclude Include="pch.h">
-      <Filter>��� ����</Filter>
-    </ClInclude>
     <ClInclude Include="Packet\ContentsCPacket.h">
       <Filter>Packet</Filter>
     </ClInclude>
@@ -118,12 +104,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DKServerCore.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
-    <ClCompile Include="pch.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
     <ClCompile Include="Packet\ContentsCPacket.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
