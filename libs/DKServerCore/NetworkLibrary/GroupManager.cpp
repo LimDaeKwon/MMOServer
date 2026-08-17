@@ -124,6 +124,20 @@ bool GroupManager::MoveGroup(Session* session, GroupId groupId)
     return true;
 }
 
+bool GroupManager::ReleaseGroup(Session* session)
+{
+    ContentGroupBase* contentsGroup = FindGroup(session->currentGroupId_);
+
+    if (contentsGroup == nullptr)
+    {
+        return false;
+    }
+
+    contentsGroup->PushRelease(session->sessionId_);
+
+    return true;
+}
+
 int GroupManager::GetGroupPlayerSize(GroupId groupId)
 {
     ContentGroupBase* target = FindGroup(groupId);

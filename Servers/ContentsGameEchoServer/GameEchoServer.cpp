@@ -101,23 +101,7 @@ void GameEchoServer::OnAccept(const wchar_t* serverIp, unsigned short serverPort
 
 void GameEchoServer::OnRelease(__int64 sessionId)
 {
-    AcquireSRWLockExclusive(&playerMapLock_);
 
-    std::unordered_map<__int64, Player*>::iterator playerIter = playerMap_.find(sessionId);
-
-    if (playerIter == playerMap_.end())
-    {
-        ReleaseSRWLockExclusive(&playerMapLock_);
-        return;
-    }
-
-    Player* target = playerIter->second;
-
-    playerMap_.erase(sessionId);
-
-    ReleaseSRWLockExclusive(&playerMapLock_);
-
-    playerPool_.Free(target);
 }
 
 void* GameEchoServer::GetPlayerPointer(__int64 sessionId)
@@ -137,6 +121,31 @@ void* GameEchoServer::GetPlayerPointer(__int64 sessionId)
     ReleaseSRWLockShared(&playerMapLock_);
 
     return target;
+}
+
+void GameEchoServer::FreePlayer(Player* target)
+{
+    if (target == nullptr)
+    {
+        return;
+    }
+
+    AcquireSRWLockExclusive(&playerMapLock_);
+
+    std::unordered_map<SessionId, Player*>::iterator playerIter = playerMap_.find(target->sessionId_);
+
+    if (playerIter == playerMap_.end() || playerIter->second != target)
+    {
+        ReleaseSRWLockExclusive(&playerMapLock_);
+        DebugBreak();
+        return;
+    }
+
+    playerMap_.erase(playerIter);
+
+    ReleaseSRWLockExclusive(&playerMapLock_);
+
+    playerPool_.Free(target);
 }
 
 void GameEchoServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPacket)

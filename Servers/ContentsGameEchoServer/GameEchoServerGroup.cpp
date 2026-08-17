@@ -3,6 +3,8 @@
 #include "ContentsCPacket.h"
 #include "GameDefine.h"
 #include "PacketDefine.h"
+#include "GameEchoServer.h"
+
 
 AuthGroup::AuthGroup(GroupId groupId, DWORD frameMs)
 {
@@ -37,6 +39,7 @@ void AuthGroup::OnLeave(SessionId sessionId)
     }
 
     authPlayerMap_.erase(authPlayerIter);
+
 }
 
 void AuthGroup::OnMessage(SessionId sessionId, ContentsCPacket* packet)
@@ -86,6 +89,24 @@ void AuthGroup::OnMessage(SessionId sessionId, ContentsCPacket* packet)
             contentsServer_->Disconnect(sessionId);
         }
     }
+}
+
+void AuthGroup::OnRelease(SessionId sessionId)
+{
+    std::unordered_map<SessionId, Player*>::iterator authPlayerIter = authPlayerMap_.find(sessionId);
+
+    if (authPlayerIter == authPlayerMap_.end())
+    {
+        return;
+    }
+
+    Player* target = authPlayerIter->second;
+
+    authPlayerMap_.erase(authPlayerIter);
+
+    GameEchoServer* gameEchoServer = static_cast<GameEchoServer*>(contentsServer_);
+    gameEchoServer->FreePlayer(target);
+
 }
 
 void AuthGroup::OnUpdate()
@@ -217,6 +238,25 @@ void EchoGroup::OnUpdate()
 {
     InterlockedIncrement(&updateCount_);
 }
+
+void EchoGroup::OnRelease(SessionId sessionId)
+{
+
+    std::unordered_map<SessionId, Player*>::iterator echoPlayerIter = echoPlayerMap_.find(sessionId);
+
+    if (echoPlayerIter == echoPlayerMap_.end())
+    {
+        return;
+    }
+
+    Player* target = echoPlayerIter->second;
+
+    echoPlayerMap_.erase(echoPlayerIter);
+
+    GameEchoServer* gameEchoServer = static_cast<GameEchoServer*>(contentsServer_);
+    gameEchoServer->FreePlayer(target);
+}
+
 
 int EchoGroup::GetPlayerNum()
 {

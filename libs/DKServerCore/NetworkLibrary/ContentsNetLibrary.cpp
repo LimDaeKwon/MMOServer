@@ -888,7 +888,7 @@ void ContentsNetLibrary::Release(Session* target)
     target->sock_ = INVALID_SOCKET;
 
     OnRelease(target->sessionId_);
-    groupManager_.LeaveGroup(target);
+    groupManager_.ReleaseGroup(target);
 
     InterlockedDecrement(&sessionNum_);
     indexList_.Free(target->index_);
@@ -923,13 +923,44 @@ void ContentsNetLibrary::ClearSendBuffer(Session* target)
 
 void ContentsNetLibrary::MoveGroup(__int64 sessionId, GroupId moveGroupId)
 {
-    unsigned int i = FindSession(sessionId);
+    int index = FindSession(sessionId);
 
-    Session* target = &sessionArray_[i];
+    if (index < 0 || static_cast<unsigned int>(index) >= maxSession_)
+    {
+        return;
+    }
+
+    Session* target = &sessionArray_[index];
+
+    int localCount = InterlockedIncrement(&target->ioCount_);
+
+    if ((localCount & DKServerCore::ReleaseFlag) == DKServerCore::ReleaseFlag)
+    {
+        if (InterlockedDecrement(&target->ioCount_) == 0)
+        {
+            PostQueuedCompletionStatus(handleIocp_, 1, reinterpret_cast<ULONG_PTR>(target), nullptr);
+        }
+
+        return;
+    }
+
+    if (target->sessionId_ != sessionId)
+    {
+        if (InterlockedDecrement(&target->ioCount_) == 0)
+        {
+            PostQueuedCompletionStatus(handleIocp_, 1, reinterpret_cast<ULONG_PTR>(target), nullptr);
+        }
+
+        return;
+    }
 
     groupManager_.MoveGroup(target, moveGroupId);
-}
 
+    if (InterlockedDecrement(&target->ioCount_) == 0)
+    {
+        PostQueuedCompletionStatus(handleIocp_, 1, reinterpret_cast<ULONG_PTR>(target), nullptr);
+    }
+}
 int ContentsNetLibrary::FindSession(__int64 sessionId)
 {
     return static_cast<int>(sessionId >> 48);

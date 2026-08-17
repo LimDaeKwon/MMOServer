@@ -59,6 +59,19 @@ void ContentGroupBase::PushUpdate()
     SetEvent(messageEvent_);
 }
 
+void ContentGroupBase::PushRelease(SessionId sessionId)
+{
+    MessageData* messageData = messageDataFreeList_.Alloc();
+
+    messageData->sessionId_ = sessionId;
+    messageData->contentsPacket_ = nullptr;
+    messageData->messageType_ = Release;
+
+    messageQueue_.Enqueue(messageData);
+    SetEvent(messageEvent_);
+
+}
+
 void ContentGroupBase::PushLeave(SessionId sessionId)
 {
     MessageData* messageData = messageDataFreeList_.Alloc();
@@ -132,6 +145,12 @@ unsigned int __stdcall ContentGroupBase::GroupThread(void* thisPointer)
                 contents->OnUpdate();
                 break;
             }
+
+			case ContentGroupBase::Release:
+			{
+				contents->OnRelease(messageData->sessionId_);
+				break;
+			}
 
             default:
             {

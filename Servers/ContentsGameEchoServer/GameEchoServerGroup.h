@@ -15,6 +15,7 @@ public:
     virtual void OnEnter(SessionId sessionId) override;
     virtual void OnLeave(SessionId sessionId) override;
     virtual void OnMessage(SessionId sessionId, ContentsCPacket* packet) override;
+    virtual void OnRelease(SessionId sessionId) override;
     virtual void OnUpdate() override;
     virtual int GetPlayerNum() override;
     virtual int GetFPS() override;
@@ -37,6 +38,7 @@ public:
     virtual void OnLeave(SessionId sessionId) override;
     virtual void OnMessage(SessionId sessionId, ContentsCPacket* packet) override;
     virtual void OnUpdate() override;
+    virtual void OnRelease(SessionId sessionId) override;
     virtual int GetPlayerNum() override;
     virtual int GetFPS() override;
     virtual void OnInitializeTPS() override;

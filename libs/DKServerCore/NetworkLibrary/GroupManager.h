@@ -24,6 +24,7 @@ public:
     bool EnterGroup(Session* session, GroupId groupId);
     bool LeaveGroup(Session* session);
     bool MoveGroup(Session* session, GroupId groupId);
+    bool ReleaseGroup(Session* session);
 
     int GetGroupPlayerSize(GroupId groupId);
     int GetGroupFPS(GroupId groupId);

@@ -26,7 +26,8 @@ public:
         Enter,
         Message,
         Leave,
-        Update
+        Update,
+        Release
     };
 
 public:
@@ -39,6 +40,7 @@ public:
     void PushLeave(SessionId sessionId);
     void PushMessages(SessionId sessionId, ContentsCPacket* packet);
     void PushUpdate();
+    void PushRelease(SessionId sessionId);
 
     void AttachServer(ContentsNetLibrary* contentsServer);
 
@@ -51,6 +53,7 @@ public:
     virtual void OnLeave(SessionId sessionId) = 0;
     virtual void OnMessage(SessionId sessionId, ContentsCPacket* packet) = 0;
     virtual void OnUpdate() = 0;
+    virtual void OnRelease(SessionId sessionId) = 0;
     virtual void OnInitializeTPS() = 0;
 
     static unsigned int __stdcall GroupThread(void* thisPointer);

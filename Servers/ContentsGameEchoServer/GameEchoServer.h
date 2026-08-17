@@ -19,6 +19,7 @@ public:
     bool Start(const DKServerCore::IocpServerStartConfig& config, DKParser& parser);
 
     virtual void* GetPlayerPointer(__int64 sessionId) override;
+    void FreePlayer(Player* target);
 
     DWORD GetLogicTPS();
     DWORD GetLoginTPS();
