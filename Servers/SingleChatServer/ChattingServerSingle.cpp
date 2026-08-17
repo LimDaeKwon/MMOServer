@@ -112,9 +112,17 @@ void ChattingServerSingle::MessageProc(MessageData* messageData)
     if (playerIterator == playerMap_.end())
     {
         DebugBreak();
+        return;
     }
 
     Player* targetPlayer = playerIterator->second;
+
+    if (!targetPlayer->authFlag_ && messageType != PacketCsChatReqLogin)
+    {
+        ++dcAuthFailed_;
+        Disconnect(messageData->sessionId_);
+        return;
+    }
 
     switch (messageType)
     {
@@ -160,10 +168,10 @@ void ChattingServerSingle::MessageProc(MessageData* messageData)
         contentsPacket >> sectorX;
         contentsPacket >> sectorY;
 
-        if (sectorX >= SectorMaxX || sectorY >= SectorMaxY)
+        if (!IsValidSector(sectorX, sectorY))
         {
-            Disconnect(messageData->sessionId_);
             ++dcWrongPacket_;
+            Disconnect(messageData->sessionId_);
             break;
         }
 
@@ -175,6 +183,13 @@ void ChattingServerSingle::MessageProc(MessageData* messageData)
 
     case PacketCsChatReqMessage:
     {
+        if (!IsValidSector(targetPlayer->sectorPosition_.x_, targetPlayer->sectorPosition_.y_))
+        {
+            ++dcWrongPacket_;
+            Disconnect(messageData->sessionId_);
+            break;
+        }
+
         __int64 accountNo;
         unsigned short messageLength;
         wchar_t message[MaxChatSize];
@@ -453,6 +468,17 @@ void ChattingServerSingle::GetSectorAround(int sectorX, int sectorY, SectorAroun
         ++aroundSector->count_;
     }
 }
+
+bool ChattingServerSingle::IsValidSector(unsigned int sectorX, unsigned int sectorY)
+{
+    if (sectorX >= SectorMaxX || sectorY >= SectorMaxY)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 
 unsigned int WINAPI ChattingServerSingle::LogicThread(LPVOID thisPtr)
 {

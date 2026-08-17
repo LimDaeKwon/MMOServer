@@ -63,7 +63,7 @@ private:
     void GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector);
     void LockSectorMove(unsigned short firstX, unsigned short firstY, unsigned short secondX, unsigned short secondY);
     void UnlockSectorMove(unsigned short firstX, unsigned short firstY, unsigned short secondX, unsigned short secondY);
-
+    bool IsValidSector(unsigned int sectorX, unsigned int sectorY);
 private:
     TLSObjectFreeList<Player> playerPool_;
 

@@ -67,7 +67,7 @@ private:
     void NetPacketProcHeartbeat(Player* target);
 
     void GetSectorAround(int sectorX, int sectorY, SectorAround* aroundSector);
-
+    bool IsValidSector(unsigned int sectorX, unsigned int sectorY);
 private:
     ObjectFreeList<Player> playerPool_;
     std::unordered_map<__int64, Player*> playerMap_;

@@ -203,12 +203,21 @@ void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPack
 
     if (playerIter == playerMap_.end())
     {
+        ReleaseSRWLockShared(&playerMapLock_);
         DebugBreak();
+        return;
     }
 
     targetPlayer = playerIter->second;
 
     ReleaseSRWLockShared(&playerMapLock_);
+
+    if (!targetPlayer->authFlag_ && messageType != PacketCsChatReqLogin)
+    {
+        InterlockedIncrement(&dcAuthFailed_);
+        Disconnect(sessionId);
+        return;
+    }
 
     switch (messageType)
     {
@@ -236,6 +245,7 @@ void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPack
 
         break;
     }
+
     case PacketCsChatReqSectorMove:
     {
         __int64 accountNo;
@@ -253,7 +263,7 @@ void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPack
         contentsPacket >> sectorX;
         contentsPacket >> sectorY;
 
-        if (sectorX >= SectorMaxX || sectorY >= SectorMaxY)
+        if (!IsValidSector(sectorX, sectorY))
         {
             InterlockedIncrement(&dcWrongPacket_);
             Disconnect(sessionId);
@@ -265,8 +275,16 @@ void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPack
 
         break;
     }
+
     case PacketCsChatReqMessage:
     {
+        if (!IsValidSector(targetPlayer->sectorPosition_.x_, targetPlayer->sectorPosition_.y_))
+        {
+            InterlockedIncrement(&dcWrongPacket_);
+            Disconnect(sessionId);
+            break;
+        }
+
         __int64 accountNo;
         unsigned short messageLength;
         wchar_t message[MaxChatSize];
@@ -296,6 +314,7 @@ void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPack
 
         break;
     }
+
     case PacketCsChatReqHeartbeat:
     {
         if (contentsPacket.GetDataSize() != 0)
@@ -310,6 +329,7 @@ void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPack
 
         break;
     }
+
     default:
     {
         InterlockedIncrement(&dcWrongPacket_);
@@ -645,6 +665,16 @@ void MultiChatServer::UnlockSectorMove(unsigned short firstX, unsigned short fir
 
     ReleaseSRWLockExclusive(&sectorLock_[secondY][secondX]);
     ReleaseSRWLockExclusive(&sectorLock_[firstY][firstX]);
+}
+
+bool MultiChatServer::IsValidSector(unsigned int sectorX, unsigned int sectorY)
+{
+    if (sectorX >= SectorMaxX || sectorY >= SectorMaxY)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 DWORD MultiChatServer::GetLogicTPS()
