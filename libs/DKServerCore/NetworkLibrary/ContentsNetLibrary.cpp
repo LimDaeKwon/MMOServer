@@ -775,7 +775,6 @@ void ContentsNetLibrary::RecvProc(Session* target)
         {
             Disconnect(target->sessionId_);
             InterlockedIncrement(&dcDecodeError_);
-            CPacket::Free(decodeBuffer);
             break;
         }
 
