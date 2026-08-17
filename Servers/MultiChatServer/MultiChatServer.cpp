@@ -371,6 +371,12 @@ bool MultiChatServer::AuthToken(__int64 accountNo, char* sessionKey)
 
     connection_->sync_commit();
 
+    if (value.size() != SessionKeyLength)
+    {
+        ReleaseSRWLockExclusive(&connectionLock_);
+        return false;
+    }
+
     if (memcmp(value.c_str(), sessionKey, SessionKeyLength) != 0)
     {
         ReleaseSRWLockExclusive(&connectionLock_);

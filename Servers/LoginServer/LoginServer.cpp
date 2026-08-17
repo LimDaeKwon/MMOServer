@@ -215,7 +215,7 @@ void LoginServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPacket)
     ProcessLogin(sessionId, accountNo, sessionKey);
 }
 
-void LoginServer::ProcessLogin(__int64 sessionId, __int64 accountNo, char* sessionKey)
+void LoginServer::ProcessLogin(__int64 sessionId, __int64 accountNo, const char* sessionKey)
 {
     wchar_t id[PlayerIdLength];
     wchar_t nickname[PlayerNicknameLength];
@@ -246,7 +246,7 @@ void LoginServer::ProcessLogin(__int64 sessionId, __int64 accountNo, char* sessi
     SendPacket(sessionId, loginPacket);
 }
 
-unsigned char LoginServer::ProcessAuth(__int64 accountNo, char* sessionKey, wchar_t* id, wchar_t* nickname)
+unsigned char LoginServer::ProcessAuth(__int64 accountNo, const char* sessionKey, wchar_t* id, wchar_t* nickname)
 {
     TLSDBConnection* dbConnection = static_cast<TLSDBConnection*>(TlsGetValue(tlsDbConnectionIndex_));
 
@@ -297,11 +297,11 @@ unsigned char LoginServer::ProcessAuth(__int64 accountNo, char* sessionKey, wcha
     return static_cast<unsigned char>(LoginStatusOk);
 }
 
-void LoginServer::StoreSessionKey(__int64 accountNo, char* sessionKey)
+void LoginServer::StoreSessionKey(__int64 accountNo, const char* sessionKey)
 {
     AcquireSRWLockExclusive(&connectionLock_);
 
-    std::string value = sessionKey;
+    std::string value(sessionKey, SessionKeyLength);
 
     connection_->set(std::to_string(accountNo), value);
     connection_->sync_commit();

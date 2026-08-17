@@ -53,9 +53,9 @@ private:
     bool SetMySqlConfig(DKParser& parser);
     bool SetTargetServerConfig(DKParser& parser);
 
-    void ProcessLogin(__int64 sessionId, __int64 accountNo, char* sessionKey);
-    unsigned char ProcessAuth(__int64 accountNo, char* sessionKey, wchar_t* id, wchar_t* nickname);
-    void StoreSessionKey(__int64 accountNo, char* sessionKey);
+    void ProcessLogin(__int64 sessionId, __int64 accountNo, const char* sessionKey);
+    unsigned char ProcessAuth(__int64 accountNo, const char* sessionKey, wchar_t* id, wchar_t* nickname);
+    void StoreSessionKey(__int64 accountNo, const char* sessionKey);
 
 private:
     DWORD tlsDbConnectionIndex_{ TLS_OUT_OF_INDEXES };
