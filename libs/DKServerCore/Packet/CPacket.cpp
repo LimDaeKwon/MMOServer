@@ -62,6 +62,36 @@ int CPacket::GetDataSize() const
     return dataSize_;
 }
 
+bool CPacket::CanWrite(int size) const
+{
+    if (size < 0)
+    {
+        return false;
+    }
+
+    if (size > bufferSize_ - writePosition_)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool CPacket::CanRead(int size) const
+{
+    if (size < 0)
+    {
+        return false;
+    }
+
+    if (size > dataSize_)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 char* CPacket::GetBufferPtr()
 {
     return serializeBuffer_;
@@ -79,7 +109,7 @@ char* CPacket::GetReadPosition()
 
 int CPacket::MoveWritePosition(int size)
 {
-    if (dataSize_ + size > bufferSize_)
+    if (!CanWrite(size))
     {
         return -1;
     }
@@ -92,7 +122,7 @@ int CPacket::MoveWritePosition(int size)
 
 int CPacket::MoveReadPosition(int size)
 {
-    if (dataSize_ - size < 0)
+    if (!CanRead(size))
     {
         return -1;
     }
@@ -148,19 +178,7 @@ int CPacket::GetCapacity()
 
 CPacket& CPacket::operator=(const CPacket& sourcePacket)
 {
-    if (bufferSize_ < sourcePacket.dataSize_)
-    {
-        bufferSize_ = sourcePacket.dataSize_;
-
-        delete[] serializeBuffer_;
-        serializeBuffer_ = new char[bufferSize_];
-    }
-
-    if (memcpy_s(
-        serializeBuffer_,
-        bufferSize_,
-        sourcePacket.serializeBuffer_,
-        sourcePacket.dataSize_) != 0)
+    if (memcpy_s(serializeBuffer_, bufferSize_, sourcePacket.serializeBuffer_, sourcePacket.dataSize_) != 0)
     {
         return *this;
     }
@@ -176,7 +194,7 @@ CPacket& CPacket::operator=(const CPacket& sourcePacket)
 
 CPacket& CPacket::operator<<(unsigned char value)
 {
-    if (dataSize_ + sizeof(unsigned char) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -191,7 +209,7 @@ CPacket& CPacket::operator<<(unsigned char value)
 
 CPacket& CPacket::operator<<(char value)
 {
-    if (dataSize_ + sizeof(char) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -206,7 +224,7 @@ CPacket& CPacket::operator<<(char value)
 
 CPacket& CPacket::operator<<(short value)
 {
-    if (dataSize_ + sizeof(short) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -221,7 +239,7 @@ CPacket& CPacket::operator<<(short value)
 
 CPacket& CPacket::operator<<(unsigned short value)
 {
-    if (dataSize_ + sizeof(unsigned short) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -236,7 +254,7 @@ CPacket& CPacket::operator<<(unsigned short value)
 
 CPacket& CPacket::operator<<(int value)
 {
-    if (dataSize_ + sizeof(int) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -251,7 +269,7 @@ CPacket& CPacket::operator<<(int value)
 
 CPacket& CPacket::operator<<(long value)
 {
-    if (dataSize_ + sizeof(long) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -266,7 +284,7 @@ CPacket& CPacket::operator<<(long value)
 
 CPacket& CPacket::operator<<(unsigned int value)
 {
-    if (dataSize_ + sizeof(unsigned int) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -281,7 +299,7 @@ CPacket& CPacket::operator<<(unsigned int value)
 
 CPacket& CPacket::operator<<(float value)
 {
-    if (dataSize_ + sizeof(float) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -296,7 +314,7 @@ CPacket& CPacket::operator<<(float value)
 
 CPacket& CPacket::operator<<(__int64 value)
 {
-    if (dataSize_ + sizeof(__int64) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -311,7 +329,7 @@ CPacket& CPacket::operator<<(__int64 value)
 
 CPacket& CPacket::operator<<(double value)
 {
-    if (dataSize_ + sizeof(double) >= bufferSize_)
+    if (!CanWrite(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -326,7 +344,7 @@ CPacket& CPacket::operator<<(double value)
 
 CPacket& CPacket::operator>>(unsigned char& value)
 {
-    if (dataSize_ < sizeof(unsigned char))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -341,7 +359,7 @@ CPacket& CPacket::operator>>(unsigned char& value)
 
 CPacket& CPacket::operator>>(char& value)
 {
-    if (dataSize_ < sizeof(char))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -356,7 +374,7 @@ CPacket& CPacket::operator>>(char& value)
 
 CPacket& CPacket::operator>>(short& value)
 {
-    if (dataSize_ < sizeof(short))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -371,7 +389,7 @@ CPacket& CPacket::operator>>(short& value)
 
 CPacket& CPacket::operator>>(unsigned short& value)
 {
-    if (dataSize_ < sizeof(unsigned short))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -386,7 +404,7 @@ CPacket& CPacket::operator>>(unsigned short& value)
 
 CPacket& CPacket::operator>>(int& value)
 {
-    if (dataSize_ < sizeof(int))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -401,7 +419,7 @@ CPacket& CPacket::operator>>(int& value)
 
 CPacket& CPacket::operator>>(unsigned int& value)
 {
-    if (dataSize_ < sizeof(unsigned int))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -416,7 +434,7 @@ CPacket& CPacket::operator>>(unsigned int& value)
 
 CPacket& CPacket::operator>>(float& value)
 {
-    if (dataSize_ < sizeof(float))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -431,7 +449,7 @@ CPacket& CPacket::operator>>(float& value)
 
 CPacket& CPacket::operator>>(__int64& value)
 {
-    if (dataSize_ < sizeof(__int64))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -446,7 +464,7 @@ CPacket& CPacket::operator>>(__int64& value)
 
 CPacket& CPacket::operator>>(double& value)
 {
-    if (dataSize_ < sizeof(double))
+    if (!CanRead(static_cast<int>(sizeof(value))))
     {
         return *this;
     }
@@ -461,16 +479,12 @@ CPacket& CPacket::operator>>(double& value)
 
 int CPacket::GetData(char* destination, int destinationSize)
 {
-    if (dataSize_ < destinationSize)
+    if (!CanRead(destinationSize))
     {
         return -1;
     }
 
-    if (memcpy_s(
-        destination,
-        destinationSize,
-        serializeBuffer_ + readPosition_,
-        destinationSize) != 0)
+    if (memcpy_s(destination, destinationSize, serializeBuffer_ + readPosition_, destinationSize) != 0)
     {
         return -1;
     }
@@ -483,16 +497,12 @@ int CPacket::GetData(char* destination, int destinationSize)
 
 int CPacket::PutData(char* source, int sourceSize)
 {
-    if (dataSize_ + sourceSize > bufferSize_)
+    if (!CanWrite(sourceSize))
     {
         return -1;
     }
 
-    if (memcpy_s(
-        serializeBuffer_ + writePosition_,
-        sourceSize,
-        source,
-        sourceSize) != 0)
+    if (memcpy_s(serializeBuffer_ + writePosition_, bufferSize_ - writePosition_, source, sourceSize) != 0)
     {
         return -1;
     }

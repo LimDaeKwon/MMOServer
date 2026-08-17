@@ -8,18 +8,27 @@
 class CPacket
 {
 private:
-    CPacket();
-    CPacket(int newBufferSize);
-
-public:
-    friend class IOCPServer;
-    friend class ContentsCPacket;
     friend class TLSObjectFreeList<CPacket>;
     friend class ContentsNetLibrary;
     friend class NetLibrary;
     friend class NetLibraryLock;
 
-    virtual ~CPacket();
+    CPacket();
+    CPacket(int newBufferSize);
+
+    bool CanWrite(int size) const;
+    bool CanRead(int size) const;
+
+    char* GetReadPosition();
+
+    int MoveReadPosition(int size);
+    int DecreaseRefCount();
+
+    BYTE Encode(char* text, WORD size, BYTE randomKey);
+    bool Decode(char* text, WORD size, BYTE randomKey);
+
+public:
+    ~CPacket();
 
     void Clear();
     void InitLan();
@@ -29,13 +38,9 @@ public:
 
     char* GetBufferPtr();
     char* GetWriteBufferPtr();
-    char* GetReadPosition();
 
     int MoveWritePosition(int size);
-    int MoveReadPosition(int size);
-
     int IncreaseRefCount();
-    int DecreaseRefCount();
 
     CPacket& operator=(const CPacket& sourcePacket);
 
@@ -69,9 +74,6 @@ public:
     int GetData(char* destination, int destinationSize);
     int PutData(char* source, int sourceSize);
 
-    BYTE Encode(char* text, WORD size, BYTE randomKey);
-    bool Decode(char* text, WORD size, BYTE randomKey);
-
     static void Free(CPacket* packet);
     static CPacket* Alloc();
 
@@ -79,7 +81,7 @@ public:
     static int GetUseSize();
     static int GetCapacity();
 
-protected:
+private:
     char* serializeBuffer_;
 
     int bufferSize_;
