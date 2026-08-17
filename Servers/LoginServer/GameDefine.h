@@ -8,3 +8,5 @@ constexpr int ServerIpLength = 16;
 constexpr int PlayerIdByteSize = 40;
 constexpr int PlayerNicknameByteSize = 40;
 constexpr int ServerIpByteSize = 32;
+
+constexpr int SessionKeyTtlSecond = 60;

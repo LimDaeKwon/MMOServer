@@ -303,7 +303,7 @@ void LoginServer::StoreSessionKey(__int64 accountNo, const char* sessionKey)
 
     std::string value(sessionKey, SessionKeyLength);
 
-    connection_->set(std::to_string(accountNo), value);
+    connection_->setex(std::to_string(accountNo), SessionKeyTtlSecond, value);
     connection_->sync_commit();
 
     ReleaseSRWLockExclusive(&connectionLock_);
