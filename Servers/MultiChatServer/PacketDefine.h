@@ -16,4 +16,5 @@ constexpr unsigned short PacketScChatResMessage = 6;
 constexpr int PacketChatLoginRequestDataSize = 152;
 constexpr int PacketChatSectorMoveRequestDataSize = 12;
 constexpr int PacketChatMessageRequestMaxDataSize = 116;
+constexpr int PacketChatMessageRequestMinDataSize = 10;
 constexpr int PacketChatMessageMaxByteSize = 106;

@@ -289,7 +289,7 @@ void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPack
         unsigned short messageLength;
         wchar_t message[MaxChatSize];
 
-        if (contentsPacket.GetDataSize() > PacketChatMessageRequestMaxDataSize)
+        if (contentsPacket.GetDataSize() > PacketChatMessageRequestMaxDataSize || contentsPacket.GetDataSize() < PacketChatMessageRequestMinDataSize)
         {
             InterlockedIncrement(&dcWrongPacket_);
             Disconnect(sessionId);
@@ -306,7 +306,13 @@ void MultiChatServer::OnMessage(__int64 sessionId, ContentsCPacket* contentsPack
             break;
         }
 
-        contentsPacket.GetData(reinterpret_cast<char*>(message), messageLength);
+        if(contentsPacket.GetData(reinterpret_cast<char*>(message), messageLength) != messageLength)
+        {
+            InterlockedIncrement(&dcWrongPacket_);
+            Disconnect(sessionId);
+            break;
+        }
+
         message[messageLength / sizeof(wchar_t)] = L'\0';
 
         NetPacketProcMessage(targetPlayer, accountNo, messageLength, message);

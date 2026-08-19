@@ -156,7 +156,7 @@ void ChattingServerSingle::MessageProc(MessageData* messageData)
         __int64 accountNo;
         unsigned short sectorX;
         unsigned short sectorY;
-
+        
         if (contentsPacket.GetDataSize() != PacketChatSectorMoveRequestDataSize)
         {
             ++dcWrongPacket_;
@@ -194,7 +194,7 @@ void ChattingServerSingle::MessageProc(MessageData* messageData)
         unsigned short messageLength;
         wchar_t message[MaxChatSize];
 
-        if (contentsPacket.GetDataSize() > PacketChatMessageRequestMaxDataSize)
+        if (contentsPacket.GetDataSize() > PacketChatMessageRequestMaxDataSize || contentsPacket.GetDataSize() < PacketChatMessageRequestMinDataSize)
         {
             ++dcWrongPacket_;
             Disconnect(messageData->sessionId_);
@@ -211,7 +211,12 @@ void ChattingServerSingle::MessageProc(MessageData* messageData)
             break;
         }
 
-        contentsPacket.GetData(reinterpret_cast<char*>(message), messageLength);
+        if(contentsPacket.GetData(reinterpret_cast<char*>(message), messageLength) != messageLength)
+        {
+            ++dcWrongPacket_;
+            Disconnect(messageData->sessionId_);
+            break;
+        }
         message[messageLength / sizeof(wchar_t)] = L'\0';
 
         NetPacketProcMessage(targetPlayer, accountNo, messageLength, message);
