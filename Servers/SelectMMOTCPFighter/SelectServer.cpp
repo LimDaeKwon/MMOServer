@@ -474,11 +474,13 @@ void SelectServer::Receive(Session* target)
 	{
 		recvError = WSAGetLastError();
 
-		if (recvError != WSAEWOULDBLOCK)
+		if (recvError == WSAEWOULDBLOCK)
 		{
-			Disconnect(target->sessionId_);
+			
 			return;
 		}
+		Disconnect(target->sessionId_);
+		return;
 	}
 
 	if (recvReturn == 0)
