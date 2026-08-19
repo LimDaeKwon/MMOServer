@@ -1,5 +1,11 @@
 #pragma once
 
+#if defined(_DEBUG)
+#define DK_ENABLE_MEMORY_CHECK 1
+#else
+#define DK_ENABLE_MEMORY_CHECK 0
+#endif
+
 #include <cstdint>
 
 namespace DKServerCore

@@ -6,9 +6,8 @@
 #include "CoreDefines.h"
 
 extern unsigned int GlobalChecksum;
-#define DK_ENABLE_MEMORY_CHECK
 
-#ifdef DK_ENABLE_MEMORY_CHECK
+#if DK_ENABLE_MEMORY_CHECK
 
 template <class DataType>
 class LFObjectFreeList

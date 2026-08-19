@@ -12,8 +12,7 @@
 static unsigned int GlobalChecksum1 = 0;
 
 constexpr int MaxNodeCount = 1000;
-
-#ifdef DK_ENABLE_MEMORY_CHECK
+#if DK_ENABLE_MEMORY_CHECK
 
 template <class DataType>
 class TLSObjectFreeList
