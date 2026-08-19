@@ -866,6 +866,11 @@ void SelectMMOTCPFighter::ReleaseCharacter(Character* target)
 
 bool SelectMMOTCPFighter::IsClientPositionValid(Character* target, unsigned short x, unsigned short y)
 {
+    if (x >= RangeMoveRight || y >= RangeMoveBottom)
+    {
+        return false;
+    }
+
     return !((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange));
 }
 

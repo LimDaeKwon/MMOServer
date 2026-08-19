@@ -236,6 +236,12 @@ void MMOTCPServerSingle::ReleaseCharacter(Character* target)
 
 bool MMOTCPServerSingle::IsClientPositionValid(Character* target, unsigned short x, unsigned short y)
 {
+	if (x >= RangeMoveRight || y >= RangeMoveBottom)
+	{
+		return false;
+	}
+
+
 	return !((abs(target->x_ - x) > ErrorRange) || (abs(target->y_ - y) > ErrorRange));
 }
 
