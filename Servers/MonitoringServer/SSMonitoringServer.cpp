@@ -5,14 +5,15 @@
 
 SSMonitoringServer::SSMonitoringServer() : userPool_(0), MessageDataFreeList(1000)
 {
-	LogicThreadHandle = (HANDLE)_beginthreadex(nullptr, 0, LogicThread, this, 0, nullptr);
-
+	
 	MessageEvent = CreateEvent(NULL, FALSE, FALSE ,nullptr);
 
 	if (MessageEvent == NULL)
 	{
 		DebugBreak();
 	}
+
+	LogicThreadHandle = (HANDLE)_beginthreadex(nullptr, 0, LogicThread, this, 0, nullptr);
 
 	mysql_init(&conn);
 
@@ -460,7 +461,7 @@ unsigned int WINAPI SSMonitoringServer::LogicThread(LPVOID thisPtr)
 			MessageData* msg = nullptr;
 			if (!server->MessageQueue.Dequeue(&msg))
 			{
-				continue;
+				break;
 			}
 
 			switch (msg->type)

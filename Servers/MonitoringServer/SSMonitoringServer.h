@@ -15,11 +15,6 @@
 #pragma comment(lib, "winmm.lib")
 
 
-//class ContentsCPacket;
-
-//서버들로부터 주기적으로 데이터를 받고
-//클라이언트들로 주기적으로 데이터를 보내준다. 
-
 
 class SSMonitoringServer : public LanLibrary
 {
@@ -45,15 +40,6 @@ public:
 		__int64 session_ID;
 		ContentsCPacket* contents_packet;
 	};
-
-
-	//귀찮은데 그냥 뉴딜리트? 
-	//몇 개 없기도 한데 흠..
-	//일단 하고 고민
-
-	//모니터링서버의 스레드 설계
-	//굳이 멀티일 필요도 없다. 
-	//그냥 락 걸까. 
 
 
 
@@ -98,14 +84,12 @@ public:
 	DWORD GetUnloginPlayer();
 
 
-	//각각의 변수들 선언
 
 	LoginServerMonitorData loginServerData_;
 	GameServerMonitorData gameServerData_;
 	ChatServerMonitorData chatServerData_;
 	SystemMonitorData systemData_;
 
-	//이렇게 다 가지고 있음. 
 
 	void UpdateMonitorValue(MonitorValue& monitorValue, int dataValue, int timeStamp);
 
@@ -128,8 +112,8 @@ public:
 
 	TLockFreeQueue<MessageData*> MessageQueue;
 	TLSObjectFreeList<MessageData> MessageDataFreeList;
-	HANDLE LogicThreadHandle;
-	HANDLE MessageEvent;
+	HANDLE LogicThreadHandle = nullptr;
+	HANDLE MessageEvent = nullptr;
 
 	void AcceptProc(MessageData* msg_data);
 	void MessageProc(MessageData* msg_data);

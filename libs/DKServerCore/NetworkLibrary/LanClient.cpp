@@ -14,7 +14,7 @@ LanClient::LanClient()
 
 LanClient::~LanClient()
 {
-    Stop();
+
 }
 
 bool LanClient::Start(const char* serverIp, unsigned int serverPort, unsigned int nagle, unsigned int header)
@@ -87,11 +87,7 @@ bool LanClient::Start(const char* serverIp, unsigned int serverPort, unsigned in
         DebugBreak();
     }
 
-    if (CreateIoCompletionPort(
-        reinterpret_cast<HANDLE>(clientSession_->sock_),
-        handleIocp_,
-        reinterpret_cast<ULONG_PTR>(clientSession_),
-        0) == nullptr)
+    if (CreateIoCompletionPort(reinterpret_cast<HANDLE>(clientSession_->sock_),handleIocp_,reinterpret_cast<ULONG_PTR>(clientSession_),0) == nullptr)
     {
         int error = GetLastError();
         wprintf(L"CreateIoCompletionPort Error %d", error);
@@ -415,6 +411,7 @@ void LanClient::RecvCompletion(ClientSession* target, DWORD cbTransferred)
 
 void LanClient::RecvProc(ClientSession* target)
 {
+
     while (true)
     {
         int targetRecvBufferSize = target->recvBuffer_.GetUseSize();

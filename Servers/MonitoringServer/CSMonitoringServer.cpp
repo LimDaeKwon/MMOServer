@@ -6,8 +6,6 @@
 CSMonitoringServer::CSMonitoringServer(LoginServerMonitorData& loginServerData, GameServerMonitorData& gameServerData, ChatServerMonitorData& chatServerData, SystemMonitorData& systemData) 
 	: userPool_(0), MessageDataFreeList(1000), loginServerData_(loginServerData),gameServerData_(gameServerData), chatServerData_(chatServerData), systemData_(systemData)
 {
-	LogicThreadHandle = (HANDLE)_beginthreadex(nullptr, 0, LogicThread, this, 0, nullptr);
-
 	MessageEvent = CreateEvent(NULL, FALSE, FALSE,nullptr);
 
 	if (MessageEvent == NULL)
@@ -15,6 +13,7 @@ CSMonitoringServer::CSMonitoringServer(LoginServerMonitorData& loginServerData, 
 		printf("CreateEvent failed (%d)\n", GetLastError());
 		DebugBreak();
 	}
+	LogicThreadHandle = (HANDLE)_beginthreadex(nullptr, 0, LogicThread, this, 0, nullptr);
 
 }
 
@@ -205,7 +204,7 @@ unsigned int WINAPI CSMonitoringServer::LogicThread(LPVOID thisPtr)
 			MessageData* msg = nullptr;
 			if (!server->MessageQueue.Dequeue(&msg))
 			{
-				continue;
+				break;
 			}
 
 			switch (msg->type)
