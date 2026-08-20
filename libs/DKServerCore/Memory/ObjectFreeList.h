@@ -1,14 +1,10 @@
 #pragma once
 #include "Windows.h"
-#include <new.h>
+#include <new>
+#include "CoreDefines.h"
 
+#if DK_ENABLE_MEMORY_CHECK
 
-
-
-
-
-#define DEBUGOBJECTFREELIST
-#ifdef DEBUGOBJECTFREELIST
 extern unsigned int GlobalChecksum;
 
 template <class DataType>
@@ -59,9 +55,16 @@ public:
 
     virtual ~ObjectFreeList()
     {
-        for (int i = 0; i < capacity_; ++i)
+        while (freeNode_ != nullptr)
         {
-            delete Pop();
+            BlockNode* deleteNode = Pop();
+
+            if (!isPlacementNew_)
+            {
+                deleteNode->data_.~DataType();
+            }
+
+            free(deleteNode);
         }
     }
 
@@ -86,18 +89,27 @@ public:
 
         if (useCount_ == capacity_)
         {
-            newNode = new BlockNode;
+            newNode = static_cast<BlockNode*>(malloc(sizeof(BlockNode)));
+
+            if (newNode == nullptr)
+            {
+                throw std::bad_alloc();
+            }
+
+            if (!isPlacementNew_)
+            {
+                new (&newNode->data_) DataType;
+            }
 
             newNode->overflowChecksum_ = checksum_;
             newNode->underflowChecksum_ = checksum_;
 
-            ++useCount_;
             ++capacity_;
-
-            return &newNode->data_;
         }
-
-        newNode = Pop();
+        else
+        {
+            newNode = Pop();
+        }
 
         if (isPlacementNew_)
         {
@@ -192,10 +204,17 @@ public:
 
 	virtual ~ObjectFreeList()
 	{
-		for (int i = 0; i < capacity_; ++i)
-		{
-			delete Pop();
-		}
+        while (freeNode_ != nullptr)
+        {
+            BlockNode* deleteNode = Pop();
+
+            if (!isPlacementNew_)
+            {
+                deleteNode->data_.~DataType();
+            }
+
+            free(deleteNode);
+        }
 	}
 
 	void Push(BlockNode* node)
@@ -215,40 +234,49 @@ public:
 
 	DataType* Alloc()
 	{
-		BlockNode* temp = nullptr;
+		BlockNode* newNode = nullptr;
 
-		if (useCount_ == capacity_)
-		{
-			temp = new BlockNode;
+        if (useCount_ == capacity_)
+        {
+            newNode = static_cast<BlockNode*>(malloc(sizeof(BlockNode)));
 
-			++useCount_;
-			++capacity_;
+            if (newNode == nullptr)
+            {
+                throw std::bad_alloc();
+            }
 
-			return &temp->data_;
-		}
+            if (!isPlacementNew_)
+            {
+                new (&newNode->data_) DataType;
+            }
 
-		temp = Pop();
+            ++capacity_;
+        }
+        else
+        {
+            newNode = Pop();
+        }
 
 		if (isPlacementNew_)
 		{
-			new (&temp->data_) DataType;
+			new (&newNode->data_) DataType;
 		}
 
 		++useCount_;
 
-		return &temp->data_;
+		return &newNode->data_;
 	}
 
 	bool Free(DataType* data)
 	{
-		BlockNode* temp = reinterpret_cast<BlockNode*>(data);
+		BlockNode* newNode = reinterpret_cast<BlockNode*>(data);
 
 		if (isPlacementNew_)
 		{
-			temp->data_.~DataType();
+			newNode->data_.~DataType();
 		}
 
-		Push(temp);
+		Push(newNode);
 
 		--useCount_;
 
