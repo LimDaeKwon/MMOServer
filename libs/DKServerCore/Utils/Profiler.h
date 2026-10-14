@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Windows.h>
+#include <atomic>
 #include <string>
 
 #include "CoreDefines.h"
@@ -27,7 +28,7 @@ public:
     __int64 min_[2] = { 0 };
     __int64 max_[2] = { 0 };
     __int64 call_ = 0;
-    unsigned long long beginFlag_ = 0;
+    bool beginFlag_ = false;
     DWORD threadId_ = 0;
 };
 
@@ -37,7 +38,8 @@ void ProfileDataOutText(const WCHAR* fileName);
 void ProfileReset();
 void InitProfile();
 
-extern bool Enabled;
+extern std::atomic<bool> Enabled;
+
 void SetEnabled(bool enabled);
 
 
@@ -45,9 +47,9 @@ class Profile
 {
 public:
     Profile(const WCHAR* newTag)
-        : tag_(newTag)
+        : tag_(newTag), begin_(false)
     {
-        if (Enabled)
+        if (Enabled.load())
         {
             begin_ = true;
             PRO_BEGIN(newTag);

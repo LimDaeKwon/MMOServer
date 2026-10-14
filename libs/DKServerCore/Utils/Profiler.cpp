@@ -8,7 +8,7 @@
 
 DWORD tlsIndex;
 LARGE_INTEGER frequency;
-bool Enabled = true;
+std::atomic<bool> Enabled{ true };
 
 std::vector<ProfileManagement*> profileList;
 std::mutex profileListLock;
@@ -44,12 +44,11 @@ void ProfileBegin(const WCHAR* tagName)
 
                 profileManagement[index].startTime_ = start;
 
-                if (InterlockedExchange(
-                    reinterpret_cast<volatile LONG*>(&profileManagement[index].beginFlag_),
-                    1) == 1)
+                if (profileManagement[index].beginFlag_)
                 {
                     DebugBreak();
                 }
+                profileManagement[index].beginFlag_ = true;
 
                 return;
             }
@@ -74,12 +73,11 @@ void ProfileBegin(const WCHAR* tagName)
     profileManagement[index].min_[1] = INT_MAX;
     profileManagement[index].max_[1] = -1;
 
-    if (InterlockedExchange(
-        reinterpret_cast<volatile LONG*>(&profileManagement[index].beginFlag_),
-        1) == 1)
+    if (profileManagement[index].beginFlag_)
     {
         DebugBreak();
     }
+    profileManagement[index].beginFlag_ = true;
 }
 
 void ProfileEnd(const WCHAR* tagName)
@@ -91,12 +89,11 @@ void ProfileEnd(const WCHAR* tagName)
     {
         if (wcscmp(profileManagement[index].name_, tagName) == 0)
         {
-            if (InterlockedExchange(
-                reinterpret_cast<volatile LONG*>(&profileManagement[index].beginFlag_),
-                0) == 0)
+            if (!profileManagement[index].beginFlag_)
             {
                 DebugBreak();
             }
+            profileManagement[index].beginFlag_ = false;
 
             LARGE_INTEGER end;
             LARGE_INTEGER elapsedTime;
@@ -219,5 +216,5 @@ void InitProfile()
 
 void SetEnabled(bool enabled)
 {
-	Enabled = enabled;
+    Enabled = enabled;
 }
